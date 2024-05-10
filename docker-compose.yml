@@ -13,10 +13,10 @@ services:
     # To persist the data externally, uncomment the following lines
     #volumes:
     #  - ./db/db_data:/var/lib/postgresql/data
-  web:
+  api:
     build:
-      context: ./web
-      dockerfile: web.dockerfile
+      context: ./api
+      dockerfile: api.dockerfile
     ports:
       - "3000:3000"
     depends_on:
