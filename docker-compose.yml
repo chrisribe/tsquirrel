@@ -23,3 +23,13 @@ services:
       - db
     environment:
       DATABASE_URL: postgres://dockeruser:${DB_PASSWORD}@db:5432/mydb
+  web:
+    build:
+      context: ./web
+      dockerfile: web.dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    environment:
+      API_URL: http://api:3000
