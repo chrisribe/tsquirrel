@@ -1,8 +1,13 @@
 const express = require('express');
 const { Pool } = require('pg');
 const router = require('./routes');
+const cors = require('cors');
 
 const app = express();
+
+// Enable CORS for all routes
+app.use(cors());
+
 const port = process.env.PORT || 3000;
 
 // Database connection pool
