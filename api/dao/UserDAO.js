@@ -8,6 +8,11 @@ class UserDAO {
     return results.rows;
   }
 
+  async getUserByUsername(username) {
+    const results = await this.pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    return results.rows[0];
+  }
+
   async addUser(user) {
     const { username, password, email } = user;
     await this.pool.query('INSERT INTO users (username, password, email) VALUES ($1, $2, $3)', [username, password, email]);

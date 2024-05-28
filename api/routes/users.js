@@ -4,7 +4,7 @@ const router = express.Router();
 const UserDAO = require('./../dao/UserDAO');
 const UserController = require('./../controllers/UserController');
 
-// Define users routes
+// Middleware enriching the request with a user controller
 router.use((req, res, next) => {
   // Get the pool from the app
   const pool = req.app.get('pool');

@@ -6,9 +6,19 @@ const router = express.Router();
 const usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
 
+const session = require('express-session');
+
 const app = express();
 // Use body-parser middleware
 app.use(bodyParser.json());
+
+//TODO: review secret key docs
+app.use(session({
+  secret: 'your secret key',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // set to true if your website is on HTTPS
+}));
 
 // Enable CORS for all routes
 const cors = require('cors');
@@ -23,6 +33,10 @@ const pool = new Pool({
 
 // Make the connection pool available to router
 app.set('pool', pool);
+
+// initialize the auth service
+const authService = require('./services/authService');
+authService.initialize(pool);
 
 // Add routes to the app
 router.get('/', (req, res) => {

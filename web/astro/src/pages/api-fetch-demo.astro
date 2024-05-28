@@ -6,7 +6,7 @@ import Layout from '../layouts/Layout.astro';
 
   // Fetch data from the API at build time
   const fetchData = async () => {
-    const res = await fetch('http://localhost:3000/showUsers');
+    const res = await fetch('http://localhost:3000/users');
     const data = await res.json();
     return data;
   }
