@@ -26,11 +26,11 @@ services:
   web:
     build:
       context: ./web
-      dockerfile: web-astro.dockerfile
+      dockerfile: web-htmx.dockerfile
     ports:
       - "80:80"
     depends_on:
       - api
     environment:
-      PUBLIC_API_URL: http://api:3000
+      PUBLIC_API_URL: http://localhost:3000
       PUBLIC_TEST: "test123"

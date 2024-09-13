@@ -1,5 +1,4 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const { Pool } = require('pg');
 
 const router = express.Router();
@@ -9,8 +8,11 @@ const authRouter = require('./routes/auth');
 const session = require('express-session');
 
 const app = express();
-// Use body-parser middleware
-app.use(bodyParser.json());
+// Middleware to parse JSON bodies
+app.use(express.json());
+
+// Middleware to parse URL-encoded bodies (form data)
+app.use(express.urlencoded({ extended: true }));
 
 //TODO: review secret key docs
 app.use(session({
