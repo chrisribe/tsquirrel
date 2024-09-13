@@ -11,6 +11,10 @@
   },
   "dependencies": {
     "@astrojs/node": "^8.2.5",
-    "astro": "^4.8.2"
+    "astro": "^4.8.2",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.1.0"
   }
 }

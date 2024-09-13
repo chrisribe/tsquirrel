@@ -26,10 +26,11 @@ services:
   web:
     build:
       context: ./web
-      dockerfile: web.dockerfile
+      dockerfile: web-astro.dockerfile
     ports:
       - "80:80"
     depends_on:
       - api
     environment:
-      API_URL: http://api:3000
+      PUBLIC_API_URL: http://api:3000
+      PUBLIC_TEST: "test123"
