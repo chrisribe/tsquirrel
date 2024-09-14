@@ -2,12 +2,14 @@ const express = require('express');
 const { Pool } = require('pg');
 
 const router = express.Router();
-const usersRouter = require('./routes/users');
-const authRouter = require('./routes/auth');
 
 const session = require('express-session');
 
 const app = express();
+
+// Set the view engine to ejs
+app.set('view engine', 'ejs');
+
 // Middleware to parse JSON bodies
 app.use(express.json());
 
@@ -42,12 +44,15 @@ authService.initialize(pool);
 
 // Add routes to the app
 router.get('/', (req, res) => {
-  res.send('Welcome to EventGlimpse! <a href="/users">Show Users</a>');
+  res.send('Welcome to EventGlimpse API!');
 });
 app.use('/', router);
 
-app.use('/users', usersRouter);
-app.use('/auth', authRouter);
+app.use('/users', require('./routes/users'));
+app.use('/auth', require('./routes/auth'));
+
+// Add htmx routes to the app
+app.use('/htmx', require('./routes/htmx'));
 
 
 // Error handling middleware

@@ -1,0 +1,14 @@
+version: '3'
+services:
+  api:
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+  web:
+    volumes:
+      - ./web/htmx:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development

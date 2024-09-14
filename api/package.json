@@ -4,12 +4,18 @@
   "description": "A simple express api",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start-node": "node server.js",
+    "start-nodemon": "nodemon server.js",
+    "start": "if [ \"$NODE_ENV\" = \"development\" ]; then npm run start-nodemon; else npm run start-node; fi"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "ejs": "^3.1.10",
     "express": "^4.17.1",
     "express-session": "^1.18.0",
     "pg": "^8.11.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
   }
 }
