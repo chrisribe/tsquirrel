@@ -18,19 +18,11 @@ services:
       context: ./api
       dockerfile: api.dockerfile
     ports:
-      - "3000:3000"
+      - "80:80"
     depends_on:
       - db
     environment:
       DATABASE_URL: postgres://dockeruser:${DB_PASSWORD}@db:5432/mydb
-  web:
-    build:
-      context: ./web
-      dockerfile: web-htmx.dockerfile
-    ports:
-      - "80:80"
-    depends_on:
-      - api
-    environment:
-      PUBLIC_API_URL: http://localhost:3000
-      PUBLIC_TEST: "test123"
+    volumes:
+      - ./api:/app
+      - ./web/static:/app/web/static

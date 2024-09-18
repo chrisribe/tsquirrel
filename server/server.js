@@ -28,7 +28,7 @@ app.use(session({
 const cors = require('cors');
 app.use(cors());
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 80;
 
 // Database connection pool
 const pool = new Pool({
@@ -42,11 +42,10 @@ app.set('pool', pool);
 const authService = require('./services/authService');
 authService.initialize(pool);
 
-// Add routes to the app
-router.get('/', (req, res) => {
-  res.send('Welcome to EventGlimpse API!');
-});
-app.use('/', router);
+// Add web routes to the app
+app.use('/', require('./routes/web/index'));
+
+//app.use('/', router);
 
 app.use('/users', require('./routes/users'));
 app.use('/auth', require('./routes/auth'));
