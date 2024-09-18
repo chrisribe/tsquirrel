@@ -1,20 +1,31 @@
 const express = require('express');
 const { Pool } = require('pg');
 
-const router = express.Router();
-
 const session = require('express-session');
-
+const path = require('path');
+const router = express.Router();
 const app = express();
-
-// Set the view engine to ejs
-app.set('view engine', 'ejs');
 
 // Middleware to parse JSON bodies
 app.use(express.json());
 
 // Middleware to parse URL-encoded bodies (form data)
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files
+app.use('/static', express.static(path.join(__dirname, 'static')));
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
+// Set the view engine to ejs
+app.set('view engine', 'ejs');
+// Set the views directory to be used on .render calls
+app.set('views', path.join(__dirname, 'views'));
+
 
 //TODO: review secret key docs
 app.use(session({
@@ -45,20 +56,9 @@ authService.initialize(pool);
 // Add web routes to the app
 app.use('/', require('./routes/web/index'));
 
-//app.use('/', router);
-
-app.use('/users', require('./routes/users'));
-app.use('/auth', require('./routes/auth'));
-
-// Add htmx routes to the app
-app.use('/htmx', require('./routes/htmx'));
-
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
+// Add API routes to the app
+app.use('/api/users', require('./routes/api/users'));
+app.use('/api/auth', require('./routes/api/auth'));
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

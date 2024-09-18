@@ -20,12 +20,5 @@ export DB_PASSWORD
 # Check if the first argument is 'build'
 if [ "$1" == "build" ]; then
   docker-compose build --no-cache
-  docker-compose up
-elif [ "$1" == "dev" ]; then
-  docker-compose build db api --no-cache
-  docker-compose up -d db api
-  cd ./web/astro
-  npm run dev
-else
-  docker-compose up
 fi
+docker-compose up

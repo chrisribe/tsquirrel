@@ -1,9 +1,8 @@
 version: '3'
 services:
-  api:
+  server:
     volumes:
-      - ./api:/app
-      - ./web/static:/app/web/static
+      - ./server:/app
       - /app/node_modules
     environment:
       NODE_ENV: development
