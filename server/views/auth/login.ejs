@@ -1,1 +1,19 @@
-<p>Login zone!!!!</p>
+<%- include('../layout', { 
+  body: `
+    <h1>Login</h1>
+    <form hx-post="/api/auth/login" hx-target="#message" hx-swap="innerHTML" hx-on="htmx:responseError">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" required />
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required />
+      <button type="submit">Login</button>
+    </form>
+    <div id="message"></div>
+    <script>
+      document.body.addEventListener('htmx:responseError', function(event) {
+        if (event.detail.xhr.status === 401) {
+          document.getElementById('message').innerHTML = '<p style="color: red;">Unauthorized: Invalid username or password.</p>';
+        }
+      });
+    </script>
+` }) %>
