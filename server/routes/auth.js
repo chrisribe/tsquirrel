@@ -11,6 +11,7 @@ router.post('/login', async (req, res) => {
     if (user) {
       // If the login was successful, create a user session
       req.session.user = user;
+      res.locals.user = user; // Set the user data to res.locals
       res.status(200).respondWithTemplateOrJson({ message: 'Login successful' });
     } else {
       // If the login was not successful, send an error message

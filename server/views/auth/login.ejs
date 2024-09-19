@@ -13,6 +13,7 @@
       <button type="submit">Login</button>
     </form>
     <div id="message"></div>
+    <a href="/">Go Home</a>
     <script>
       document.body.addEventListener('htmx:responseError', function(event) {
         if (event.detail.xhr.status > 399) {

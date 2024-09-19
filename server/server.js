@@ -4,6 +4,7 @@ const session = require('express-session');
 const path = require('path');
 const cors = require('cors');
 const responseHandler = require('./middleware/responseHandler');
+const sessionMiddleware = require('./middleware/sessionMiddleware');
 
 const app = express();
 
@@ -32,12 +33,15 @@ app.set('views', path.join(__dirname, 'views'));
 
 
 //TODO: review secret key docs
+// Session middleware
 app.use(session({
   secret: 'your secret key',
   resave: false,
   saveUninitialized: true,
   cookie: { secure: false } // set to true if your website is on HTTPS
 }));
+// Apply the session data middleware
+app.use(sessionMiddleware);
 
 // Enable CORS for all routes
 app.use(cors());

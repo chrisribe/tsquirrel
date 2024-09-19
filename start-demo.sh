@@ -21,4 +21,5 @@ export DB_PASSWORD
 if [ "$1" == "build" ]; then
   docker-compose build --no-cache
 fi
+docker image prune -f
 docker-compose up
