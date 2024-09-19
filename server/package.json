@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start-node": "node server.js",
-    "start-nodemon": "nodemon server.js",
+    "start-nodemon": "nodemon -L server.js",
     "start": "if [ \"$NODE_ENV\" = \"development\" ]; then npm run start-nodemon; else npm run start-node; fi"
   },
   "dependencies": {
