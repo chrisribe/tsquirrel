@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 
-const UserDAO = require('./../../dao/UserDAO');
-const UserController = require('./../../controllers/UserController');
-const responseHandler = require('../../middleware/responseHandler');
+const UserDAO = require('./../dao/UserDAO');
+const UserController = require('./../controllers/UserController');
+const responseHandler = require('../middleware/responseHandler');
 
 // Middleware enriching the request with a user controller
 router.use((req, res, next) => {

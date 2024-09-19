@@ -54,11 +54,11 @@ const authService = require('./services/authService');
 authService.initialize(pool);
 
 // Add web routes to the app
-app.use('/', require('./routes/web/index'));
+app.use('/', require('./routes/web'));
 
 // Add API routes to the app
-app.use('/api/users', require('./routes/api/users'));
-app.use('/api/auth', require('./routes/api/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/auth', require('./routes/auth'));
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
