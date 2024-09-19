@@ -8,7 +8,7 @@ class UserController {
   async getAllUsers(req, res, next) {
     try {
       const users = await this.userDAO.getAllUsers();
-      res.json(users);
+      res.respondWithTemplateOrJson(users);
     } catch (err) {
       res.status(500).json(err);
       next(err);
@@ -19,7 +19,7 @@ class UserController {
     const { username, password, email } = req.body;
     try {
       await this.userDAO.addUser({ username, password, email} );
-      res.status(200).json({ message: 'User added successfully' });
+      res.status(200).respondWithTemplateOrJson({ message: 'User added successfully' });
     } catch (err) {
       res.status(500).json(err);
       next(err);
@@ -31,7 +31,7 @@ class UserController {
     const { id } = req.params;
     try {
       await this.userDAO.updateUser({ username, password, email, id });
-      res.status(200).json({ message: 'User updated successfully' });
+      res.status(200).respondWithTemplateOrJson({ message: 'User updated successfully' });
     } catch (err) {
       res.status(500).json(err);
       next(err);
@@ -42,7 +42,7 @@ class UserController {
     const { id } = req.params;
     try {
       await this.userDAO.deleteUser(id);
-      res.status(200).json({ message: 'User deleted successfully' });
+      res.status(200).respondWithTemplateOrJson({ message: 'User deleted successfully' });
     } catch (err) {
       res.status(500).json(err);
       next(err);

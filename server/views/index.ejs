@@ -4,5 +4,11 @@
     <p>This is the home page!!!!</p>
     <a href="/login">Go to login</a>
 
-    <button hx-get="/login" hx-swap="innerHTML">Display login here htmx</button>
+    <div class="userList"></div>
+      <h2>Users</h2>
+      <button hx-get="/api/users?template=partials/userList" hx-target="ul" hx-swap="innerHTML">Get users - simple</button>
+      <button hx-get="/api/users?template=partials/userListExp" hx-target="ul" hx-swap="innerHTML">Get user - admin</button>
+      <ul>
+      </ul>
+    </div>    
 ` }) %>
