@@ -3,7 +3,6 @@ const router = express.Router();
 
 const UserDAO = require('./../dao/UserDAO');
 const UserController = require('./../controllers/UserController');
-const responseHandler = require('../middleware/responseHandler');
 
 // Middleware enriching the request with a user controller
 router.use((req, res, next) => {
@@ -14,21 +13,9 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/', 
-  responseHandler(), 
-  (req, res, next) => req.userController.getAllUsers(req, res, next)
-);
-router.post('/', 
-  responseHandler(), 
-  (req, res, next) => req.userController.addUser(req, res, next)
-);
-router.put('/:id',
-  responseHandler(), 
-  (req, res, next) => req.userController.updateUser(req, res, next)
-);
-router.delete('/:id',
-  responseHandler(),
-  (req, res, next) => req.userController.deleteUser(req, res, next)
-);
+router.get('/', (req, res, next) => req.userController.getAllUsers(req, res, next));
+router.post('/', (req, res, next) => req.userController.addUser(req, res, next));
+router.put('/:id', (req, res, next) => req.userController.updateUser(req, res, next));
+router.delete('/:id', (req, res, next) => req.userController.deleteUser(req, res, next));
 
 module.exports = router;

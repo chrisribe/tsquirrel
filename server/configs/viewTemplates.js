@@ -4,6 +4,7 @@ const allowedViewTemplates = {
   'partials/userList': 'users',
   'partials/userListExp': 'users',
   'partials/userMessage': 'message',
+  'partials/loginMsg': 'result',
   // Add other allowed templates here
 };
 

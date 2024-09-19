@@ -16,7 +16,7 @@ function responseHandler() {
 
     res.respondWithTemplateOrJson = (data) => {
       if (req.headers['hx-request'] && dataKey) {
-        res.render(template, { [dataKey]: data });
+        res.render(template, { [dataKey]: data, 'statusCode': res.statusCode });
       } else {
         res.json(data);
       }

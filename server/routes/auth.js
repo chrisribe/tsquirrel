@@ -11,14 +11,14 @@ router.post('/login', async (req, res) => {
     if (user) {
       // If the login was successful, create a user session
       req.session.user = user;
-      res.status(200).json({ message: 'Login successful' });
+      res.status(200).respondWithTemplateOrJson({ message: 'Login successful' });
     } else {
       // If the login was not successful, send an error message
-      res.status(401).json({ message: 'Invalid username or password' });
+      res.status(401).respondWithTemplateOrJson({ message: 'Invalid username or password' });
     }
   } catch (error) {
     // If there was an error, send an error message
-    res.status(500).json({ message: `An error occurred ${error.message}` });
+    res.status(500).respondWithTemplateOrJson({ message: `An error occurred ${error.message}` });
   }
 });
 

@@ -1,9 +1,10 @@
 const express = require('express');
 const { Pool } = require('pg');
-
 const session = require('express-session');
 const path = require('path');
-const router = express.Router();
+const cors = require('cors');
+const responseHandler = require('./middleware/responseHandler');
+
 const app = express();
 
 // Middleware to parse JSON bodies
@@ -21,6 +22,9 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
+// Apply the responseHandler middleware
+app.use(responseHandler());
+
 // Set the view engine to ejs
 app.set('view engine', 'ejs');
 // Set the views directory to be used on .render calls
@@ -36,7 +40,6 @@ app.use(session({
 }));
 
 // Enable CORS for all routes
-const cors = require('cors');
 app.use(cors());
 
 const port = process.env.PORT || 80;
