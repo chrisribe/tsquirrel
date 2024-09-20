@@ -11,14 +11,9 @@ function initialize(app, pool) {
 
   // Array of secrets, with the most recent secret at the beginning
   let secrets = [generateSecret()];
-  // Function to rotate secrets
-  function rotateSecrets() {
-    secrets.unshift(generateSecret());
-    // Keep only the last 5 secrets
-    if (secrets.length > 5) {
-      secrets.pop();
-    }
-  }
+
+  // Rotate secrets every 24 hours
+  setInterval(() => rotateSecrets(secrets), 24 * 60 * 60 * 1000);
 
   app.use(session({
     store: new pgSession({
@@ -44,6 +39,15 @@ function initialize(app, pool) {
 // Function to generate a random secret
 function generateSecret() {
   return crypto.randomBytes(64).toString('hex');
+}
+
+// Function to rotate secrets
+function rotateSecrets(secrets) {
+  secrets.unshift(generateSecret());
+  // Keep only the last 5 secrets
+  if (secrets.length > 5) {
+    secrets.pop();
+  }
 }
 
 module.exports = {
