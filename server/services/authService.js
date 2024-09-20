@@ -1,3 +1,4 @@
+const bcrypt = require('bcrypt');
 const UserDAO = require('./../dao/UserDAO');
 let userDAO;
 
@@ -10,14 +11,30 @@ async function authenticateUser(username, password) {
   const user = await userDAO.getUserByUsername(username);
 
   // Check if the user exists and the password is correct
-  if (user && user.password === password) {
+  if (user && await bcrypt.compare(password, user.password)) {
     return user;
   }
 
   return null;
 }
 
+async function registerUser(username, password, email) {
+  // Check if the user already exists
+  const existingUser = await userDAO.getUserByUsername(username);
+  if (existingUser) {
+    throw new Error('User already exists');
+  }
+  // Hash the password with a salt
+  const saltRounds = 10;
+  const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Add the new user to the database
+  await userDAO.addUser({ username, hashedPassword, email });
+  return { message: 'User registered successfully' };
+}
+
 module.exports = {
   initialize,
-  authenticateUser
+  authenticateUser,
+  registerUser,
 };

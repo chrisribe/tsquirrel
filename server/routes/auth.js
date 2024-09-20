@@ -23,4 +23,15 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/register', async (req, res) => {
+  const { username, password, email } = req.body;
+
+  try {
+    const result = await authService.registerUser(username, password, email);
+    res.status(200).respondWithTemplateOrJson(result);
+  } catch (error) {
+    res.status(500).respondWithTemplateOrJson({ message: `An error occurred: ${error.message}` });
+  }
+});
+
 module.exports = router;
