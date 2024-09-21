@@ -15,8 +15,17 @@ class UserDAO {
 
   async addUser(user) {
     const { username, password, email } = user;
-    await this.pool.query('INSERT INTO users (username, password, email) VALUES ($1, $2, $3)', [username, password, email]);
-  }
+    try {
+      const result = await this.pool.query(
+        'INSERT INTO users (username, password, email) VALUES ($1, $2, $3) RETURNING id',
+        [username, password, email]
+      );
+      const userId = result.rows[0].id;
+      return userId;
+    } catch (error) {
+      throw new Error('Error adding user');
+    }
+ }
 
   async deleteUser(id) {
     await this.pool.query('DELETE FROM users WHERE id = $1', [id]);

@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt');
+const argon2 = require('argon2');
 const UserDAO = require('./../dao/UserDAO');
 let userDAO;
 
@@ -11,7 +11,7 @@ async function authenticateUser(username, password) {
   const user = await userDAO.getUserByUsername(username);
 
   // Check if the user exists and the password is correct
-  if (user && await bcrypt.compare(password, user.password)) {
+  if (user && await argon2.verify(user.password, password)) {
     return user;
   }
 
@@ -24,12 +24,16 @@ async function registerUser(username, password, email) {
   if (existingUser) {
     throw new Error('User already exists');
   }
-  // Hash the password with a salt
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-
+  
+  // Hash the password with argon2
+  const hashedPassword = await argon2.hash(password);
+  
     // Add the new user to the database
-  await userDAO.addUser({ username, hashedPassword, email });
+  await userDAO.addUser({ 
+    username,
+    password: hashedPassword,
+    email 
+  });
   return { message: 'User registered successfully' };
 }
 
