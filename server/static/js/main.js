@@ -13,5 +13,17 @@
       }
     });
 
+    // Event listener for htmx after request
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+      // Check if the form has the data-redirect-on-success attribute and redirect if successful
+      redirectOnSuccess(event);
+    });
+
+    function redirectOnSuccess(event) {
+      if (event.detail.successful && event.detail.elt.matches('form[data-redirect-on-success]')) {
+        window.location.href = event.detail.elt.getAttribute('data-redirect-on-success');
+      }
+    }
+
   });
 })();

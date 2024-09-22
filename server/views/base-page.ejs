@@ -16,15 +16,24 @@
       <div class="logo">
         <a href="/"><img src="/static/img/logo2.png" alt="EventGlimpse Logo"></a>
       </div>
-      <ul class="nav-links">
-        <li><a href="/">Home</a></li>
+      <div class="user-menu">
         <% if (user) { %>
-          <li><a href="/profile"><img src="/static/img/user-icon.png" alt="User Icon" width="24" height="24"> <%= user.username %></a></li>
-          <li><form hx-post="/api/auth/logout" hx-target="#message" hx-swap="innerHTML"><button type="submit">Logout</button></form></li>
+          <div class="dropdown">
+            <button class="dropbtn"><img src="/static/img/menu.png" alt="User Icon" width="75"></button>
+            <div class="dropdown-content">
+              <a href="/">Home</a>
+              <a href="/profile">Profile</a>
+              <form hx-post="/api/auth/logout" hx-target="#message" hx-swap="innerHTML">
+                <button type="submit">Logout</button>
+              </form>
+            </div>
+          </div>
         <% } else { %>
-          <li><a href="/login">Login</a></li>
+          <button class="outline contrast">
+            <a href="/login">Login</a>
+          </button>
         <% } %>
-      </ul>
+      </div>
     </nav>
   </header>
   <div id="content" class="container">
