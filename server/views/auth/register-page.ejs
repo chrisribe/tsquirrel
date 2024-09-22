@@ -18,12 +18,5 @@
       <input type="submit" value="Register">
     </form>
     <div id="message"></div>
-    <script>
-      document.body.addEventListener('htmx:responseError', function(event) {
-        if (event.detail.xhr.status > 399) {
-          document.getElementById('message').innerHTML = event.detail.xhr.responseText;
-        }
-      });
-    </script>     
   `
 }) %>

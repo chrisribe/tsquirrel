@@ -1,0 +1,38 @@
+
+  <% 
+  const bodyContent = `
+  <div class="container">
+    <h2>Users list demo, shows loading of htmx templates/styles</h2>
+    <fieldset>
+      <legend>Get users - simple</legend>
+      <button 
+        hx-get="/api/users?tmpl=partials/userList" 
+        hx-target=".userListSimple ul" 
+        hx-swap="innerHTML"
+      >Get users - simple</button>
+
+      <div class="userListSimple">
+        <ul></ul>
+      </div>
+  
+    </fieldset>
+    <br>
+    <fieldset>
+      <legend>Get user - admin</legend>
+      <button 
+        hx-get="/api/users?tmpl=partials/userListExp" 
+        hx-target=".userListAdmin ul" 
+        hx-swap="innerHTML"
+        >Get user - admin</button>
+
+        <div class="userListAdmin">
+          <ul></ul>
+        </div>
+    </fieldset>
+
+
+  </div>
+  `;
+%>
+  
+<%- include('base-page', { body: bodyContent }) %>

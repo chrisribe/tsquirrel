@@ -1,0 +1,58 @@
+:root {
+  --pico-border-color: #ccc; /* Set your desired border color */
+  --pico-primary-color: #007bff; /* Example primary color */
+  --pico-border-radius: 4px; /* Example border radius */
+  --pico-background-color: #fff; /* Example background color */
+  --pico-link-color: #007bff; /* Example link color */
+  --pico-hover-background-color: #e9ecef; /* Example hover background color */
+}
+
+/* Custom styles for the header and navigation */
+header {
+  background-color: var(--pico-background-color);
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--pico-border-color);
+  margin-bottom: 1.5rem;
+}
+
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo img {
+  max-width: 75px;
+  height: auto;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links li {
+  margin-left: 1rem;
+}
+
+/* Fieldset styles */
+fieldset {
+  border: 1px solid var(--pico-border-color);
+  border-radius: var(--pico-border-radius);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+fieldset legend {
+  padding: 0 0.5rem;
+  font-weight: bold;
+  color: var(--pico-primary-color);
+}
+
+fieldset label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}

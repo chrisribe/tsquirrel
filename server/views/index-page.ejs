@@ -1,22 +1,13 @@
 <% 
   const bodyContent = `
     <h1>Welcome to EventGlimpse</h1>
-    <p>This is the home page!!!!</p>
     ${user ? `
       <p>Welcome, ${user.username}!</p>
-      <form hx-post="/api/auth/logout" hx-target="#message" hx-swap="innerHTML">
-        <button type="submit">Logout</button>
-      </form>
     ` : `
-      <a href="/login">Go to login</a>
+      <p>Welcome, register to create your 1st event !</p>
+      <p><a href="/register">Register here</a></p>
+      <p><a href="/demos">Some demos</a></p>
     `}
-    <div class="userList">
-      <h2>Users</h2>
-      <button hx-get="/api/users?tmpl=partials/userList" hx-target="ul" hx-swap="innerHTML">Get users - simple</button>
-      <button hx-get="/api/users?tmpl=partials/userListExp" hx-target="ul" hx-swap="innerHTML">Get user - admin</button>
-      <ul>
-      </ul>
-    </div>
   `;
 %>
 

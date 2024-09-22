@@ -1,16 +1,37 @@
 <!-- Eventglimpse/api/views/index.ejs -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EventGlimpse</title>
-  <script src="https://unpkg.com/htmx.org@1.6.1"></script>
+  <link rel="stylesheet" href="/static/css/pico.min.css">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="/static/js/htmx.min.js"></script>
+  <script src="/static/js/main.js"></script>
 </head>
 <body>
-  <img src="/static/img/logo.png" width="300" alt="Event Image">
-  <div id="content">
+  <header class="fixed-header container-fluid">
+    <nav class="container-fluid">
+      <div class="logo">
+        <a href="/"><img src="/static/img/logo2.png" alt="EventGlimpse Logo"></a>
+      </div>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <% if (user) { %>
+          <li><a href="/profile"><img src="/static/img/user-icon.png" alt="User Icon" width="24" height="24"> <%= user.username %></a></li>
+          <li><form hx-post="/api/auth/logout" hx-target="#message" hx-swap="innerHTML"><button type="submit">Logout</button></form></li>
+        <% } else { %>
+          <li><a href="/login">Login</a></li>
+        <% } %>
+      </ul>
+    </nav>
+  </header>
+  <div id="content" class="container-fluid">
     <%- body %>
   </div>
+  <footer class="container">
+    <p>&copy; 2023 EventGlimpse. All rights reserved.</p>
+  </footer>
 </body>
 </html>
