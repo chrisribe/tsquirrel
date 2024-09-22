@@ -56,3 +56,7 @@ fieldset label {
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
+
+.form-box{
+  max-width: 500px;
+}

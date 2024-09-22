@@ -1,5 +1,6 @@
 <%- include('../base-page', { 
   body: `
+  <div class="form-box container">
     <h1>Login</h1>
     <form 
       hx-post="/api/auth/login?tmpl=partials/statusMsg" 
@@ -18,4 +19,5 @@
       <button type="submit">Login</button>
     </form>
     <div id="message"></div>
+  </div>
 ` }) %>
