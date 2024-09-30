@@ -1,0 +1,25 @@
+<header class="fixed-header container-fluid">
+  <nav class="container-fluid">
+    <div class="logo">
+      <a href="/"><img src="/static/img/logo2.png" alt="EventGlimpse Logo"></a>
+    </div>
+    <div class="user-menu">
+      <% if (user) { %>
+        <div class="dropdown">
+          <button class="dropbtn"><img src="/static/img/menu.png" alt="User Icon" width="75"></button>
+          <div class="dropdown-content">
+            <a href="/">Home</a>
+            <a href="/profile">Profile</a>
+            <form hx-post="/api/auth/logout" hx-target="#message" hx-swap="innerHTML">
+              <button type="submit">Logout</button>
+            </form>
+          </div>
+        </div>
+      <% } else { %>
+        <button class="outline contrast">
+          <a href="/login">Login</a>
+        </button>
+      <% } %>
+    </div>
+  </nav>
+</header>

@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
 );
 -- Insert initial data into the table
 INSERT INTO users (username, email, password)
-VALUES ('admin', 'admin@example.com', 'admin1234');
+-- pwd is: admin1234
+VALUES ('admin', 'admin@example.com', '$argon2id$v=19$m=65536,t=3,p=4$0saH+hyFdLdJ9Z5N52a9iQ$UietWEniIHm+yBCS89PT6O53oJGQ3PQpWm1WPhbgvek');
 
 -- Create session table for connect-pg-simple
 CREATE TABLE "user_session" (
@@ -19,3 +20,4 @@ WITH (OIDS=FALSE);
 
 ALTER TABLE "user_session" ADD CONSTRAINT "user_session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
 CREATE INDEX "IDX_session_expire" ON "user_session" ("expire");
+

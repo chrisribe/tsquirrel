@@ -1,0 +1,8 @@
+<!-- Dynamically load pages using pageName and pageData -->
+
+<!-- Use include to ensure the conditional is evaluated -->
+<%- include('./base-page.ejs', {
+  header: include('./header.ejs'),
+  body: include('./' + pageName + '.ejs', { pageData: pageData || {} }),
+  footer: include('./footer.ejs')
+}) %>

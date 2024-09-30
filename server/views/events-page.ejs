@@ -1,0 +1,25 @@
+<% const {events} = pageData %>
+<div class="events-container">
+  <h1>Events</h1>
+  <h2>Your Events</h2>
+  <% if (events && events.length > 0) { %>
+    <ul>
+      <% events.forEach(event => { %>
+        <li>
+          <strong><%= event.title %></strong><br>
+          <%= event.description %><br>
+          <%= new Date(event.date).toLocaleString() %><br>
+          <%= event.location %><br>
+          <%= event.category %><br>
+          <%= event.capacity %> attendees<br>
+          <%= event.status %><br>
+          <%= event.organizer %><br>
+          <%= event.tags %><br>
+          <img src="<%= event.event_picture %>" alt="Event Picture" width="100">
+        </li>
+      <% }) %>
+    </ul>
+  <% } else { %>
+    <p>No events available.</p>
+  <% } %>
+</div>
