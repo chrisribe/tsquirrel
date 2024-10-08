@@ -4,13 +4,18 @@ class UserDAO {
   }
 
   async getAllUsers() {
-    const results = await this.pool.query('SELECT * FROM users');
-    return results.rows;
+    const r = await this.pool.query('SELECT * FROM users');
+    return r.rows;
   }
 
   async getUserByUsername(username) {
-    const results = await this.pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    return results.rows[0];
+    const r = await this.pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    return r.rows[0];
+  }
+  
+  async getUserByEmail(email) {
+    const r = await this.pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    return r.rows[0];
   }
 
   async addUser(user) {
