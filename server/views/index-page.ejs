@@ -3,6 +3,7 @@
 
   <% if (user) { %>
     <p>Welcome, <%= user.username %>!</p>
+    <p><a href="/events">View your events</a></p>
   <% } else { %>
     <p>Welcome, register to create your 1st event !</p>
     <p><a href="/register">Register here</a></p>

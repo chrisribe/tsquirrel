@@ -7,7 +7,7 @@ class EventsController {
     try {
       const userId = req.session.user.id; // Assuming req.user contains the logged-in user's info
       const events = await this.eventDAO.getEventsByUserId(userId);
-      res.json(events);
+      res.respondWithTemplateOrJson({events}, 'events-page');
     } catch (error) {
       next(error);
     }

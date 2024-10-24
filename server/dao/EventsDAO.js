@@ -3,7 +3,7 @@ class EventsDAO {
     this.pool = pool;
   }
 
-  async getAllEvents(userId) {
+  async getEventsByUserId(userId) {
     const result = await this.pool.query('SELECT * FROM events WHERE user_id = $1 ORDER BY date ASC', [userId]);
     return result.rows;
   }
