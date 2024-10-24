@@ -13,6 +13,11 @@ class UserDAO {
     return results.rows[0];
   }
 
+  async getUserById(id) {
+    const results = await this.pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    return results.rows[0];
+  }
+
   async addUser(user) {
     const { username, password, email } = user;
     try {
