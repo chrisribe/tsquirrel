@@ -20,21 +20,28 @@ async function authenticateUser(username, password) {
 
 async function registerUser(username, password, email) {
   // Check if the user already exists
-  const existingUser = await userDAO.getUserByUsername(username);
-  if (existingUser) {
-    throw new Error('User already exists');
+  const userByUsername = await userDAO.getUserByUsername(username);
+  const userByEmail = await userDAO.getUserByEmail(email);
+  if (userByUsername !== undefined || userByEmail !== undefined) {
+    let error = new Error('Username or email is already taken');
+    error.fields = [
+      {id: 'username'}, {id: 'email'}
+    ];
+    throw error;
   }
   
   // Hash the password with argon2
   const hashedPassword = await argon2.hash(password);
-  
-    // Add the new user to the database
-  await userDAO.addUser({ 
+
+  const userId = await userDAO.addUser({ 
     username,
     password: hashedPassword,
     email 
   });
-  return { message: 'User registered successfully' };
+  return { 
+    message: 'User registered successfully', 
+    userId 
+  };
 }
 
 module.exports = {
