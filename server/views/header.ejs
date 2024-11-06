@@ -1,24 +1,27 @@
-<header class="fixed-header container-fluid">
-  <nav class="container-fluid">
+<header>
+  <nav>
     <div class="logo">
-      <a href="/"><img src="/static/img/logo2.png" alt="EventGlimpse Logo"></a>
+      <img src="/static/img/logo2.png" alt="EventGlimpse Logo">
     </div>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/about">About</a></li>
+      <li><a href="/contact">Contact</a></li>
+    </ul>
     <div class="user-menu">
+      <!-- Show these links based on user's login status -->
       <% if (user) { %>
-        <div class="dropdown">
-          <button class="dropbtn"><img src="/static/img/menu.png" alt="User Icon" width="75"></button>
+        <div class="dropdown" id="user-dropdown">
+          <a href="#">User Account</a>
           <div class="dropdown-content">
-            <a href="/">Home</a>
             <a href="/profile">Profile</a>
-            <form hx-post="/api/auth/logout" hx-target="#message" hx-swap="innerHTML">
-              <button type="submit">Logout</button>
+            <form hx-post="/api/auth/logout" data-redirect-on-success="/">
+              <button type="submit" class="link-button">Logout</button>
             </form>
           </div>
         </div>
       <% } else { %>
-        <button class="outline contrast">
-          <a href="/login">Login</a>
-        </button>
+        <a href="/login" id="login-link" >Login</a>
       <% } %>
     </div>
   </nav>

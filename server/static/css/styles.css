@@ -1,28 +1,30 @@
 :root {
-  --pico-border-color: #ccc; /* Set your desired border color */
-  --pico-primary-color: #007bff; /* Example primary color */
-  --pico-border-radius: 4px; /* Example border radius */
-  --pico-background-color: #fff; /* Example background color */
-  --pico-link-color: #007bff; /* Example link color */
-  --pico-hover-background-color: #e9ecef; /* Example hover background color */
+  --pico-border-color: #ccc;
+  --pico-primary-color: #007bff;
+  --pico-border-radius: 4px;
+  --pico-background-color: #fff;
+  --pico-link-color: #007bff;
+  --pico-hover-background-color: #e9ecef;
+  --pico-spacing: 0.25rem;
 }
 
 /* Custom styles for the header and navigation */
 header {
   background-color: var(--pico-background-color);
-  padding: 1rem 0;
+  padding: 0.5rem 0;  /* More compact */
   border-bottom: 1px solid var(--pico-border-color);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 0 1rem;
 }
 
 .logo img {
-  max-width: 75px;
+  max-width: 50px;  /* More compact */
   height: auto;
 }
 
@@ -37,20 +39,22 @@ nav {
   margin-left: 1rem;
 }
 
+.nav-links a {
+  text-decoration: none;
+  color: var(--pico-link-color);
+  padding: 0.5rem 1rem;
+  border-radius: var(--pico-border-radius);
+}
+
+.nav-links a:hover {
+  background-color: var(--pico-hover-background-color);
+}
+
+/* Dropdown menu styles */
 .user-menu {
   position: relative;
-  display: inline-block;
-}
-
-.dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.dropbtn {
-  background: none;
-  border: none;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .dropdown-content {
@@ -64,16 +68,14 @@ nav {
   border-radius: var(--pico-border-radius);
 }
 
-.dropdown-content a,
-.dropdown-content form {
+.dropdown-content a {
   color: var(--pico-link-color);
   padding: 12px 16px;
   text-decoration: none;
   display: block;
 }
 
-.dropdown-content a:hover,
-.dropdown-content form:hover {
+.dropdown-content a:hover {
   background-color: var(--pico-hover-background-color);
 }
 
@@ -81,28 +83,18 @@ nav {
   display: block;
 }
 
-
-/* Fieldset styles */
-fieldset {
-  border: 1px solid var(--pico-border-color);
-  border-radius: var(--pico-border-radius);
-  padding: 1rem;
-  margin-bottom: 1.5rem;
+.link-button {
+  background: none;
+  border: none;
+  color: var(--pico-link-color);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  text-align: left;
 }
 
-fieldset legend {
-  padding: 0 0.5rem;
-  font-weight: bold;
-  color: var(--pico-primary-color);
+.link-button:hover {
+  color: var(--pico-link-hover-color);
+  background-color: var(--pico-hover-background-color);
 }
-
-fieldset label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.form-box{
-  max-width: 500px;
-}
-

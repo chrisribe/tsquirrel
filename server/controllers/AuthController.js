@@ -19,6 +19,11 @@ class AuthController {
     }
   }
 
+  async logout(req, res) {
+    req.session.destroy();
+    res.status(200).respondWithTemplateOrJson({ message: 'Logout successful' });
+  }
+
   async register(req, res) {
     const { username, password, email } = req.body;
 
