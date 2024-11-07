@@ -1,27 +1,36 @@
-<div class="form-box container">
-  <h1>Register</h1>
-  <form 
-    hx-post="/api/auth/register?tmpl=partials/statusMsg" 
-    hx-target="#message" 
-    hx-swap="innerHTML" 
-    hx-on="htmx:responseError"
-    data-redirect-on-success="/">
-    <label for="username">Username:</label>
-    <input type="text" id="username" name="username" required>
-    <br>
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required>
-    <br>
-    <label for="confirmPassword">Confirm Password:</label>
-    <input type="password" id="confirmPassword" name="confirmPassword" required>
-    <br>
-    <label for="email">Email:</label>
-    <input type="email" id="email" name="email" required>
-    <br>
-    <input type="submit" value="Register">
-  </form>
-  <div id="message"></div>      
-</div>
+<link rel="stylesheet" href="/static/css/form-card.css">
+
+<main class="form-card-box">
+  <div class="card">
+    <div class="image-box">
+      <img src="/static/img/selfie-friends.jpg" alt="Friends selfie">
+    </div>
+    <div class="content-box">
+      <h1>Register</h1>
+      <form 
+        hx-post="/api/auth/register?tmpl=statusMsg" 
+        hx-target="#message" 
+        hx-swap="innerHTML" 
+        hx-on="htmx:responseError"
+        data-redirect-on-success="/">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+
+        <label for="confirmPassword">Confirm Password:</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+
+        <input type="submit" value="Register" class="button">
+      </form>
+      <div id="message"></div>      
+    </div>
+  </div>
+</main>
 <script>
   document.getElementById('registerForm').onsubmit = function(event) {
       var password = document.getElementById('password').value;
@@ -31,4 +40,4 @@
           document.getElementById('message').innerText = 'Passwords do not match!';
       }
   };
-</script> 
+</script>

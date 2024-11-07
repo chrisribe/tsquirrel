@@ -7,7 +7,7 @@ const allowedViewTemplates = require('../configs/viewTemplates');
 
 function responseHandler() {
   return (req, res, next) => {
-    const queryTemplate = req.query.tmpl;
+    const queryTemplate = "partials/" + req.query.tmpl;
     const dataKey = allowedViewTemplates[queryTemplate];
 
     if (req.headers['hx-request'] && !dataKey) {

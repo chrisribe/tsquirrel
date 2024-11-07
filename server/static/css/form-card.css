@@ -1,0 +1,87 @@
+.form-card-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100%;
+  background-color: var(--pico-background-color);
+}
+
+.form-card-box .card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--pico-background-color);
+  padding: 2rem;
+  border-radius: var(--pico-border-radius);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  width: 100%;
+  text-align: center;
+}
+
+.form-card-box .image-box {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.form-card-box .image-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--pico-border-radius);
+}
+
+.form-card-box .content-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.form-card-box h1 {
+  margin-bottom: 1rem;
+}
+
+.form-card-box form {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-card-box label {
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
+.form-card-box input {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border: 1px solid var(--pico-border-color);
+  border-radius: var(--pico-border-radius);
+}
+
+.form-card-box p {
+  margin-top: 1rem;
+}
+
+.form-card-box .button {
+  padding: 0.75rem;
+  border: none;
+  border-radius: var(--pico-border-radius);
+  cursor: pointer;
+}
+
+@media (min-width: 768px) {
+  .form-card-box .card {
+    flex-direction: row;
+  }
+
+  .form-card-box .image-box {
+    flex: 1;
+  }
+
+  .form-card-box .content-box {
+    flex: 1;
+  }
+}

@@ -4,7 +4,7 @@
   <fieldset>
     <legend>Get users - simple</legend>
     <button 
-      hx-get="/api/users?tmpl=partials/userList" 
+      hx-get="/api/users?tmpl=userList" 
       hx-target=".userListSimple ul" 
       hx-swap="innerHTML"
     >Get users - simple</button>
@@ -18,7 +18,7 @@
   <fieldset>
     <legend>Get user - admin</legend>
     <button 
-      hx-get="/api/users?tmpl=partials/userListExp" 
+      hx-get="/api/users?tmpl=userListExp" 
       hx-target=".userListAdmin ul" 
       hx-swap="innerHTML"
       >Get user - admin</button>

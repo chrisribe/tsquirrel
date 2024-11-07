@@ -2,10 +2,32 @@
   --pico-border-color: #ccc;
   --pico-primary-color: #007bff;
   --pico-border-radius: 4px;
-  --pico-background-color: #fff;
+  
   --pico-link-color: #007bff;
   --pico-hover-background-color: #e9ecef;
   --pico-spacing: 0.25rem;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.content {
+  flex: 1 0 auto;
+}
+
+section {
+  background-color: var(--pico-background-color);
+  color: var(--pico-color);
 }
 
 /* Custom styles for the header and navigation */

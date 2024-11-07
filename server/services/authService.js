@@ -6,10 +6,10 @@ function initialize(pool) {
   userDAO = new UserDAO(pool);
 }
 
-async function authenticateUser(username, password) {
+async function authenticateUser(email, password) {
   // Use your UserDAO to get the user by username
-  const user = await userDAO.getUserByUsername(username);
-
+  const user = await userDAO.getUserByEmail(email);
+  
   // Check if the user exists and the password is correct
   if (user && await argon2.verify(user.password, password)) {
     return user;
@@ -32,7 +32,7 @@ async function registerUser(username, password, email) {
   
   // Hash the password with argon2
   const hashedPassword = await argon2.hash(password);
-
+  console.log(hashedPassword);
   const userId = await userDAO.addUser({ 
     username,
     password: hashedPassword,
