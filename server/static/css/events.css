@@ -1,0 +1,42 @@
+.events-container {
+  padding: 1rem;
+}
+
+
+.events-container ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.events-container li {
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--pico-border-color);
+  border-radius: var(--pico-border-radius);
+  background-color: var(--pico-background-color);
+  box-shadow: 4px 3px 6px lightgray;
+  transition: box-shadow 0.3s ease;
+}
+.events-container li:hover, .events-container li:focus {
+  box-shadow: 9px 6px 12px lightgray;
+}
+
+.events-container figure {
+  margin: 0;
+}
+
+.events-container img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--pico-border-radius);
+}
+
+.events-container figcaption {
+  margin-top: 0.5rem;
+  font-style: italic;
+  color: var(--pico-muted-color);
+}

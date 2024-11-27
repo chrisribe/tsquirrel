@@ -1,21 +1,53 @@
 <% const {events} = pageData %>
+
+<link rel="stylesheet" href="/static/css/events.css">
 <div class="events-container">
-  <h1>Events</h1>
-  <h2>Your Events</h2>
+  <hgroup>
+    <h2>Planned events</h2>
+    <p>Keep your friends close and the memories closer</p>
+  </hgroup>
+
   <% if (events && events.length > 0) { %>
     <ul>
       <% events.forEach(event => { %>
         <li>
-          <strong><%= event.title %></strong><br>
-          <%= event.description %><br>
-          <%= new Date(event.date).toLocaleString() %><br>
-          <%= event.location %><br>
-          <%= event.category %><br>
-          <%= event.capacity %> attendees<br>
-          <%= event.status %><br>
-          <%= event.organizer %><br>
-          <%= event.tags %><br>
-          <img src="<%= event.event_picture %>" alt="Event Picture" width="100">
+          <figure>
+            <img src="<%= event.event_picture %>" alt="Event Picture">
+          </figure>
+          <div>
+            <hgroup>
+              <h2><%= event.title %></h2>
+              <p><%= event.description %></p>
+            </hgroup>
+            <table class="striped">
+              <tbody>
+                <tr>
+                  <th>When ?</th>
+                  <td>
+                    <%= new Date(event.date).toLocaleString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: 'numeric',
+                      hour12: true
+                    }) %>
+                  </td>
+                </tr>
+                <tr>
+                  <th>Location</th>
+                  <td><%= event.location %></td>
+                </tr>
+                <tr>
+                  <th>Status</th>
+                  <td><%= event.status %></td>
+                </tr>
+              </tbody>
+
+            </table>
+          </div>
+
         </li>
       <% }) %>
     </ul>
