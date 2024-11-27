@@ -2,7 +2,6 @@
   padding: 1rem;
 }
 
-
 .events-container ul {
   list-style-type: none;
   padding: 0;
@@ -21,7 +20,9 @@
   box-shadow: 4px 3px 6px lightgray;
   transition: box-shadow 0.3s ease;
 }
-.events-container li:hover, .events-container li:focus {
+
+.events-container li:hover,
+.events-container li:focus {
   box-shadow: 9px 6px 12px lightgray;
 }
 
@@ -39,4 +40,84 @@
   margin-top: 0.5rem;
   font-style: italic;
   color: var(--pico-muted-color);
+}
+
+.events-container .fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  background-color: #4eb233;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.3s;
+}
+
+.events-container .fab::after {
+  content: "+";
+  font-size: 50px;
+  line-height: 1;
+  display: block;
+  transform: translateY(-5px);
+}
+
+.events-container .fab:hover {
+  background-color: #42992a;
+  transform: scale(1.1);
+
+}
+@media (max-width: 768px) {
+  .events-container li {
+    grid-template-columns: 1fr;
+  }
+
+  .events-container figure {
+    order: -1; /* Move figure to the top */
+  }
+}
+
+dialog {
+  --pico-form-element-spacing-vertical: 0.25rem; /* Override for dialog */
+  max-width: 90%;
+  padding: 1rem;
+}
+
+dialog article {
+  padding: 1rem;
+}
+
+dialog h2 {
+  margin-top: 0;
+}
+
+dialog form {
+  display: flex;
+  flex-direction: column;
+}
+
+dialog form label {
+  margin-bottom: 0.25rem;
+}
+
+dialog form input,
+dialog form textarea,
+dialog form button {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+dialog form button {
+  padding: 0.5rem;
+}
+
+dialog .close {
+  background-size: 2rem!important;
+  padding: 1.5rem;
 }

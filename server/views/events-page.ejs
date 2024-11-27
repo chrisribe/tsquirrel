@@ -7,6 +7,8 @@
     <p>Keep your friends close and the memories closer</p>
   </hgroup>
 
+  <div id="addEventButton" class="fab" onclick="openAddEventModal()"></div>
+
   <% if (events && events.length > 0) { %>
     <ul>
       <% events.forEach(event => { %>
@@ -55,3 +57,49 @@
     <p>No events available.</p>
   <% } %>
 </div>
+
+<!-- Modal for adding new event -->
+<dialog id="addEventModal">
+  <article>
+    <a href="#close" aria-label="Close" class="close" data-target="addEventModal"></a>
+    <h2>Add New Event</h2>
+    <form id="addEventForm" method="post" action="/api/events">
+      <label for="title">Title</label>
+      <input type="text" id="title" name="title" required>
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" required></textarea>
+
+      <label for="date">Date</label>
+      <input type="datetime-local" id="date" name="date" required>
+
+      <label for="location">Location</label>
+      <input type="text" id="location" name="location" required>
+
+      <label for="status">Status</label>
+      <input type="text" id="status" name="status" required>
+
+      <label for="event_picture">Event Picture URL</label>
+      <input type="url" id="event_picture" name="event_picture" required>
+
+      <button type="submit" class="button primary">Add Event</button>
+    </form>
+  </article>
+</dialog>
+
+<script>
+  document.getElementById('addEventButton').addEventListener('click', function() {
+    document.getElementById('addEventModal').showModal();
+  });
+
+  document.querySelectorAll('.close').forEach(function(closeButton) {
+    closeButton.addEventListener('click', function(event) {
+      event.preventDefault();
+      document.getElementById(closeButton.getAttribute('data-target')).close();
+    });
+  });
+
+  function openAddEventModal() {
+    document.getElementById('addEventModal').showModal();
+  }
+</script>
