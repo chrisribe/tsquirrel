@@ -3,7 +3,7 @@
   --pico-primary-color: #007bff;
   --pico-border-radius: 4px;
   
-  --pico-link-color: #007bff;
+  --pico-link-color: black;
   --pico-hover-background-color: #e9ecef;
   --pico-spacing: 1.00rem;
 }
@@ -36,6 +36,9 @@ header {
   padding: 0.5rem 0;  /* More compact */
   border-bottom: 1px solid var(--pico-border-color);
   margin-bottom: 1rem;
+  top: 0;
+  position: sticky;
+  box-shadow: 0px 3px 10px 0px lightgray;  
 }
 
 nav {
@@ -61,15 +64,16 @@ nav {
   margin-left: 1rem;
 }
 
-.nav-links a {
+nav a {
+  font-weight: 500;
   text-decoration: none;
   color: var(--pico-link-color);
   padding: 0.5rem 1rem;
   border-radius: var(--pico-border-radius);
 }
 
-.nav-links a:hover {
-  background-color: var(--pico-hover-background-color);
+nav a:hover {
+  opacity: 0.8;
 }
 
 /* Dropdown menu styles */
@@ -91,15 +95,10 @@ nav {
 }
 
 .dropdown-content a {
-  color: var(--pico-link-color);
   padding: 12px 16px;
-  text-decoration: none;
   display: block;
 }
 
-.dropdown-content a:hover {
-  background-color: var(--pico-hover-background-color);
-}
 
 .dropdown:hover .dropdown-content {
   display: block;
