@@ -76,6 +76,15 @@ nav a:hover {
   opacity: 0.8;
 }
 
+/* Chrome autofill normalization */
+input:-webkit-autofill,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--background-color) inset;
+  -webkit-text-fill-color: var(--color);
+  font-size: 1rem !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* Dropdown menu styles */
 .user-menu {
   position: relative;
@@ -99,23 +108,6 @@ nav a:hover {
   display: block;
 }
 
-
 .dropdown:hover .dropdown-content {
   display: block;
-}
-
-.link-button {
-  background: none;
-  border: none;
-  color: var(--pico-link-color);
-  text-decoration: underline;
-  cursor: pointer;
-  font-size: inherit;
-  font-family: inherit;
-  text-align: left;
-}
-
-.link-button:hover {
-  color: var(--pico-link-hover-color);
-  background-color: var(--pico-hover-background-color);
 }

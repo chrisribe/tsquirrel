@@ -3,36 +3,47 @@ const authService = require('./../services/authService');
 class AuthController {
   async login(req, res) {
     const { email, password } = req.body;
-
+    
     try {
       const user = await authService.authenticateUser(email, password);
-
-      if (user) {
-        req.session.user = {id : user.id, username: user.username};
-        res.locals.user = req.session.user;
-        res.status(200).respondWithTemplateOrJson({ message: 'Login successful' });
-      } else {
-        res.status(401).respondWithTemplateOrJson({ message: 'Invalid username or password' });
+      
+      if (!user) {
+        return res.respondWithTemplateOrJson({
+          error: 'Invalid credentials'
+        }, 'auth/login');
       }
+      
+      req.session.user = {
+        id: user.id,
+        email: user.email,
+        username: user.username
+      };
+      
+      return res.respondWithTemplateOrJson({
+        success: true,
+        user: req.session.user,
+        redirect: '/dashboard'
+      }, 'dashboard/index');
     } catch (error) {
-      res.status(500).respondWithTemplateOrJson({ message: `An error occurred ${error.message}` });
+      return res.respondWithTemplateOrJson({
+        error: error.message
+      }, 'auth/login');
     }
   }
 
   async logout(req, res) {
-    req.session.destroy();
-    res.status(200).respondWithTemplateOrJson({ message: 'Logout successful' });
-  }
-
-  async register(req, res) {
-    const { username, password, email } = req.body;
-
-    try {
-      const result = await authService.registerUser(username, password, email);
-      res.status(200).respondWithTemplateOrJson(result);
-    } catch (error) {
-      res.status(500).respondWithTemplateOrJson({ message: `An error occurred: ${error.message}`, error });
-    }
+    req.session.destroy((err) => {
+      if (err) {
+        return res.respondWithTemplateOrJson({
+          error: 'Logout failed'
+        }, 'auth/login');
+      }
+      
+      return res.respondWithTemplateOrJson({
+        message: 'Logged out successfully',
+        redirect: '/auth/login'
+      }, 'auth/login');
+    });
   }
 }
 

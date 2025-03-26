@@ -2,7 +2,6 @@ const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
 const cors = require('cors');
-const responseHandler = require('./middleware/responseHandler');
 
 const app = express();
 
@@ -22,7 +21,8 @@ app.use((err, req, res, next) => {
 });
 
 // Apply the responseHandler middleware
-app.use(responseHandler());
+app.use(require('./middleware/responseHandler'));
+app.use(require('./middleware/sessionMiddleware'));
 
 // Set the view engine to ejs
 app.set('view engine', 'ejs');
@@ -38,7 +38,6 @@ app.set('pool', pool);
 // Enable CORS for all routes
 app.use(cors());
 
-const port = process.env.PORT || 80;
 
 // initialize the auth service
 const authService = require('./services/authService');
@@ -47,15 +46,14 @@ authService.initialize(pool);
 const sessionService = require('./services/sessionService');
 sessionService.initialize(app, pool);
 
-// Add API routes to the app
-app.use('/api/users', require('./routes/users'));
-app.use('/api/auth', require('./routes/auth'));
-
+// Consolidated routes
+app.use('/', require('./routes/auth'));
+app.use('/users', require('./routes/users'));
 app.use('/events', require('./routes/events'));
+//app.use('/', require('./routes/pages'));
 
-// Add web routes to the app
-app.use('/', require('./routes/web'));
 
+const port = process.env.PORT || 80;
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });

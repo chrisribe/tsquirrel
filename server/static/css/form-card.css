@@ -55,6 +55,7 @@
 }
 
 .form-card-box input {
+  font-size: 1rem;
   margin-bottom: 1rem;
   padding: 0.5rem;
   border: 1px solid var(--pico-border-color);
@@ -64,7 +65,13 @@
 .form-card-box p {
   margin-top: 1rem;
 }
-
+.form-card-box .error-message {
+  color: var(--pico-del-color);
+  border: 1px solid var(--pico-del-color);
+  padding: 0.5rem;
+  border-radius: var(--pico-border-radius);
+  margin: 1rem 0;
+}
 .form-card-box .button {
   padding: 0.75rem;
   border: none;

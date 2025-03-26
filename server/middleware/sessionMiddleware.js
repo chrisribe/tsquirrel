@@ -4,6 +4,11 @@
 // which can then be accessed in the EJS templates for rendering personalized content.
 
 module.exports = (req, res, next) => {
-  res.locals.user = req.session.user || null;
+  // Safely access user data, use empty object if session doesn't exist
+  res.locals.user = req.session?.user || null;
+  
+  // Safely add isAuthenticated helper
+  res.locals.isAuthenticated = !!req.session?.user;
+  
   next();
 };
