@@ -3,7 +3,10 @@ const router = express.Router();
 
 const checkPageExists = require('../middleware/checkPageExists');
 
-// public routes only
+// Specific routes first with explicit templates
+router.get('/register', (req, res) => {
+  res.respondWithTemplateOrJson({}, 'auth/register');
+});
 
 // Use the checkPageExists function for all routes
 // Example url name /about-us should have a corresponding 

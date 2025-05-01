@@ -6,8 +6,10 @@ class AuthController {
     
     try {
       const user = await authService.authenticateUser(email, password);
+      console.log("User found:", user);
       
       if (!user) {
+        console.log("Invalid credentials");
         return res.respondWithTemplateOrJson({
           error: 'Invalid credentials'
         }, 'auth/login');
@@ -16,14 +18,15 @@ class AuthController {
       req.session.user = {
         id: user.id,
         email: user.email,
-        username: user.username
+        username: user.username,
+        role: user.role
       };
       
       return res.respondWithTemplateOrJson({
         success: true,
         user: req.session.user,
-        redirect: '/dashboard'
-      }, 'dashboard/index');
+        redirect: '/events'
+      }, 'events');
     } catch (error) {
       return res.respondWithTemplateOrJson({
         error: error.message
@@ -44,6 +47,23 @@ class AuthController {
         redirect: '/auth/login'
       }, 'auth/login');
     });
+  }
+
+  async register(req, res) {
+    const { username, password, email } = req.body;
+    
+    try {
+      const result = await authService.registerUser(username, password, email);
+      return res.respondWithTemplateOrJson({
+        success: true,
+        message: result.message,
+        redirect: '/auth/login'
+      }, 'auth/login');
+    } catch (error) {
+      return res.respondWithTemplateOrJson({
+        error: error.message
+      }, 'auth/register');
+    }
   }
 }
 

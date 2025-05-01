@@ -5,10 +5,10 @@ class UserController {
     this.userDAO = userDAO;
   }
 
-  async getAllUsers(req, res, next) {
+  async getAllUsers(req, res, next, templatePath) {
     try {
       const users = await this.userDAO.getAllUsers();
-      res.respondWithTemplateOrJson(users);
+      res.respondWithTemplateOrJson({ users }, templatePath);
     } catch (err) {
       res.status(500).json(err);
       next(err);

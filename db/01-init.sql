@@ -3,12 +3,27 @@ CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(60) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
-  email VARCHAR(254) UNIQUE NOT NULL
+  email VARCHAR(254) UNIQUE NOT NULL,
+  role VARCHAR(20) DEFAULT 'user'
 );
 -- Insert initial data into the table
-INSERT INTO users (username, email, password)
+INSERT INTO users (username, email, password, role)
 -- pwd is: admin1234
-VALUES ('admin', 'admin@example.com', '$argon2id$v=19$m=65536,t=3,p=4$0saH+hyFdLdJ9Z5N52a9iQ$UietWEniIHm+yBCS89PT6O53oJGQ3PQpWm1WPhbgvek');
+VALUES (
+  'admin', 
+  'admin@example.com', 
+  '$argon2id$v=19$m=65536,t=3,p=4$0saH+hyFdLdJ9Z5N52a9iQ$UietWEniIHm+yBCS89PT6O53oJGQ3PQpWm1WPhbgvek',
+  'admin'
+);
+
+-- insert a test user
+INSERT INTO users (username, email, password, role)
+VALUES(
+  'testuser',
+  'testuser@gmail.com',
+  '$argon2id$v=19$m=65536,t=3,p=4$0saH+hyFdLdJ9Z5N52a9iQ$UietWEniIHm+yBCS89PT6O53oJGQ3PQpWm1WPhbgvek',
+  'user'
+);
 
 -- Create session table for connect-pg-simple
 CREATE TABLE "user_session" (

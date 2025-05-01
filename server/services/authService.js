@@ -8,8 +8,11 @@ function initialize(pool) {
 
 async function authenticateUser(email, password) {
   // Use your UserDAO to get the user by username
-  const user = await userDAO.getUserByEmail(email);
-  
+  let user = await userDAO.getUserByEmail(email);
+  // If not found by email, try username
+  if (!user) {
+    user = await userDAO.getUserByUsername(email);
+  }  
   // Check if the user exists and the password is correct
   if (user && await argon2.verify(user.password, password)) {
     return user;

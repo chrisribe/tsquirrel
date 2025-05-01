@@ -15,13 +15,13 @@
           <a href="#">User Account</a>
           <div class="dropdown-content">
             <a href="/profile">Profile</a>
-            <form hx-post="/logout">
+            <form hx-post="/auth/logout">
               <button type="submit" class="link-button">Logout</button>
             </form>
           </div>
         </div>
       <% } else { %>
-        <a href="/login" id="login-link" >Login</a>
+        <a href="/auth/login" id="login-link" >Login</a>
       <% } %>
     </div>
   </nav>

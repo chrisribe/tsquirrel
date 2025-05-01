@@ -47,10 +47,11 @@ const sessionService = require('./services/sessionService');
 sessionService.initialize(app, pool);
 
 // Consolidated routes
-app.use('/', require('./routes/auth'));
+app.use('/auth', require('./routes/auth'));
 app.use('/users', require('./routes/users'));
 app.use('/events', require('./routes/events'));
-//app.use('/', require('./routes/pages'));
+
+app.use('/', require('./routes/web'));
 
 
 const port = process.env.PORT || 80;
