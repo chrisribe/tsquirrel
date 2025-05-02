@@ -19,6 +19,17 @@ class EventsDAO {
     );
     return result.rows[0].id;
   }
+
+  async searchEvents(searchTerm) {
+    const result = await this.pool.query(
+      `SELECT * FROM events 
+      WHERE 
+        title ILIKE $1 OR description ILIKE $1 OR location ILIKE $1
+      ORDER BY date DESC`,
+      [`%${searchTerm}%`]
+    );
+    return result.rows;
+  }
 }
 
 module.exports = EventsDAO;

@@ -12,8 +12,8 @@ router.use(authMiddleware);
 router.use((req, res, next) => {
   // Get the pool from the app
   const pool = req.app.get('pool');
-  const eventDAO = new EventsDAO(pool);
-  req.eventsController = new EventsController(eventDAO);
+  const eventsDAO = new EventsDAO(pool);
+  req.eventsController = new EventsController(eventsDAO);
   next();
 });
 
@@ -21,5 +21,12 @@ router.get('/', (req, res, next) => req.eventsController.getAllEvents(req, res, 
 router.post('/', (req, res, next) => req.eventsController.addEvent(req, res, next));
 router.put('/:id', (req, res, next) => req.eventsController.updateEvent(req, res, next));
 router.delete('/:id', (req, res, next) => req.eventsController.deleteEvent(req, res, next));
+
+// In routes/events.js
+router.get('/search', (req, res, next) => {
+  // normalize the search term
+  req.query.searchTerm = req.query.q || '';
+  req.eventsController.searchEvents(req, res, next, 'events/events-list');
+});
 
 module.exports = router;

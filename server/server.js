@@ -20,7 +20,7 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
-// Apply the responseHandler middleware
+// Apply the global middlewares
 app.use(require('./middleware/responseHandler'));
 app.use(require('./middleware/sessionMiddleware'));
 
@@ -33,11 +33,15 @@ app.set('views', path.join(__dirname, 'views'));
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
-// Make the connection pool available to router
+
+// Make the pool available throughout the application:
+// 1. Sets 'pool' in Express application settings
+// 2. Accessible in route handlers via req.app.get('pool')
+// 3. Enables middleware and controllers to share the same connection pool
 app.set('pool', pool);
+
 // Enable CORS for all routes
 app.use(cors());
-
 
 // initialize the auth service
 const authService = require('./services/authService');

@@ -7,55 +7,24 @@
     <p>Keep your friends close and the memories closer</p>
   </hgroup>
 
+  <!-- Search box for our next feature -->
+  <div class="search-container">
+    <input type="search" 
+      placeholder="Search events..." 
+      name="q"
+      hx-get="/events/search" 
+      hx-trigger="keyup changed delay:500ms" 
+      hx-target="#events-list"
+      hx-indicator=".search-spinner">
+     <div class="search-spinner htmx-indicator"></div>
+  </div>
+
+  <div id="events-list">
+    <%- include('events/events-list', {events: events}) %>
+  </div>
+
   <div id="addEventButton" class="fab" onclick="openAddEventModal()"></div>
-
-  <% if (events && events.length > 0) { %>
-    <ul>
-      <% events.forEach(event => { %>
-        <li>
-          <figure>
-            <img src="<%= event.event_picture %>" alt="Event Picture">
-          </figure>
-          <div>
-            <hgroup>
-              <h2><%= event.title %></h2>
-              <p><%= event.description %></p>
-            </hgroup>
-            <table class="striped">
-              <tbody>
-                <tr>
-                  <th>When ?</th>
-                  <td>
-                    <%= new Date(event.date).toLocaleString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: 'numeric',
-                      hour12: true
-                    }) %>
-                  </td>
-                </tr>
-                <tr>
-                  <th>Location</th>
-                  <td><%= event.location %></td>
-                </tr>
-                <tr>
-                  <th>Status</th>
-                  <td><%= event.status %></td>
-                </tr>
-              </tbody>
-
-            </table>
-          </div>
-
-        </li>
-      <% }) %>
-    </ul>
-  <% } else { %>
-    <p>No events available.</p>
-  <% } %>
+  
 </div>
 
 <!-- Modal for adding new event -->

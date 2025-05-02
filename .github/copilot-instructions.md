@@ -11,6 +11,7 @@ Choose task template based on request type:
 - Implementation requests → [TASK:CODE]
 - Error fixing/troubleshooting → [TASK:DEBUG]
 - Complex implementations → [TASK:STEPS]
+- If no task matches request respond normally.
 
 ## TASK TEMPLATES
 
@@ -21,7 +22,7 @@ Choose task template based on request type:
 4. [COMPLETE]
 
 ### [TASK:CODE]
-1. Confirm requirement
+1. Confirm requirement (ask if yes/no)
 2. Share implementation approach
 3. Provide code block with comments
 4. [COMPLETE]
@@ -38,6 +39,7 @@ Let's implement this step-by-step:
 - Break down into subtasks
 - Implement each subtask
 - Review and refine
+- List available commands at end of step
 
 Commands:
 - "next": proceed to next step

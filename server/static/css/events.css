@@ -82,6 +82,28 @@
   }
 }
 
+.search-container {
+  position: relative;
+}
+.search-spinner {
+  position: absolute;
+  right: 50px;
+  top: 50%;
+  transform: translateY(-100%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #007bff;
+  border-radius: 50%;
+  display: none;
+}
+.search-spinner.htmx-request {
+  display: block;
+}
+@keyframes spin {
+  to { transform: translateY(-50%) rotate(360deg); }
+}
+
 dialog {
   --pico-form-element-spacing-vertical: 0.25rem; /* Override for dialog */
   max-width: 90%;

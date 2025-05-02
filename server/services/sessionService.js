@@ -12,9 +12,6 @@ function initialize(app, pool) {
   // Array of secrets, with the most recent secret at the beginning
   let secrets = [generateSecret()];
 
-  // Rotate secrets every 24 hours
-  setInterval(() => rotateSecrets(secrets), 24 * 60 * 60 * 1000);
-
   app.use(session({
     store: new pgSession({
       pool: pool,                // Connection pool
@@ -31,9 +28,9 @@ function initialize(app, pool) {
     res.locals.user = req.session.user || null;
     next();
   });
-  
+
   // Rotate secrets every 24 hours
-  setInterval(rotateSecrets, 24 * 60 * 60 * 1000);
+  setInterval(() => rotateSecrets(secrets), 24 * 60 * 60 * 1000);
 }
 
 // Function to generate a random secret
