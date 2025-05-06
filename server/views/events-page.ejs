@@ -23,52 +23,42 @@
     <%- include('events/events-list', {events: events}) %>
   </div>
 
-  <div id="addEventButton" class="fab" onclick="openAddEventModal()"></div>
+  <div class="addNewEvent fab" data-open-modal="addEventModal"></div>
   
 </div>
 
 <!-- Modal for adding new event -->
 <dialog id="addEventModal">
   <article>
-    <a href="#close" aria-label="Close" class="close" data-target="addEventModal"></a>
+    <a href="#close" aria-label="Close" class="close"></a>
     <h2>Add New Event</h2>
-    <form id="addEventForm" method="post" action="/api/events">
+    <form id="addEventForm" 
+      hx-post="/events" 
+      hx-target="#events-list"
+      hx-on::after-request="this.closest('dialog').close()"
+      >
       <label for="title">Title</label>
       <input type="text" id="title" name="title" required>
 
       <label for="description">Description</label>
-      <textarea id="description" name="description" required></textarea>
+      <textarea id="description" name="description"></textarea>
 
       <label for="date">Date</label>
-      <input type="datetime-local" id="date" name="date" required>
+      <!-- default to today -->
+      <script>
+        const today = new Date();
+        const formattedDate = today.toISOString().substring(0, 16);
+        document.addEventListener('DOMContentLoaded', function() {
+          document.getElementById('date').value = formattedDate;
+        });
+      </script>
+      <input type="datetime-local" id="date" name="date" >
 
       <label for="location">Location</label>
-      <input type="text" id="location" name="location" required>
-
-      <label for="status">Status</label>
-      <input type="text" id="status" name="status" required>
-
-      <label for="event_picture">Event Picture URL</label>
-      <input type="url" id="event_picture" name="event_picture" required>
+      <input type="text" id="location" name="location">
 
       <button type="submit" class="button primary">Add Event</button>
     </form>
   </article>
 </dialog>
-
-<script>
-  document.getElementById('addEventButton').addEventListener('click', function() {
-    document.getElementById('addEventModal').showModal();
-  });
-
-  document.querySelectorAll('.close').forEach(function(closeButton) {
-    closeButton.addEventListener('click', function(event) {
-      event.preventDefault();
-      document.getElementById(closeButton.getAttribute('data-target')).close();
-    });
-  });
-
-  function openAddEventModal() {
-    document.getElementById('addEventModal').showModal();
-  }
-</script>
+ 

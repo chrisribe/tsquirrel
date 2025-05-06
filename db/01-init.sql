@@ -36,3 +36,13 @@ WITH (OIDS=FALSE);
 ALTER TABLE "user_session" ADD CONSTRAINT "user_session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
 CREATE INDEX "IDX_session_expire" ON "user_session" ("expire");
 
+-- Create a table to store session secrets
+CREATE TABLE IF NOT EXISTS session_secrets (
+  id SERIAL PRIMARY KEY,
+  secret VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  active BOOLEAN DEFAULT TRUE
+);
+-- Add index on active flag for faster lookups
+CREATE INDEX idx_session_secrets_active ON session_secrets(active);
+COMMENT ON TABLE session_secrets IS 'Stores session encryption secrets for persistent authentication';

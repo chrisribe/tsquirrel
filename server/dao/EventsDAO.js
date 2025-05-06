@@ -9,6 +9,8 @@ class EventsDAO {
   }
 
   async addEvent(userId, { title, description, date, location, category, capacity, status, organizer, tags, event_picture }) {
+    if (!userId) throw new Error('User ID is required');
+    
     const result = await this.pool.query(
       `INSERT INTO events (
         user_id, title, description, date, location, 

@@ -3,62 +3,61 @@ const { Pool } = require('pg');
 const path = require('path');
 const cors = require('cors');
 
-const app = express();
+// Create an async function for initialization
+async function startServer() {
+  const app = express();
+  
+  // Middleware setup
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use('/static', express.static(path.join(__dirname, 'static')));
+  
+  app.set('view engine', 'ejs');
+  app.set('views', path.join(__dirname, 'views'));
+  
+  // Database setup
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+  });
+  app.set('pool', pool);
+  app.use(cors());
+  
+  // Initialize services
+  const authService = require('./services/authService');
+  authService.initialize(pool);
+  
+  const SessionService = require('./services/SessionService');
+  const sessionService = new SessionService(pool);
+  await sessionService.initialize(app, pool);
+  
+  // Apply middlewares
+  app.use(require('./middleware/responseHandler'));
+  app.use(require('./middleware/sessionMiddleware'));  
+  
+  // Register routes
+  app.use('/auth', require('./routes/auth'));
+  app.use('/users', require('./routes/users'));
+  app.use('/events', require('./routes/events'));
+  app.use('/', require('./routes/web'));
+  
+  // Error handler
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).respondWithTemplateOrJson(
+      { error: 'Something went wrong' }, 
+      'errors/general-error'
+    );
+  });
+  
+  // Start server
+  const port = process.env.PORT || 80;
+  app.listen(port, () => {
+    console.log(`Server listening at http://localhost:${port}`);
+  });
+}
 
-// Middleware to parse JSON bodies
-app.use(express.json());
-
-// Middleware to parse URL-encoded bodies (form data)
-app.use(express.urlencoded({ extended: true }));
-
-// Serve static files
-app.use('/static', express.static(path.join(__dirname, 'static')));
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something broke!');
-});
-
-// Apply the global middlewares
-app.use(require('./middleware/responseHandler'));
-app.use(require('./middleware/sessionMiddleware'));
-
-// Set the view engine to ejs
-app.set('view engine', 'ejs');
-// Set the views directory to be used on .render calls
-app.set('views', path.join(__dirname, 'views'));
-
-// Database connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-// Make the pool available throughout the application:
-// 1. Sets 'pool' in Express application settings
-// 2. Accessible in route handlers via req.app.get('pool')
-// 3. Enables middleware and controllers to share the same connection pool
-app.set('pool', pool);
-
-// Enable CORS for all routes
-app.use(cors());
-
-// initialize the auth service
-const authService = require('./services/authService');
-authService.initialize(pool);
-
-const sessionService = require('./services/sessionService');
-sessionService.initialize(app, pool);
-
-// Consolidated routes
-app.use('/auth', require('./routes/auth'));
-app.use('/users', require('./routes/users'));
-app.use('/events', require('./routes/events'));
-
-app.use('/', require('./routes/web'));
-
-
-const port = process.env.PORT || 80;
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+// Call the async function
+startServer().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });

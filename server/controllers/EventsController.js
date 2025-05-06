@@ -1,3 +1,5 @@
+const Event = require('../models/Event');
+
 class EventsController {
   constructor(eventsDAO) {
     this.eventsDAO = eventsDAO;
@@ -13,12 +15,32 @@ class EventsController {
     }
   }
 
-  async addEvent(req, res, next) {
+  async addEvent(req, res, next, templatePath = 'events/events-list') {
     try {
-      const userId = req.user.id;
-      const eventData = { ...req.body, userId };
-      const newEvent = await this.eventsDAO.createEvent(eventData);
-      res.status(201).json(newEvent);
+      const userId = req.session.user.id;
+    
+      // Extract only the fields you expect/need
+      const { 
+        title, description, date, location, 
+        category, capacity, status, organizer 
+      } = req.body;
+      
+      // Validate required fields
+      if (!title || !date) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      
+      // Create Event with validated data
+      const eventData = new Event({ 
+        title, description, date, location, 
+        category, capacity, status, organizer,
+        userId 
+      });
+
+      
+      const newEvent = await this.eventsDAO.addEvent(userId, eventData);
+      const events = await this.eventsDAO.getEventsByUserId(userId);
+      res.status(201).respondWithTemplateOrJson({events}, templatePath);
     } catch (error) {
       next(error);
     }
