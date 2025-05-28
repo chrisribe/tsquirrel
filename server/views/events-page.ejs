@@ -34,31 +34,27 @@
     <h2>Add New Event</h2>
     <form id="addEventForm" 
       hx-post="/events" 
-      hx-target="#events-list"
-      hx-on::after-request="this.closest('dialog').close()"
-      >
-      <label for="title">Title</label>
-      <input type="text" id="title" name="title" required>
+      hx-target="#events-list ul"
+      hx-swap="afterbegin"
+    >
 
-      <label for="description">Description</label>
-      <textarea id="description" name="description"></textarea>
+      <%- include('events/event-form-add', {pageData: pageData}) %>
 
-      <label for="date">Date</label>
-      <!-- default to today -->
-      <script>
-        const today = new Date();
-        const formattedDate = today.toISOString().substring(0, 16);
-        document.addEventListener('DOMContentLoaded', function() {
-          document.getElementById('date').value = formattedDate;
-        });
-      </script>
-      <input type="datetime-local" id="date" name="date" >
-
-      <label for="location">Location</label>
-      <input type="text" id="location" name="location">
-
-      <button type="submit" class="button primary">Add Event</button>
     </form>
+    <script>
+      // Handle successful submission
+      document.getElementById('addEventForm').addEventListener('htmx:afterOnLoad', function(evt) {
+        if (evt.detail.successful) {
+          this.reset();
+          this.closest('dialog').close();
+        }
+      });
+      document.getElementById('addEventForm').addEventListener('htmx:error', function(evt) {
+        document.getElementById('addEventForm').innerHTML = evt.detail.errorInfo.xhr.responseText || 
+        '<div class="error">Network error. Please try again.</div>';
+      });
+    </script>
+
   </article>
 </dialog>
  

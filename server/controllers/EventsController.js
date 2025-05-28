@@ -15,34 +15,49 @@ class EventsController {
     }
   }
 
-  async addEvent(req, res, next, templatePath = 'events/events-list') {
+  async addEvent(req, res, next) {
     try {
       const userId = req.session.user.id;
-    
-      // Extract only the fields you expect/need
-      const { 
-        title, description, date, location, 
-        category, capacity, status, organizer 
-      } = req.body;
+      const { title, description, date, location } = req.body;
       
-      // Validate required fields
-      if (!title || !date) {
-        return res.status(400).json({ error: 'Missing required fields' });
+      // Validation with specific error messages
+      if (!title) {
+        res.setHeader('HX-Retarget', '#addEventForm');
+        res.setHeader('HX-Reswap', 'innerHTML');
+        return res.status(400).respondWithTemplateOrJson({
+           error: 'Event title is required',
+           formData: {title, description, date, location}
+          }, 
+          'events/event-form-add'
+        );
       }
       
-      // Create Event with validated data
-      const eventData = new Event({ 
-        title, description, date, location, 
-        category, capacity, status, organizer,
-        userId 
-      });
-
+      if (!date) {
+        return res.status(400).respondWithTemplateOrJson({
+            error: 'Event date is required',
+            formData: {title, description, date, location}
+          }, 
+          'events/event-form-add'
+        );
+      }
       
-      const newEvent = await this.eventsDAO.addEvent(userId, eventData);
-      const events = await this.eventsDAO.getEventsByUserId(userId);
-      res.status(201).respondWithTemplateOrJson({events}, templatePath);
+      let eventData = new Event({ title, description, date, location, userId });
+      const eventId = await this.eventsDAO.addEvent(userId, eventData);
+      eventData.id = eventId; // Set the ID on the eventData object
+      //console.log('New event created:', eventData);
+
+      // Return only the new event
+      res.status(201).respondWithTemplateOrJson({
+          event : eventData
+        }, 
+        'events/event-item'
+      );
     } catch (error) {
-      next(error);
+      // Database or other errors
+      return res.status(500).respondWithTemplateOrJson(
+        { error: 'Failed to create event. Please try again.' }, 
+        'events/event-form-error'
+      );
     }
   }
 

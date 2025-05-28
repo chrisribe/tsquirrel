@@ -3,45 +3,9 @@
 <% if (events && events.length > 0) { %>
   <ul>
     <% events.forEach(event => { %>
-      <li>
-        <figure>
-          <img src="<%= event.event_picture %>" alt="Event Picture">
-        </figure>
-        <div>
-          <hgroup>
-            <h2><%= event.title %></h2>
-            <p><%= event.description %></p>
-          </hgroup>
-          <table class="striped">
-            <tbody>
-              <tr>
-                <th>When ?</th>
-                <td>
-                  <%= new Date(event.date).toLocaleString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: 'numeric',
-                    hour12: true
-                  }) %>
-                </td>
-              </tr>
-              <tr>
-                <th>Location</th>
-                <td><%= event.location %></td>
-              </tr>
-              <tr>
-                <th>Status</th>
-                <td><%= event.status %></td>
-              </tr>
-            </tbody>
+      
+      <%- include('event-item', { pageData: { event } }) %>
 
-          </table>
-        </div>
-
-      </li>
     <% }) %>
   </ul>
 <% } else { %>

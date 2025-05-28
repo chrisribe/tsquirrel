@@ -6,10 +6,10 @@ class AuthController {
     
     try {
       const user = await authService.authenticateUser(email, password);
-      console.log("User found:", user);
+      //console.log("User found:", user);
       
       if (!user) {
-        console.log("Invalid credentials");
+        //console.log("Invalid credentials");
         return res.respondWithTemplateOrJson({
           error: 'Invalid credentials'
         }, 'auth/login');

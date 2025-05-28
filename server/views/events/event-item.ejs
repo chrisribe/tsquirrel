@@ -1,0 +1,39 @@
+<% const {event} = pageData %>
+
+<li>
+  <figure>
+    <img src="<%= event.event_picture || '/static/img/selfie-friends.jpg' %>" alt="Event Picture">
+  </figure>
+  <div>
+    <hgroup>
+      <h2><%= event.title %></h2>
+      <p><%= event.description %></p>
+    </hgroup>
+    <table class="striped">
+      <tbody>
+        <tr>
+          <th>When ?</th>
+          <td>
+            <%= new Date(event.date).toLocaleString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: 'numeric',
+              hour12: true
+            }) %>
+          </td>
+        </tr>
+        <tr>
+          <th>Location</th>
+          <td><%= event.location %></td>
+        </tr>
+        <tr>
+          <th>Status</th>
+          <td><%= event.status || 'Active' %></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</li>
