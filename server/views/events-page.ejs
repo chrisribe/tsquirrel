@@ -36,19 +36,13 @@
       hx-post="/events" 
       hx-target="#events-list ul"
       hx-swap="afterbegin"
+      hx-on::after-request="if(event.detail.successful) { this.reset(); this.closest('dialog').close(); }"
     >
 
       <%- include('events/event-form-add', {pageData: pageData}) %>
 
     </form>
     <script>
-      // Handle successful submission
-      document.getElementById('addEventForm').addEventListener('htmx:afterOnLoad', function(evt) {
-        if (evt.detail.successful) {
-          this.reset();
-          this.closest('dialog').close();
-        }
-      });
       document.getElementById('addEventForm').addEventListener('htmx:error', function(evt) {
         document.getElementById('addEventForm').innerHTML = evt.detail.errorInfo.xhr.responseText || 
         '<div class="error">Network error. Please try again.</div>';

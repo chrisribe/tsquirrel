@@ -23,6 +23,12 @@ class EventsDAO {
     return result.rows[0].id;
   }
 
+  async deleteEvent(userId, eventId) {
+    const result = await this.pool.query(
+      'DELETE FROM events WHERE user_id = $1 and id = $2 RETURNING *', [userId, eventId]);
+    return result.rows[0];
+  }
+
   async searchEvents(searchTerm) {
     const result = await this.pool.query(
       `SELECT * FROM events 

@@ -63,8 +63,9 @@ class EventsController {
 
   async updateEvent(req, res, next) {
     try {
+      const userId = req.session.user.id;
       const eventId = req.params.id;
-      const userId = req.user.id;
+
       const eventData = { ...req.body, userId };
       const updatedEvent = await this.eventsDAO.updateEvent(eventId, eventData);
       res.json(updatedEvent);
@@ -75,10 +76,10 @@ class EventsController {
 
   async deleteEvent(req, res, next) {
     try {
+      const userId = req.session.user.id;
       const eventId = req.params.id;
-      const userId = req.user.id;
-      await this.eventsDAO.deleteEvent(eventId, userId);
-      res.status(204).end();
+      await this.eventsDAO.deleteEvent(userId, eventId);
+      res.status(200).send('')
     } catch (error) {
       next(error);
     }
