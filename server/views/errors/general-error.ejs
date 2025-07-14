@@ -2,17 +2,17 @@
   <div class="error-card">
     <h1>Oops! Something went wrong</h1>
     <div class="error-icon">❌</div>
-    <% if (locals.error && locals.error.message) { %>
-      <p><%= locals.error.message %></p>
+    <% if (pageData.error) { %>
+      <p><%= pageData.error %></p>
     <% } else { %>
       <p>We encountered an unexpected error while processing your request.</p>
     <% } %>
     <p>Please try again later or contact support if the problem persists.</p>
     <a href="/" class="button">Return to Home</a>
-    <% if (locals.error && locals.error.stack && process.env.NODE_ENV === 'development') { %>
+    <% if (pageData.error && pageData.stack && process.env.NODE_ENV === 'development') { %>
       <details>
         <summary>Technical Details</summary>
-        <pre class="error-details"><%= locals.error.stack %></pre>
+        <pre class="error-details"><%= pageData.stack %></pre>
       </details>
     <% } %>
   </div>

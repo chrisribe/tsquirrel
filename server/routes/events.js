@@ -5,8 +5,6 @@ const authMiddleware = require('./../middleware/authMiddleware'); // Import the 
 const EventsDAO = require('./../dao/EventsDAO');
 const EventsController = require('../controllers/EventsController');
 
-// Should be logged in to access the events
-router.use(authMiddleware);
 
 // Middleware enriching the request with an event controller
 router.use((req, res, next) => {
@@ -16,6 +14,12 @@ router.use((req, res, next) => {
   req.eventsController = new EventsController(eventsDAO);
   next();
 });
+
+// Public routes
+router.get('/:uuid/gallery', (req, res, next) => req.eventsController.getEventGalleryByUuid(req, res, next));
+
+// Should be logged in to access the events
+router.use(authMiddleware);
 
 router.get('/', (req, res, next) => req.eventsController.getAllEvents(req, res, next));
 router.post('/', (req, res, next) => req.eventsController.addEvent(req, res, next));
@@ -28,5 +32,6 @@ router.get('/search', (req, res, next) => {
   req.query.searchTerm = req.query.q || '';
   req.eventsController.searchEvents(req, res, next, 'events/events-list');
 });
+
 
 module.exports = router;

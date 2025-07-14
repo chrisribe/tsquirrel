@@ -85,21 +85,38 @@ class EventsController {
     }
   }
 
-// In controllers/EventsController.js
-async searchEvents(req, res, next, templatePath = 'events/events-list') {
-  try {
-    const searchTerm = req.query.searchTerm || '';
-    const events = await this.eventsDAO.searchEvents(searchTerm);
+  async searchEvents(req, res, next, templatePath = 'events/events-list') {
+    try {
+      const searchTerm = req.query.searchTerm || '';
+      const events = await this.eventsDAO.searchEvents(searchTerm);
 
-    console.log('Search term:', searchTerm);
-    console.log('Events found:', events.length, 'events');
-    
-    res.respondWithTemplateOrJson({ events }, templatePath);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-    next(err);
+      console.log('Search term:', searchTerm);
+      console.log('Events found:', events.length, 'events');
+      
+      res.respondWithTemplateOrJson({ events }, templatePath);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+      next(err);
+    }
   }
-}
+
+  async getEventGalleryByUuid(req, res, next) {
+    try {
+      const eventUuid = req.params.uuid;
+
+      const event = await this.eventsDAO.getEventByUuid(eventUuid); 
+      
+      if (!event) {
+        return res.status(404).respondWithTemplateOrJson({ error: 'Event not found' }, 'errors/general-error');
+      }
+      
+      const photos = await this.eventsDAO.getPhotosByEventUuid(eventUuid); 
+      
+      res.respondWithTemplateOrJson({ event, photos }, 'events/gallery-page');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = EventsController;

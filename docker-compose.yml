@@ -9,9 +9,13 @@ services:
       POSTGRES_DB: mydb
     ports:
       - "5432:5432"
-    # To persist the data externally, uncomment the following lines
-    #volumes:
-    #  - ./db/db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dockeruser -d mydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+      
   server:
     build:
       context: ./server
@@ -19,6 +23,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://dockeruser:${DB_PASSWORD}@db:5432/mydb
+    restart: unless-stopped

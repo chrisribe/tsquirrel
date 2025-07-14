@@ -5,10 +5,12 @@
     <img src="<%= event.event_picture || '/static/img/selfie-friends.jpg' %>" alt="Event Picture">
   </figure>
   <div>
-    <hgroup>
-      <h2><%= event.title %></h2>
-      <p><%= event.description %></p>
-    </hgroup>
+    <a href="/events/<%= event.uuid %>/gallery" style="text-decoration: none; color: inherit;">
+      <hgroup>
+        <h2><%= event.title %></h2>
+        <p><%= event.description %></p>
+      </hgroup>
+    </a>
     <table class="striped">
       <tbody>
         <tr>

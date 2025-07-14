@@ -7,6 +7,31 @@ const cors = require('cors');
 async function startServer() {
   const app = express();
   
+  // Database setup with retry logic
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+  });
+  
+  // Test connection with retries
+  let connected = false;
+  let retries = 10;
+  
+  while (!connected && retries > 0) {
+    try {
+      await pool.query('SELECT 1');
+      connected = true;
+      console.log('Database connected successfully');
+    } catch (err) {
+      console.log(`Database connection attempt failed. Retries left: ${retries - 1}`);
+      retries--;
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } else {
+        throw err;
+      }
+    }
+  }
+  
   // Middleware setup
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -15,10 +40,6 @@ async function startServer() {
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
   
-  // Database setup
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
   app.set('pool', pool);
   app.use(cors());
   
