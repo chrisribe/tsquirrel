@@ -30,20 +30,29 @@ VALUES (
   'https://picsum.photos/200'
 );
 
--- Create event_photos table
+-- Create event_photos table with S3 support
 CREATE TABLE event_photos (
     id SERIAL PRIMARY KEY,
-    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    photo_url VARCHAR(255) NOT NULL,
+    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE, -- Keep for backward compatibility
+    event_uuid UUID REFERENCES events(uuid) ON DELETE CASCADE, -- New S3-based reference
+    photo_id UUID DEFAULT uuid_generate_v4() UNIQUE NOT NULL, -- Unique photo identifier
+    original_name VARCHAR(255), -- Original filename from upload
+    s3_key VARCHAR(512), -- Full S3 path (uploads/event-uuid/photo-id.ext)
+    photo_url VARCHAR(255), -- Deprecated but kept for backward compatibility
     uploaded_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert sample photos for the cat show event
-INSERT INTO event_photos (event_id, photo_url) VALUES 
-(1, 'https://picsum.photos/400/300?random=1'),
-(1, 'https://picsum.photos/400/300?random=2'),
-(1, 'https://picsum.photos/400/300?random=3'),
-(1, 'https://picsum.photos/400/300?random=4');
+-- Insert sample photos for the cat show event (using both old and new structure for compatibility)
+INSERT INTO event_photos (event_id, event_uuid, photo_url) 
+SELECT 1, e.uuid, 'https://picsum.photos/400/300?random=1' FROM events e WHERE e.id = 1
+UNION ALL
+SELECT 1, e.uuid, 'https://picsum.photos/400/300?random=2' FROM events e WHERE e.id = 1
+UNION ALL  
+SELECT 1, e.uuid, 'https://picsum.photos/400/300?random=3' FROM events e WHERE e.id = 1
+UNION ALL
+SELECT 1, e.uuid, 'https://picsum.photos/400/300?random=4' FROM events e WHERE e.id = 1;
 
 CREATE INDEX idx_event_photos_event_id ON event_photos(event_id);
+CREATE INDEX idx_event_photos_event_uuid ON event_photos(event_uuid);
+CREATE INDEX idx_event_photos_photo_id ON event_photos(photo_id);
 CREATE INDEX idx_events_uuid ON events(uuid);

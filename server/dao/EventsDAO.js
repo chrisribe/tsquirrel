@@ -111,6 +111,54 @@ class EventsDAO {
       client.release();
     }
   }
+
+  async addPhoto(photoData) {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(
+        `INSERT INTO event_photos (event_uuid, photo_id, original_name, s3_key, uploaded_at) 
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [photoData.event_uuid, photoData.photo_id, photoData.original_name, photoData.s3_key, photoData.uploaded_at]
+      );
+      return result.rows[0];
+    } finally {
+      client.release();
+    }
+  }
+
+  async deletePhoto(eventUuid, photoId) {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(
+        'DELETE FROM event_photos WHERE event_uuid = $1 AND photo_id = $2 RETURNING *',
+        [eventUuid, photoId]
+      );
+      return result.rows[0];
+    } finally {
+      client.release();
+    }
+  }
+
+  async getPhotosByEventUuid(eventUuid) {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          photo_id, 
+          original_name, 
+          s3_key, 
+          photo_url,
+          uploaded_at 
+        FROM event_photos 
+        WHERE event_uuid = $1 
+        ORDER BY uploaded_at DESC
+      `, [eventUuid]);
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
 }
 
 module.exports = EventsDAO;

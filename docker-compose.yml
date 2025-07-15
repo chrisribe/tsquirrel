@@ -27,4 +27,9 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://dockeruser:${DB_PASSWORD}@db:5432/mydb
+      NODE_ENV: ${NODE_ENV:-development}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
     restart: unless-stopped

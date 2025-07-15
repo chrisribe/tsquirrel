@@ -1,4 +1,5 @@
 const Event = require('../models/Event');
+const { getPhotoUrls } = require('../services/s3Service');
 
 class EventsController {
   constructor(eventsDAO) {
@@ -115,6 +116,60 @@ class EventsController {
       res.respondWithTemplateOrJson({ event, photos }, 'events/gallery-page');
     } catch (error) {
       next(error);
+    }
+  }
+
+  async uploadPhotos(req, res, next) {
+    try {
+      const eventUuid = req.params.uuid;
+      const { photoMetadata } = req;
+      
+      if (!photoMetadata) {
+        return res.status(400).json({ error: 'No photo metadata found' });
+      }
+
+      // Save photo metadata to database
+      const photoData = {
+        event_uuid: eventUuid,
+        photo_id: photoMetadata.photoId,
+        original_name: photoMetadata.originalName,
+        s3_key: photoMetadata.s3Key,
+        uploaded_at: new Date()
+      };
+
+      await this.eventsDAO.addPhoto(photoData);
+
+      // Generate URLs for immediate response (Lambda will process in background)
+      const photoUrls = getPhotoUrls(eventUuid, photoMetadata.photoId, photoMetadata.extension);
+
+      res.status(201).json({
+        success: true,
+        photo: {
+          id: photoMetadata.photoId,
+          originalName: photoMetadata.originalName,
+          urls: photoUrls
+        }
+      });
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      res.status(500).json({ error: 'Failed to upload photo' });
+    }
+  }
+
+  async deletePhoto(req, res, next) {
+    try {
+      const { uuid: eventUuid, photoId } = req.params;
+      
+      // Delete from database
+      await this.eventsDAO.deletePhoto(eventUuid, photoId);
+      
+      // TODO: Delete from S3 (all sizes)
+      // This would require additional S3 delete operations
+      
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Photo delete error:', error);
+      res.status(500).json({ error: 'Failed to delete photo' });
     }
   }
 }

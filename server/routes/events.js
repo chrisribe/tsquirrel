@@ -4,6 +4,7 @@ const router = express.Router();
 const authMiddleware = require('./../middleware/authMiddleware'); // Import the auth middleware
 const EventsDAO = require('./../dao/EventsDAO');
 const EventsController = require('../controllers/EventsController');
+const { uploadToS3 } = require('../services/s3Service');
 
 
 // Middleware enriching the request with an event controller
@@ -32,6 +33,10 @@ router.get('/search', (req, res, next) => {
   req.query.searchTerm = req.query.q || '';
   req.eventsController.searchEvents(req, res, next, 'events/events-list');
 });
+
+// Photo upload routes (authenticated)
+router.post('/:uuid/photos', uploadToS3.single('photoFile'), (req, res, next) => req.eventsController.uploadPhotos(req, res, next));
+router.delete('/:uuid/photos/:photoId', (req, res, next) => req.eventsController.deletePhoto(req, res, next));
 
 
 module.exports = router;
