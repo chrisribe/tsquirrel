@@ -5,13 +5,15 @@
   </div>
 
   <div class="photos-section">
-    <% if (pageData.photos && pageData.photos.length > 0) { %>
-      <div class="photo-grid">
+    <div class="photo-grid">
+      <% if (pageData.photos && pageData.photos.length > 0) { %>
         <% pageData.photos.forEach(photo => { %>
           <img src="<%= photo.photo_url %>" alt="Photo" loading="lazy">
         <% }); %>
-      </div>
-    <% } else { %>
+      <% } %>
+    </div>
+    
+    <% if (!pageData.photos || pageData.photos.length === 0) { %>
       <div class="empty-state">
         <p>No photos yet</p>
         <p class="hint">Share your memories by adding the first photo!</p>

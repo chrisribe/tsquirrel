@@ -1,1 +1,76 @@
-<img src="<%= pageData.photo.photo_url %>" alt="<%= pageData.photo.original_name || 'Photo' %>" loading="lazy" data-photo-id="<%= pageData.photo.photo_id %>">
+<div class="photo-loading" data-photo-id="<%= pageData.photo.photo_id %>" data-photo-url="<%= pageData.photo.photo_url %>">
+  <div class="loading-placeholder">
+    <div class="spinner"></div>
+    <p>Processing photo...</p>
+  </div>
+</div>
+
+<style>
+.photo-loading {
+  width: 100%;
+  height: 200px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #dee2e6;
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-placeholder p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+</style>
+
+<script>
+// Poll for image availability
+(function() {
+  const loadingDiv = document.querySelector('[data-photo-id="<%= pageData.photo.photo_id %>"]');
+  const photoUrl = loadingDiv.dataset.photoUrl;
+  let attempts = 0;
+  const maxAttempts = 30; // 30 seconds max
+  
+  function checkImage() {
+    attempts++;
+    const img = new Image();
+    
+    img.onload = function() {
+      // Image loaded successfully, replace the loading div
+      loadingDiv.outerHTML = `<img src="${photoUrl}" alt="<%= pageData.photo.original_name || 'Photo' %>" loading="lazy" data-photo-id="<%= pageData.photo.photo_id %>">`;
+    };
+    
+    img.onerror = function() {
+      if (attempts < maxAttempts) {
+        // Wait 1 second and try again
+        setTimeout(checkImage, 1000);
+      } else {
+        // Max attempts reached, show error
+        loadingDiv.innerHTML = '<div class="error-placeholder"><p>⚠️ Processing failed</p></div>';
+      }
+    };
+    
+    img.src = photoUrl;
+  }
+  
+  // Start checking after 2 seconds (give Lambda a moment)
+  setTimeout(checkImage, 2000);
+})();
+</script>

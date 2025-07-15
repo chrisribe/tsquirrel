@@ -157,7 +157,7 @@ class EventsController {
       const photoForTemplate = {
         photo_id: photoMetadata.photoId,
         original_name: photoMetadata.originalName,
-        photo_url: photoUrls.uploaded // Show uploaded version immediately
+        photo_url: photoUrls.original // Use original URL (processed quickly by Lambda)
       };
 
       res.status(201).respondWithTemplateOrJson({
