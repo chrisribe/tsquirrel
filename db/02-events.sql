@@ -42,15 +42,8 @@ CREATE TABLE event_photos (
     uploaded_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert sample photos for the cat show event (using both old and new structure for compatibility)
-INSERT INTO event_photos (event_id, event_uuid, photo_url) 
-SELECT 1, e.uuid, 'https://picsum.photos/400/300?random=1' FROM events e WHERE e.id = 1
-UNION ALL
-SELECT 1, e.uuid, 'https://picsum.photos/400/300?random=2' FROM events e WHERE e.id = 1
-UNION ALL  
-SELECT 1, e.uuid, 'https://picsum.photos/400/300?random=3' FROM events e WHERE e.id = 1
-UNION ALL
-SELECT 1, e.uuid, 'https://picsum.photos/400/300?random=4' FROM events e WHERE e.id = 1;
+-- Sample photos removed - use EventGlimpse app to upload real photos to S3
+-- Photos will be stored with s3_key format: uploads/event-uuid/photo-id.ext
 
 CREATE INDEX idx_event_photos_event_id ON event_photos(event_id);
 CREATE INDEX idx_event_photos_event_uuid ON event_photos(event_uuid);
