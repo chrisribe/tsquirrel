@@ -42,7 +42,13 @@ async function buildLayer() {
   // Create zip using archiver
   console.log('📦 Creating layer zip...');
   
-  const outputFile = `${layerName}-layer.zip`;
+  // Ensure dist directory exists  
+  const distDir = 'dist';
+  if (!fs.existsSync(distDir)) {
+    fs.mkdirSync(distDir, { recursive: true });
+  }
+  
+  const outputFile = `${distDir}/${layerName}-layer.zip`;
   
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(outputFile);

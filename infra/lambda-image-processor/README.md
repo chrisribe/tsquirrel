@@ -47,7 +47,7 @@ npm run build-all
 ```bash
 aws lambda publish-layer-version \
   --layer-name sharp-layer \
-  --zip-file fileb://sharp-layer.zip \
+  --zip-file fileb://dist/sharp-layer.zip \
   --compatible-runtimes nodejs20.x
 ```
 
@@ -63,7 +63,7 @@ aws lambda create-function \
   --runtime nodejs20.x \
   --role arn:aws:iam::ACCOUNT:role/lambda-execution-role \
   --handler index.handler \
-  --zip-file fileb://lambda-package.zip \
+  --zip-file fileb://dist/lambda-package.zip \
   --layers arn:aws:lambda:REGION:ACCOUNT:layer:sharp-layer:VERSION
 ```
 

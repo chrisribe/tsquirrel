@@ -1,14 +1,16 @@
-const { createWriteStream } = require('fs');
+const { createWriteStream, mkdirSync } = require('fs');
 const archiver = require('archiver');
-const { join } = require('path');
 
 console.log('📦 Building Lambda function...');
 
-const output = createWriteStream('lambda-package.zip');
+// Ensure dist directory exists
+mkdirSync('dist', { recursive: true });
+
+const output = createWriteStream('dist/lambda-package.zip');
 const archive = archiver('zip', { zlib: { level: 9 } });
 
 output.on('close', () => {
-  console.log(`✅ Created lambda-package.zip (${(archive.pointer() / 1024).toFixed(2)} KB)`);
+  console.log(`✅ Created dist/lambda-package.zip (${(archive.pointer() / 1024).toFixed(2)} KB)`);
 });
 
 archive.on('error', (err) => {
