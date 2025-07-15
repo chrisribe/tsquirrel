@@ -4,5 +4,6 @@
 <%- include('./base-page.ejs', {
   header: include('./header.ejs'),
   body: include(template, pageData),
-  footer: include('./footer.ejs')
+  footer: include('./footer.ejs'),
+  pageAssets: pageData.pageAssets
 }) %>

@@ -11,8 +11,18 @@
   rel="stylesheet"
   href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css"
 >
+  <% if (typeof pageAssets !== 'undefined' && pageAssets.css) { %>
+    <% pageAssets.css.forEach(cssFile => { %>
+      <link rel="stylesheet" href="/static/css/<%= cssFile %>">
+    <% }); %>
+  <% } %>
   <script src="/static/js/htmx.min.js"></script>
   <script src="/static/js/main.js"></script>
+  <% if (typeof pageAssets !== 'undefined' && pageAssets.js) { %>
+    <% pageAssets.js.forEach(jsFile => { %>
+      <script src="/static/js/<%= jsFile %>"></script>
+    <% }); %>
+  <% } %>
 </head>
 <body>
   <%- header %>

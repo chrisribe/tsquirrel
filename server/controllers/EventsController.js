@@ -124,7 +124,14 @@ class EventsController {
         };
       });
       
-      res.respondWithTemplateOrJson({ event, photos: photosWithUrls }, 'events/gallery-page');
+      res.respondWithTemplateOrJson({ 
+        event, 
+        photos: photosWithUrls,
+        pageAssets: {
+          css: ['gallery.css'],
+          js: ['gallery.js']
+        }
+      }, 'events/gallery-page');
     } catch (error) {
       next(error);
     }
