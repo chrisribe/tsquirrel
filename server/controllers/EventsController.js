@@ -111,9 +111,20 @@ class EventsController {
         return res.status(404).respondWithTemplateOrJson({ error: 'Event not found' }, 'errors/general-error');
       }
       
-      const photos = await this.eventsDAO.getPhotosByEventUuid(eventUuid); 
+      const photos = await this.eventsDAO.getPhotosByEventUuid(eventUuid);
       
-      res.respondWithTemplateOrJson({ event, photos }, 'events/gallery-page');
+      // Generate S3 URLs for each photo using extension from s3_key
+      const photosWithUrls = photos.map(photo => {
+        // Extract extension from s3_key (e.g., "uploads/uuid/photo.jpg" -> ".jpg")
+        const extension = photo.s3_key ? photo.s3_key.substring(photo.s3_key.lastIndexOf('.')) : '.jpg';
+        const photoUrls = getPhotoUrls(eventUuid, photo.photo_id, extension);
+        return {
+          ...photo,
+          photo_url: photoUrls.display // Use display size for gallery
+        };
+      });
+      
+      res.respondWithTemplateOrJson({ event, photos: photosWithUrls }, 'events/gallery-page');
     } catch (error) {
       next(error);
     }
@@ -139,17 +150,19 @@ class EventsController {
 
       await this.eventsDAO.addPhoto(photoData);
 
-      // Generate URLs for immediate response (Lambda will process in background)
-      const photoUrls = getPhotoUrls(eventUuid, photoMetadata.photoId, photoMetadata.extension);
+      // Get all photo URLs including the immediately available uploaded version
+      const photoUrls = getPhotoUrls(eventUuid, photoMetadata.photoId, photoMetadata.extension, photoMetadata.s3Key);
 
-      res.status(201).json({
-        success: true,
-        photo: {
-          id: photoMetadata.photoId,
-          originalName: photoMetadata.originalName,
-          urls: photoUrls
-        }
-      });
+      // For HTMX requests, return the photo template to be inserted into the gallery
+      const photoForTemplate = {
+        photo_id: photoMetadata.photoId,
+        original_name: photoMetadata.originalName,
+        photo_url: photoUrls.uploaded // Show uploaded version immediately
+      };
+
+      res.status(201).respondWithTemplateOrJson({
+        photo: photoForTemplate
+      }, 'events/photo-item');
     } catch (error) {
       console.error('Photo upload error:', error);
       res.status(500).json({ error: 'Failed to upload photo' });

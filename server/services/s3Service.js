@@ -46,11 +46,12 @@ export const uploadToS3 = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
-export function getPhotoUrls(eventUuid, photoId, extension) {
+export function getPhotoUrls(eventUuid, photoId, extension, s3Key = null) {
   const baseUrl = `https://${BUCKET_NAME}.s3.amazonaws.com`;
   return {
     thumb: `${baseUrl}/thumbs/${eventUuid}/${photoId}${extension}`,
     display: `${baseUrl}/display/${eventUuid}/${photoId}${extension}`,
-    original: `${baseUrl}/originals/${eventUuid}/${photoId}${extension}`
+    original: `${baseUrl}/originals/${eventUuid}/${photoId}${extension}`,
+    uploaded: s3Key ? `${baseUrl}/${s3Key}` : `${baseUrl}/uploads/${eventUuid}/${photoId}${extension}`
   };
 }
