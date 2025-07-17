@@ -29,13 +29,15 @@ class EventsDAO {
     return result.rows[0];
   }
 
-  async searchEvents(searchTerm) {
+  async searchEvents(userId, searchTerm) {
     const result = await this.pool.query(
       `SELECT * FROM events 
       WHERE 
-        title ILIKE $1 OR description ILIKE $1 OR location ILIKE $1
+        user_id = $1 AND (
+          title ILIKE $2 OR description ILIKE $2 OR location ILIKE $2
+        )
       ORDER BY date DESC`,
-      [`%${searchTerm}%`]
+      [userId, `%${searchTerm}%`]
     );
     return result.rows;
   }
@@ -65,21 +67,7 @@ class EventsDAO {
     }
   }
 
-  async getPhotosByEventUuid(eventUuid) {
-    const client = await this.pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT ep.id, ep.event_id, ep.photo_url, ep.uploaded_at 
-        FROM event_photos ep 
-        JOIN events e ON ep.event_id = e.id 
-        WHERE e.uuid = $1 
-        ORDER BY ep.uploaded_at DESC
-      `, [eventUuid]);
-      return result.rows;
-    } finally {
-      client.release();
-    }
-  }
+
 
   async addPhotoToEvent(eventId, photoUrl) {
     const client = await this.pool.connect();
