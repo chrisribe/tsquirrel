@@ -1,0 +1,179 @@
+<% const { event, photos, formData } = pageData %>
+<% const isUpcoming = new Date(event.date) > new Date() %>
+
+<h2>Edit Event</h2>
+<% if (!isUpcoming) { %>
+  <p class="edit-help-text">
+    💡 <strong>Post-Event Editing:</strong> Add thank you notes, update descriptions with memories, or select the perfect cover photo from your uploaded pictures.
+  </p>
+<% } %>
+
+<!-- Tab Navigation -->
+<div class="tab-navigation">
+  <button type="button" class="tab-btn active" data-tab="details">
+    📝 Event Details
+  </button>
+  <% if (photos && photos.length > 0) { %>
+    <button type="button" class="tab-btn" data-tab="photo">
+      🖼️ Cover Photo
+    </button>
+  <% } %>
+  <button type="button" class="tab-btn" data-tab="advanced">
+    ⚙️ Advanced
+  </button>
+</div>
+
+<form id="editEventForm" 
+      hx-put="/events/<%= event.id %>" 
+      hx-target="#event-<%= event.id %>"
+      hx-swap="outerHTML"
+      hx-on::after-request="if(event.detail.successful) { document.getElementById('editEventModal').close(); }">
+
+  <!-- Error display area -->
+  <% if (pageData.error) { %>
+    <div class="error" role="alert">
+      <%= pageData.error %>
+    </div>
+  <% } %>
+
+  <!-- Tab 1: Event Details -->
+  <div class="tab-content active" id="tab-details">
+    <div class="form-section">
+      <h3>Basic Information</h3>
+      
+      <label for="edit-title">Title</label>
+      <input type="text" 
+             id="edit-title" 
+             name="title" 
+             value="<%= formData?.title || '' %>" 
+             required>
+
+      <label for="edit-description">Description</label>
+      <textarea id="edit-description" 
+                name="description" 
+                placeholder="<%= isUpcoming ? 'Describe your event...' : 'Add thank you notes, memories, or highlights from the event...' %>"><%= formData?.description || '' %></textarea>
+
+      <label for="edit-date">Date & Time</label>
+      <input type="datetime-local" 
+             id="edit-date" 
+             name="date" 
+             value="<%= formData?.date ? new Date(formData.date).toISOString().substring(0, 16) : '' %>" 
+             required>
+
+      <label for="edit-location">Location</label>
+      <input type="text" 
+             id="edit-location" 
+             name="location" 
+             value="<%= formData?.location || '' %>">
+    </div>
+  </div>
+
+  <!-- Tab 2: Cover Photo Selection -->
+  <% if (photos && photos.length > 0) { %>
+    <div class="tab-content" id="tab-photo">
+      <div class="form-section">
+        <h3>Cover Photo</h3>
+        <p class="help-text">Choose which photo represents this event on your dashboard</p>
+        
+        <div class="cover-photo-options">
+          <!-- Default option -->
+          <label class="photo-option">
+            <input type="radio" 
+                   name="event_picture" 
+                   value="" 
+                   <%= !formData?.event_picture ? 'checked' : '' %>>
+            <div class="photo-preview default-photo">
+              <img src="/static/img/selfie-friends.jpg" alt="Default">
+              <span class="photo-label">Default</span>
+            </div>
+          </label>
+
+          <!-- Auto-select first photo option -->
+          <label class="photo-option">
+            <input type="radio" 
+                   name="event_picture" 
+                   value="auto" 
+                   <%= formData?.event_picture === 'auto' ? 'checked' : '' %>>
+            <div class="photo-preview auto-photo">
+              <img src="<%= photos[0].photo_url %>" alt="First Photo">
+              <span class="photo-label">First Photo</span>
+            </div>
+          </label>
+
+          <!-- Individual photo options -->
+          <% photos.forEach(photo => { %>
+            <label class="photo-option">
+              <input type="radio" 
+                     name="event_picture" 
+                     value="<%= photo.photo_url %>" 
+                     <%= formData?.event_picture === photo.photo_url ? 'checked' : '' %>>
+              <div class="photo-preview">
+                <img src="<%= photo.photo_url %>" alt="Photo Option">
+                <span class="photo-label">Custom</span>
+              </div>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- Tab 3: Advanced Options -->
+  <div class="tab-content" id="tab-advanced">
+    <div class="form-section">
+      <h3>Additional Details</h3>
+      
+      <label for="edit-category">Category</label>
+      <select id="edit-category" name="category">
+        <option value="">Select category...</option>
+        <option value="birthday" <%= formData?.category === 'birthday' ? 'selected' : '' %>>Birthday</option>
+        <option value="wedding" <%= formData?.category === 'wedding' ? 'selected' : '' %>>Wedding</option>
+        <option value="party" <%= formData?.category === 'party' ? 'selected' : '' %>>Party</option>
+        <option value="meeting" <%= formData?.category === 'meeting' ? 'selected' : '' %>>Meeting</option>
+        <option value="conference" <%= formData?.category === 'conference' ? 'selected' : '' %>>Conference</option>
+        <option value="other" <%= formData?.category === 'other' ? 'selected' : '' %>>Other</option>
+      </select>
+
+      <label for="edit-capacity">Maximum Attendees</label>
+      <input type="number" 
+             id="edit-capacity" 
+             name="capacity" 
+             min="1"
+             placeholder="Optional"
+             value="<%= formData?.capacity || '' %>">
+
+      <label for="edit-tags">Tags</label>
+      <input type="text" 
+             id="edit-tags" 
+             name="tags" 
+             placeholder="e.g. family, celebration, work (comma-separated)"
+             value="<%= formData?.tags || '' %>">
+      <small class="field-help">Use comma-separated keywords to categorize your event. These help organize and filter events.</small>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="button" onclick="document.getElementById('editEventModal').close()" class="secondary">
+      Cancel
+    </button>
+    <button type="submit" class="primary">
+      Update Event
+    </button>
+  </div>
+</form>
+
+<script>
+  // Enhanced error handling and modal closing
+  document.getElementById('editEventForm').addEventListener('htmx:error', function(evt) {
+    console.error('Edit form error:', evt.detail);
+    document.getElementById('editEventForm').innerHTML = evt.detail.errorInfo.xhr.responseText || 
+    '<div class="error">Network error. Please try again.</div>';
+  });
+
+  // Force close modal on successful update
+  document.getElementById('editEventForm').addEventListener('htmx:afterOnLoad', function(evt) {
+    if (evt.detail.xhr.status === 200) {
+      document.getElementById('editEventModal').close();
+    }
+  });
+</script>

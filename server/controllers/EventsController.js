@@ -9,8 +9,21 @@ class EventsController {
   async getAllEvents(req, res, next, templatePath = 'events-page') {
     try {
       const userId = req.session.user.id; // Assuming req.user contains the logged-in user's info
-      const events = await this.eventsDAO.getEventsByUserId(userId);
-      res.respondWithTemplateOrJson({events}, templatePath);
+      
+      // Get events categorized by status with first photos
+      const upcomingEvents = await this.eventsDAO.getUpcomingEventsWithFirstPhotos(userId);
+      const pastEvents = await this.eventsDAO.getPastEventsWithFirstPhotos(userId);
+      const eventCounts = await this.eventsDAO.getEventCountsByUserId(userId);
+      
+      // For backward compatibility, also provide all events
+      const events = [...upcomingEvents, ...pastEvents];
+      
+      res.respondWithTemplateOrJson({
+        events,
+        upcomingEvents,
+        pastEvents,
+        eventCounts
+      }, templatePath);
     } catch (error) {
       next(error);
     }
@@ -19,7 +32,7 @@ class EventsController {
   async addEvent(req, res, next) {
     try {
       const userId = req.session.user.id;
-      const { title, description, date, location } = req.body;
+      const { title, description, date, location, category, tags } = req.body;
       
       // Validation with specific error messages
       if (!title) {
@@ -27,7 +40,7 @@ class EventsController {
         res.setHeader('HX-Reswap', 'innerHTML');
         return res.status(400).respondWithTemplateOrJson({
            error: 'Event title is required',
-           formData: {title, description, date, location}
+           formData: {title, description, date, location, category, tags}
           }, 
           'events/event-form-add'
         );
@@ -36,20 +49,21 @@ class EventsController {
       if (!date) {
         return res.status(400).respondWithTemplateOrJson({
             error: 'Event date is required',
-            formData: {title, description, date, location}
+            formData: {title, description, date, location, category, tags}
           }, 
           'events/event-form-add'
         );
       }
       
-      let eventData = new Event({ title, description, date, location, userId });
-      const eventId = await this.eventsDAO.addEvent(userId, eventData);
-      eventData.id = eventId; // Set the ID on the eventData object
-      //console.log('New event created:', eventData);
+      let eventData = new Event({ title, description, date, location, category, tags, userId });
+      const newEvent = await this.eventsDAO.addEvent(userId, eventData);
+      //console.log('New event created:', newEvent);
 
-      // Return only the new event
+      // Return only the new event with proper eventType
+      const eventType = new Date(newEvent.date) > new Date() ? 'upcoming' : 'past';
       res.status(201).respondWithTemplateOrJson({
-          event : eventData
+          event : newEvent,
+          eventType : eventType
         }, 
         'events/event-item'
       );
@@ -69,7 +83,42 @@ class EventsController {
 
       const eventData = { ...req.body, userId };
       const updatedEvent = await this.eventsDAO.updateEvent(eventId, eventData);
-      res.json(updatedEvent);
+      
+      // Return updated event with first photo for HTMX response
+      const eventWithPhoto = await this.eventsDAO.getEventWithFirstPhoto(eventId);
+      const eventType = new Date(eventWithPhoto.date) > new Date() ? 'upcoming' : 'past';
+      
+      res.respondWithTemplateOrJson({
+        event: eventWithPhoto,
+        eventType: eventType
+      }, 'events/event-item');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getEventForEdit(req, res, next) {
+    try {
+      const userId = req.session.user.id;
+      const eventId = req.params.id;
+      
+      const event = await this.eventsDAO.getEventWithFirstPhoto(eventId);
+      
+      if (!event || event.user_id !== userId) {
+        return res.status(404).respondWithTemplateOrJson(
+          { error: 'Event not found' }, 
+          'errors/general-error'
+        );
+      }
+      
+      // Get photos for cover selection
+      const photos = await this.eventsDAO.getPhotosByEventId(eventId);
+      
+      res.respondWithTemplateOrJson({
+        event,
+        photos,
+        formData: event
+      }, 'events/event-edit-modal');
     } catch (error) {
       next(error);
     }
@@ -89,12 +138,58 @@ class EventsController {
   async searchEvents(req, res, next, templatePath = 'events/events-list') {
     try {
       const searchTerm = req.query.searchTerm || '';
-      const events = await this.eventsDAO.searchEvents(searchTerm);
+      const userId = req.session.user.id;
+      
+      if (!searchTerm.trim()) {
+        // If no search term, return all events in sectioned format with photos
+        const upcomingEvents = await this.eventsDAO.getUpcomingEventsWithFirstPhotos(userId);
+        const pastEvents = await this.eventsDAO.getPastEventsWithFirstPhotos(userId);
+        const eventCounts = await this.eventsDAO.getEventCountsByUserId(userId);
+        const events = [...upcomingEvents, ...pastEvents];
+        
+        return res.respondWithTemplateOrJson({ 
+          events, 
+          upcomingEvents, 
+          pastEvents, 
+          eventCounts 
+        }, templatePath);
+      }
+      
+      // Search all events then categorize and add photos
+      const allSearchResults = await this.eventsDAO.searchEvents(searchTerm);
+      
+      // Filter by user and categorize by date
+      const userEvents = allSearchResults.filter(event => event.user_id === userId);
+      const now = new Date();
+      
+      // Get first photos for search results
+      const eventsWithPhotos = await Promise.all(
+        userEvents.map(async (event) => {
+          const eventWithPhoto = await this.eventsDAO.getEventWithFirstPhoto(event.id);
+          return eventWithPhoto || event;
+        })
+      );
+      
+      const upcomingEvents = eventsWithPhotos.filter(event => new Date(event.date) > now)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      const pastEvents = eventsWithPhotos.filter(event => new Date(event.date) <= now)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      const eventCounts = {
+        total: eventsWithPhotos.length,
+        upcoming: upcomingEvents.length,
+        past: pastEvents.length
+      };
 
       console.log('Search term:', searchTerm);
-      console.log('Events found:', events.length, 'events');
+      console.log('Events found:', eventsWithPhotos.length, 'events');
       
-      res.respondWithTemplateOrJson({ events }, templatePath);
+      res.respondWithTemplateOrJson({ 
+        events: eventsWithPhotos, 
+        upcomingEvents, 
+        pastEvents, 
+        eventCounts 
+      }, templatePath);
     } catch (err) {
       res.status(500).json({ error: err.message });
       next(err);
