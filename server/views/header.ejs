@@ -22,10 +22,8 @@
       <ul>
         <% if (user) { %>
           <li><a href="/events">My Events</a></li>
-          <li><a href="/profile">Profile</a></li>
           <li class="menu-divider"></li>
           <li><a href="/about">About</a></li>
-          <li><a href="/contact">Contact</a></li>
           <li class="menu-divider"></li>
           <li>
             <form hx-post="/auth/logout" style="margin: 0; padding: 0;">
@@ -37,7 +35,6 @@
           <li><a href="/auth/login" class="menu-auth">Sign In</a></li>
           <li class="menu-divider"></li>
           <li><a href="/about">About</a></li>
-          <li><a href="/contact">Contact</a></li>
         <% } %>
       </ul>
     </div>
