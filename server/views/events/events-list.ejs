@@ -1,0 +1,13 @@
+<% const {events} = pageData %>
+
+<% if (events && events.length > 0) { %>
+  <ul>
+    <% events.forEach(event => { %>
+      
+      <%- include('event-item', { pageData: { event } }) %>
+
+    <% }) %>
+  </ul>
+<% } else { %>
+  <p>No events available.</p>
+<% } %>

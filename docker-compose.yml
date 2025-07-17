@@ -1,4 +1,3 @@
-version: '3'
 services:
   db:
     build:
@@ -10,27 +9,27 @@ services:
       POSTGRES_DB: mydb
     ports:
       - "5432:5432"
-    # To persist the data externally, uncomment the following lines
-    #volumes:
-    #  - ./db/db_data:/var/lib/postgresql/data
-  api:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dockeruser -d mydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+      
+  server:
     build:
-      context: ./api
-      dockerfile: api.dockerfile
-    ports:
-      - "3000:3000"
-    depends_on:
-      - db
-    environment:
-      DATABASE_URL: postgres://dockeruser:${DB_PASSWORD}@db:5432/mydb
-  web:
-    build:
-      context: ./web
-      dockerfile: web-htmx.dockerfile
+      context: ./server
+      dockerfile: dockerfile
     ports:
       - "80:80"
     depends_on:
-      - api
+      db:
+        condition: service_healthy
     environment:
-      PUBLIC_API_URL: http://localhost:3000
-      PUBLIC_TEST: "test123"
+      DATABASE_URL: postgres://dockeruser:${DB_PASSWORD}@db:5432/mydb
+      NODE_ENV: ${NODE_ENV:-development}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+    restart: unless-stopped

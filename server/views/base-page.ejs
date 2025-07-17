@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventGlimpse</title>
+  <link rel="stylesheet" href="/static/css/pico.min.css">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/form-card.css">
+  <link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css"
+>
+  <% if (typeof pageAssets !== 'undefined' && pageAssets.css) { %>
+    <% pageAssets.css.forEach(cssFile => { %>
+      <link rel="stylesheet" href="/static/css/<%= cssFile %>">
+    <% }); %>
+  <% } %>
+  <script src="/static/js/htmx.min.js"></script>
+  <script src="/static/js/main.js"></script>
+  <% if (typeof pageAssets !== 'undefined' && pageAssets.js) { %>
+    <% pageAssets.js.forEach(jsFile => { %>
+      <script src="/static/js/<%= jsFile %>"></script>
+    <% }); %>
+  <% } %>
+</head>
+<body>
+  <%- header %>
+  <div class="container content">
+      <%- body %>
+  </div>
+  <%- footer %>
+</body>
+</html>
+
+
+

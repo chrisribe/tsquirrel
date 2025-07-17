@@ -1,0 +1,41 @@
+<main class="form-card-box">
+  <div class="card">
+    <div class="image-box">
+      <img src="/static/img/selfie-friends.jpg" alt="Friends selfie">
+    </div>
+    <div class="content-box">
+      <h1>Register</h1>
+      <form 
+        hx-post="/auth/register" 
+        hx-target="#message" 
+        hx-swap="innerHTML" 
+        hx-on="htmx:responseError"
+        data-redirect-on-success="/">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+
+        <label for="confirmPassword">Confirm Password:</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+
+        <input type="submit" value="Register" class="button">
+      </form>
+      <div id="message"></div>      
+    </div>
+  </div>
+</main>
+<script>
+  document.getElementById('registerForm').onsubmit = function(event) {
+      var password = document.getElementById('password').value;
+      var confirmPassword = document.getElementById('confirmPassword').value;
+      if (password !== confirmPassword) {
+          event.preventDefault();
+          document.getElementById('message').innerText = 'Passwords do not match!';
+      }
+  };
+</script>
