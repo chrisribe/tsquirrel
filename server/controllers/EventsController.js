@@ -88,11 +88,9 @@ class EventsController {
 
   async searchEvents(req, res, next, templatePath = 'events/events-list') {
     try {
-      const searchTerm = req.query.searchTerm || '';
-      const events = await this.eventsDAO.searchEvents(searchTerm);
-
-      console.log('Search term:', searchTerm);
-      console.log('Events found:', events.length, 'events');
+      const userId = req.session.user.id;
+      const searchTerm = req.query.q || '';
+      const events = await this.eventsDAO.searchEvents(userId, searchTerm);
       
       res.respondWithTemplateOrJson({ events }, templatePath);
     } catch (err) {
