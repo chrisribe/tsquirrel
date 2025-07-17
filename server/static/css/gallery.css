@@ -19,19 +19,106 @@
   color: #333;
 }
 
-.gallery-container .photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
+/* FlexImages Gallery Styles */
+.gallery-container .flex-images {
   margin-bottom: 2rem;
+  min-height: 0; /* Allow empty container to collapse */
 }
 
-.gallery-container .photo-grid img {
+.gallery-container .flex-images:not(:empty) + .empty-state {
+  display: none; /* Hide empty state when gallery has photos */
+}
+
+.gallery-container .flex-images .item {
+  position: relative;
+  float: left;
+  margin: 2px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.gallery-container .flex-images .item:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.gallery-container .flex-images .item img {
   width: 100%;
-  height: 200px;
+  height: 100%;
   object-fit: cover;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: block;
+  border-radius: 4px;
+}
+
+/* Lightbox styles */
+.lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  display: none;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.lightbox.active {
+  display: flex;
+}
+
+.lightbox-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-content img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  color: white;
+  font-size: 40px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+.lightbox-prev,
+.lightbox-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: white;
+  font-size: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 10px;
+  user-select: none;
+  z-index: 1001;
+}
+
+.lightbox-prev {
+  left: 20px;
+}
+
+.lightbox-next {
+  right: 20px;
 }
 
 .gallery-container .empty-state {
@@ -46,8 +133,8 @@
 }
 
 .gallery-container .upload-section {
-  border-top: 1px solid #eee;
-  padding-top: 2rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
   max-width: 400px;
   margin: 0 auto;
 }
@@ -61,7 +148,7 @@
 .gallery-container .upload-btn {
   background: #007bff;
   color: white;
-  padding: 1.2rem;
+  padding: 1rem;
   border-radius: 12px;
   cursor: pointer;
   font-size: 1.1rem;

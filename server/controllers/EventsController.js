@@ -120,7 +120,9 @@ class EventsController {
         const photoUrls = getPhotoUrls(eventUuid, photo.photo_id, extension);
         return {
           ...photo,
-          photo_url: photoUrls.display // Use display size for gallery
+          thumb_url: photoUrls.thumb,       // 200px - Fast gallery loading
+          photo_url: photoUrls.display,     // 800px - Lightbox preview
+          original_url: photoUrls.original  // Full res - Lightbox zoom/download
         };
       });
       
@@ -129,7 +131,11 @@ class EventsController {
         photos: photosWithUrls,
         pageAssets: {
           css: ['gallery.css'],
-          js: ['gallery.js']
+          js: [
+            'jquery-3.3.1.min.js',
+            'jquery.flex-images.js',
+            'gallery.js'
+          ]
         }
       }, 'events/gallery-page');
     } catch (error) {
@@ -141,17 +147,24 @@ class EventsController {
     try {
       const eventUuid = req.params.uuid;
       const { photoMetadata } = req;
+      const { width, height } = req.body; // Get dimensions from form
       
       if (!photoMetadata) {
         return res.status(400).json({ error: 'No photo metadata found' });
       }
 
-      // Save photo metadata to database
+      // Parse dimensions with better error handling
+      const parsedWidth = width ? parseInt(width, 10) : 400;
+      const parsedHeight = height ? parseInt(height, 10) : 300;
+
+      // Save photo metadata to database with dimensions
       const photoData = {
         event_uuid: eventUuid,
         photo_id: photoMetadata.photoId,
         original_name: photoMetadata.originalName,
         s3_key: photoMetadata.s3Key,
+        width: parsedWidth,
+        height: parsedHeight,
         uploaded_at: new Date()
       };
 
@@ -164,7 +177,11 @@ class EventsController {
       const photoForTemplate = {
         photo_id: photoMetadata.photoId,
         original_name: photoMetadata.originalName,
-        photo_url: photoUrls.original // Use original URL (processed quickly by Lambda)
+        thumb_url: photoUrls.thumb,       // 200px - Fast gallery loading
+        photo_url: photoUrls.display,     // 800px - Lightbox preview  
+        original_url: photoUrls.original, // Full res - Lightbox zoom/download
+        width: photoData.width,
+        height: photoData.height
       };
 
       res.status(201).respondWithTemplateOrJson({

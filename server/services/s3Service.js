@@ -1,8 +1,8 @@
-import { S3Client } from '@aws-sdk/client-s3';
-import multer from 'multer';
-import multerS3 from 'multer-s3';
-import crypto from 'crypto';
-import path from 'path';
+const { S3Client } = require('@aws-sdk/client-s3');
+const multer = require('multer');
+const multerS3 = require('multer-s3');
+const crypto = require('crypto');
+const path = require('path');
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION || 'us-east-1'
@@ -11,7 +11,7 @@ const s3 = new S3Client({
 const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'eventglimpse';
 const UPLOAD_PREFIX = 'uploads/';
 
-export const uploadToS3 = multer({
+const uploadToS3 = multer({
   storage: multerS3({
     s3: s3,
     bucket: BUCKET_NAME,
@@ -46,7 +46,7 @@ export const uploadToS3 = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
-export function getPhotoUrls(eventUuid, photoId, extension, s3Key = null) {
+function getPhotoUrls(eventUuid, photoId, extension, s3Key = null) {
   const baseUrl = `https://${BUCKET_NAME}.s3.amazonaws.com`;
   return {
     thumb: `${baseUrl}/thumbs/${eventUuid}/${photoId}${extension}`,
@@ -55,3 +55,8 @@ export function getPhotoUrls(eventUuid, photoId, extension, s3Key = null) {
     uploaded: s3Key ? `${baseUrl}/${s3Key}` : `${baseUrl}/uploads/${eventUuid}/${photoId}${extension}`
   };
 }
+
+module.exports = {
+  uploadToS3,
+  getPhotoUrls
+};

@@ -39,6 +39,8 @@ CREATE TABLE event_photos (
     original_name VARCHAR(255), -- Original filename from upload
     s3_key VARCHAR(512), -- Full S3 path (uploads/event-uuid/photo-id.ext)
     photo_url VARCHAR(255), -- Deprecated but kept for backward compatibility
+    width INTEGER DEFAULT 400, -- Image width for flexImages layout
+    height INTEGER DEFAULT 300, -- Image height for flexImages layout
     uploaded_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 

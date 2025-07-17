@@ -34,8 +34,14 @@ router.get('/search', (req, res, next) => {
   req.eventsController.searchEvents(req, res, next, 'events/events-list');
 });
 
-// Photo upload routes (authenticated)
-router.post('/:uuid/photos', uploadToS3.single('photoFile'), (req, res, next) => req.eventsController.uploadPhotos(req, res, next));
+// Photo upload routes (authenticated) 
+// Note: uploadToS3 middleware adds photoMetadata to req before controller
+router.post('/:uuid/photos', uploadToS3.single('photoFile'), (req, res, next) => {
+  // uploadToS3 middleware has processed the file and added:
+  // - req.photoMetadata: { photoId, originalName, s3Key, extension }
+  // - req.body: { width, height } from client-side extraction
+  req.eventsController.uploadPhotos(req, res, next);
+});
 router.delete('/:uuid/photos/:photoId', (req, res, next) => req.eventsController.deletePhoto(req, res, next));
 
 

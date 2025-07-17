@@ -4,11 +4,36 @@
     <a href="/events" class="back-btn">← Back</a>
   </div>
 
+  <div class="upload-section">
+    <form 
+      id="uploadForm"
+      hx-post="/events/<%= pageData.event.uuid %>/photos"
+      hx-encoding="multipart/form-data"
+      hx-target="#flexGallery"
+      hx-swap="beforeend">
+      
+      <label for="photo" class="upload-btn" id="uploadLabel">
+        📷 Upload Photos
+        <input type="file" id="photo" name="photoFile" accept="image/*" required hidden>
+      </label>
+      
+      <div class="upload-status" id="uploadStatus" style="display: none;">
+        <div class="uploading">📤 Uploading...</div>
+      </div>
+    </form>
+  </div>
   <div class="photos-section">
-    <div class="photo-grid">
+    <div class="flex-images" id="flexGallery">
       <% if (pageData.photos && pageData.photos.length > 0) { %>
-        <% pageData.photos.forEach(photo => { %>
-          <img src="<%= photo.photo_url %>" alt="Photo" loading="lazy">
+        <% pageData.photos.forEach((photo, index) => { %>
+          <div class="item" data-w="<%= photo.width || 400 %>" data-h="<%= photo.height || 300 %>">
+            <img src="<%= photo.thumb_url || photo.photo_url %>" 
+                 alt="Photo <%= index + 1 %>" 
+                 loading="lazy" 
+                 data-lightbox="gallery"
+                 data-display="<%= photo.photo_url %>"
+                 data-original="<%= photo.original_url || photo.photo_url %>">
+          </div>
         <% }); %>
       <% } %>
     </div>
@@ -21,22 +46,5 @@
     <% } %>
   </div>
 
-  <div class="upload-section">
-    <form 
-      id="uploadForm"
-      hx-post="/events/<%= pageData.event.uuid %>/photos"
-      hx-encoding="multipart/form-data"
-      hx-target=".photo-grid"
-      hx-swap="beforeend">
-      
-      <label for="photo" class="upload-btn" id="uploadLabel">
-        📷 Choose & Upload Photo
-        <input type="file" id="photo" name="photoFile" accept="image/*" required hidden>
-      </label>
-      
-      <div class="upload-status" id="uploadStatus" style="display: none;">
-        <div class="uploading">📤 Uploading...</div>
-      </div>
-    </form>
-  </div>
+
 </div>

@@ -116,9 +116,9 @@ class EventsDAO {
     const client = await this.pool.connect();
     try {
       const result = await client.query(
-        `INSERT INTO event_photos (event_uuid, photo_id, original_name, s3_key, uploaded_at) 
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [photoData.event_uuid, photoData.photo_id, photoData.original_name, photoData.s3_key, photoData.uploaded_at]
+        `INSERT INTO event_photos (event_uuid, photo_id, original_name, s3_key, width, height, uploaded_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [photoData.event_uuid, photoData.photo_id, photoData.original_name, photoData.s3_key, photoData.width, photoData.height, photoData.uploaded_at]
       );
       return result.rows[0];
     } finally {
@@ -148,6 +148,8 @@ class EventsDAO {
           original_name, 
           s3_key, 
           photo_url,
+          width,
+          height,
           uploaded_at 
         FROM event_photos 
         WHERE event_uuid = $1 
