@@ -9,6 +9,34 @@ class EventsDAO {
     return result.rows;
   }
 
+  async getUpcomingEventsByUserId(userId) {
+    const result = await this.pool.query(
+      'SELECT * FROM events WHERE user_id = $1 AND date > CURRENT_TIMESTAMP ORDER BY date ASC', 
+      [userId]
+    );
+    return result.rows;
+  }
+
+  async getPastEventsByUserId(userId) {
+    const result = await this.pool.query(
+      'SELECT * FROM events WHERE user_id = $1 AND date <= CURRENT_TIMESTAMP ORDER BY date DESC', 
+      [userId]
+    );
+    return result.rows;
+  }
+
+  async getEventCountsByUserId(userId) {
+    const result = await this.pool.query(
+      `SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN date > CURRENT_TIMESTAMP THEN 1 END) as upcoming,
+        COUNT(CASE WHEN date <= CURRENT_TIMESTAMP THEN 1 END) as past
+       FROM events WHERE user_id = $1`, 
+      [userId]
+    );
+    return result.rows[0];
+  }
+
   async addEvent(userId, { title, description, date, location, category, capacity, status, organizer, tags, event_picture }) {
     if (!userId) throw new Error('User ID is required');
     
@@ -20,7 +48,73 @@ class EventsDAO {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [userId, title, description, date, location, category, capacity, status, organizer, tags, event_picture]
     );
-    return result.rows[0].id;
+    return result.rows[0];
+  }
+
+  async updateEvent(eventId, { title, description, date, location, category, capacity, status, organizer, tags, event_picture }) {
+    const result = await this.pool.query(
+      `UPDATE events SET 
+        title = $2, description = $3, date = $4, location = $5, 
+        category = $6, capacity = $7, status = $8, organizer = $9,
+        tags = $10, event_picture = $11
+       WHERE id = $1 RETURNING *`,
+      [eventId, title, description, date, location, category, capacity, status, organizer, tags, event_picture]
+    );
+    return result.rows[0];
+  }
+
+  async getEventWithFirstPhoto(eventId) {
+    const result = await this.pool.query(
+      `SELECT e.*, 
+              (SELECT photo_url FROM event_photos 
+               WHERE event_id = e.id 
+               ORDER BY uploaded_at ASC LIMIT 1) as first_photo_url
+       FROM events e WHERE e.id = $1`,
+      [eventId]
+    );
+    return result.rows[0];
+  }
+
+  async getEventsWithFirstPhotos(userId) {
+    const result = await this.pool.query(
+      `SELECT e.*, 
+              (SELECT photo_url FROM event_photos 
+               WHERE event_id = e.id 
+               ORDER BY uploaded_at ASC LIMIT 1) as first_photo_url
+       FROM events e 
+       WHERE e.user_id = $1 
+       ORDER BY e.date DESC`,
+      [userId]
+    );
+    return result.rows;
+  }
+
+  async getUpcomingEventsWithFirstPhotos(userId) {
+    const result = await this.pool.query(
+      `SELECT e.*, 
+              (SELECT photo_url FROM event_photos 
+               WHERE event_id = e.id 
+               ORDER BY uploaded_at ASC LIMIT 1) as first_photo_url
+       FROM events e 
+       WHERE e.user_id = $1 AND e.date > CURRENT_TIMESTAMP 
+       ORDER BY e.date ASC`,
+      [userId]
+    );
+    return result.rows;
+  }
+
+  async getPastEventsWithFirstPhotos(userId) {
+    const result = await this.pool.query(
+      `SELECT e.*, 
+              (SELECT photo_url FROM event_photos 
+               WHERE event_id = e.id 
+               ORDER BY uploaded_at ASC LIMIT 1) as first_photo_url
+       FROM events e 
+       WHERE e.user_id = $1 AND e.date <= CURRENT_TIMESTAMP 
+       ORDER BY e.date DESC`,
+      [userId]
+    );
+    return result.rows;
   }
 
   async deleteEvent(userId, eventId) {
@@ -33,7 +127,11 @@ class EventsDAO {
     const result = await this.pool.query(
       `SELECT * FROM events 
       WHERE 
-        title ILIKE $1 OR description ILIKE $1 OR location ILIKE $1
+        title ILIKE $1 OR 
+        description ILIKE $1 OR 
+        location ILIKE $1 OR 
+        tags ILIKE $1 OR 
+        category ILIKE $1
       ORDER BY date DESC`,
       [`%${searchTerm}%`]
     );

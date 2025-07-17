@@ -20,4 +20,21 @@
 <input type="text" id="location" name="location" 
         value="<%= pageData.formData?.location || '' %>">
 
+<label for="category">Category</label>
+<select id="category" name="category">
+  <option value="">Select category...</option>
+  <option value="birthday" <%= pageData.formData?.category === 'birthday' ? 'selected' : '' %>>Birthday</option>
+  <option value="wedding" <%= pageData.formData?.category === 'wedding' ? 'selected' : '' %>>Wedding</option>
+  <option value="party" <%= pageData.formData?.category === 'party' ? 'selected' : '' %>>Party</option>
+  <option value="meeting" <%= pageData.formData?.category === 'meeting' ? 'selected' : '' %>>Meeting</option>
+  <option value="conference" <%= pageData.formData?.category === 'conference' ? 'selected' : '' %>>Conference</option>
+  <option value="other" <%= pageData.formData?.category === 'other' ? 'selected' : '' %>>Other</option>
+</select>
+
+<label for="tags">Tags</label>
+<input type="text" id="tags" name="tags" 
+        placeholder="e.g. family, celebration, work (comma-separated)"
+        value="<%= pageData.formData?.tags || '' %>">
+<small class="field-help">Use comma-separated keywords to categorize your event</small>
+
 <button type="submit" class="button primary">Add Event</button>
