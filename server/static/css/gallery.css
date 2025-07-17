@@ -1,0 +1,190 @@
+/* Gallery Page Styles */
+.gallery-container .gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.gallery-container .gallery-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.gallery-container .back-btn {
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  background: #f0f0f0;
+  border-radius: 8px;
+  color: #333;
+}
+
+/* FlexImages Gallery Styles */
+.gallery-container .flex-images {
+  margin-bottom: 2rem;
+  min-height: 0; /* Allow empty container to collapse */
+}
+
+.gallery-container .flex-images:not(:empty) + .empty-state {
+  display: none; /* Hide empty state when gallery has photos */
+}
+
+.gallery-container .flex-images .item {
+  position: relative;
+  float: left;
+  margin: 2px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.gallery-container .flex-images .item:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.gallery-container .flex-images .item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 4px;
+}
+
+/* Lightbox styles */
+.lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  display: none;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.lightbox.active {
+  display: flex;
+}
+
+.lightbox-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-content img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  color: white;
+  font-size: 40px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+.lightbox-prev,
+.lightbox-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: white;
+  font-size: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 10px;
+  user-select: none;
+  z-index: 1001;
+}
+
+.lightbox-prev {
+  left: 20px;
+}
+
+.lightbox-next {
+  right: 20px;
+}
+
+.gallery-container .empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #666;
+}
+
+.gallery-container .hint {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.gallery-container .upload-section {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.gallery-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gallery-container .upload-btn {
+  background: #007bff;
+  color: white;
+  padding: 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  text-align: center;
+  width: 100%;
+  display: block;
+  transition: all 0.3s ease;
+  border: 2px dashed transparent;
+}
+
+.gallery-container .upload-btn:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+}
+
+.gallery-container .upload-status {
+  text-align: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  color: #666;
+}
+
+.gallery-container .uploading {
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .gallery-container .upload-section {
+    max-width: 100%;
+    padding: 1rem;
+  }
+  
+  .gallery-container .upload-btn {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+}

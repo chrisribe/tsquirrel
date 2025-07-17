@@ -1,0 +1,10 @@
+<% const {users} = pageData %>
+<ul>
+  <% for (let user of users) { %>
+    <li>
+      <strong>Username:</strong> <%= user.username %><br>
+      <strong>Email:</strong> <%= user.email %><br>
+      <strong>Role:</strong> <%= user.role %><br>
+    </li>
+  <% } %>
+</ul>
