@@ -34,7 +34,7 @@ class EventsDAO {
       `SELECT * FROM events 
       WHERE 
         user_id = $1 AND (
-          title ILIKE $2 OR description ILIKE $2 OR location ILIKE $2
+          title ILIKE $2 OR description ILIKE $2 OR location ILIKE $2 OR tags ILIKE $2
         )
       ORDER BY date DESC`,
       [userId, `%${searchTerm}%`]
