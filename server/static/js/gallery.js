@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', function() {
   initLightbox();
   
   initUploadHandler();
+  
+  initCoverPhotoHandlers();
 });
 
 // Centralized gallery management
@@ -168,6 +170,25 @@ function initLightbox() {
           <span class="lightbox-close">&times;</span>
           <div class="lightbox-content">
             <img id="lightbox-img" src="" alt="">
+            <div class="lightbox-controls">
+              <button class="lightbox-download" title="Download Original">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7,10 12,15 17,10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download
+              </button>
+              <button class="lightbox-zoom" title="View Original Size">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="m21 21-4.35-4.35"/>
+                  <line x1="15" y1="9" x2="9" y2="15"/>
+                  <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                Original
+              </button>
+            </div>
           </div>
           <span class="lightbox-prev">&#10094;</span>
           <span class="lightbox-next">&#10095;</span>
@@ -187,6 +208,8 @@ function initLightbox() {
       const closeBtn = document.querySelector('.lightbox-close');
       const prevBtn = document.querySelector('.lightbox-prev');
       const nextBtn = document.querySelector('.lightbox-next');
+      const downloadBtn = document.querySelector('.lightbox-download');
+      const zoomBtn = document.querySelector('.lightbox-zoom');
       
       // Close lightbox
       closeBtn.addEventListener('click', () => this.close());
@@ -198,6 +221,12 @@ function initLightbox() {
       prevBtn.addEventListener('click', () => this.prev());
       nextBtn.addEventListener('click', () => this.next());
       
+      // Download original image
+      downloadBtn.addEventListener('click', () => this.downloadOriginal());
+      
+      // Toggle between display and original size
+      zoomBtn.addEventListener('click', () => this.toggleOriginal());
+      
       // Keyboard navigation
       document.addEventListener('keydown', (e) => {
         if (!this.lightbox.classList.contains('active')) return;
@@ -206,6 +235,8 @@ function initLightbox() {
           case 'Escape': this.close(); break;
           case 'ArrowLeft': this.prev(); break;
           case 'ArrowRight': this.next(); break;
+          case 'd': case 'D': this.downloadOriginal(); break;
+          case 'o': case 'O': this.toggleOriginal(); break;
         }
       });
     },
@@ -277,6 +308,72 @@ function initLightbox() {
       this.currentIndex = (this.currentIndex + 1) % this.images.length;
       const originalUrl = this.images[this.currentIndex].dataset.original || this.images[this.currentIndex].src;
       this.lightboxImg.src = originalUrl;
+    },
+    
+    downloadOriginal() {
+      const img = this.images[this.currentIndex];
+      const originalUrl = img.dataset.original || img.dataset.display || img.src;
+      const originalName = img.alt || `photo-${this.currentIndex + 1}`;
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = originalUrl;
+      link.download = originalName;
+      link.target = '_blank';
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Show feedback
+      const downloadBtn = document.querySelector('.lightbox-download');
+      const originalText = downloadBtn.innerHTML;
+      downloadBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20,6 9,17 4,12"/>
+        </svg>
+        Downloaded!
+      `;
+      
+      setTimeout(() => {
+        downloadBtn.innerHTML = originalText;
+      }, 2000);
+    },
+    
+    toggleOriginal() {
+      const img = this.images[this.currentIndex];
+      const displayUrl = img.dataset.display || img.src;
+      const originalUrl = img.dataset.original || displayUrl;
+      const zoomBtn = document.querySelector('.lightbox-zoom');
+      
+      // Toggle between display and original
+      if (this.lightboxImg.src === originalUrl) {
+        // Currently showing original, switch to display
+        this.lightboxImg.src = displayUrl;
+        zoomBtn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+          Original
+        `;
+        zoomBtn.title = "View Original Size";
+      } else {
+        // Currently showing display, switch to original
+        this.lightboxImg.src = originalUrl;
+        zoomBtn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+            <line x1="11" y1="11" x2="11" y2="11"/>
+          </svg>
+          Display
+        `;
+        zoomBtn.title = "View Display Size";
+      }
     }
   };
   
@@ -410,4 +507,125 @@ function initUploadHandler() {
       }
     }, 100);
   });
+}
+
+function initCoverPhotoHandlers() {
+  // Handle "Set as Cover" button clicks
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('set-cover-btn')) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const button = e.target;
+      const photoId = button.dataset.photoId;
+      const eventUuid = button.dataset.eventUuid;
+      
+      if (!photoId || !eventUuid) {
+        console.error('Missing photo ID or event UUID');
+        return;
+      }
+      
+      // Show loading state
+      const originalText = button.textContent;
+      button.textContent = '⏳ Setting...';
+      button.disabled = true;
+      
+      // Make PATCH request to set cover photo
+      fetch(`/events/${eventUuid}/photos/${photoId}/cover`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Show success feedback
+          button.textContent = '✅ Cover Set!';
+          button.style.background = '#28a745';
+          
+          // Reset all other buttons
+          document.querySelectorAll('.set-cover-btn').forEach(btn => {
+            if (btn !== button) {
+              btn.textContent = '🖼️ Set as Cover';
+              btn.style.background = '';
+              btn.disabled = false;
+            }
+          });
+          
+          // Reset this button after a delay
+          setTimeout(() => {
+            button.textContent = originalText;
+            button.disabled = false;
+          }, 2000);
+          
+          // Show success message
+          showNotification('Cover photo updated successfully! 🎉', 'success');
+        } else {
+          throw new Error(data.error || 'Failed to set cover photo');
+        }
+      })
+      .catch(error => {
+        console.error('Error setting cover photo:', error);
+        
+        // Reset button
+        button.textContent = originalText;
+        button.disabled = false;
+        
+        // Show error message
+        showNotification(error.message || 'Failed to set cover photo', 'error');
+      });
+    }
+  });
+}
+
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.textContent = message;
+  
+  // Style the notification
+  Object.assign(notification.style, {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    padding: '12px 20px',
+    borderRadius: '4px',
+    color: 'white',
+    fontWeight: 'bold',
+    zIndex: '10000',
+    transform: 'translateX(100%)',
+    transition: 'transform 0.3s ease'
+  });
+  
+  // Set background color based on type
+  switch(type) {
+    case 'success':
+      notification.style.background = '#28a745';
+      break;
+    case 'error':
+      notification.style.background = '#dc3545';
+      break;
+    default:
+      notification.style.background = '#007bff';
+  }
+  
+  // Add to page
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 10);
+  
+  // Remove after delay
+  setTimeout(() => {
+    notification.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
 }
