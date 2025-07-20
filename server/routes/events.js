@@ -24,6 +24,7 @@ router.use(authMiddleware);
 
 router.get('/', (req, res, next) => req.eventsController.getAllEvents(req, res, next));
 router.post('/', (req, res, next) => req.eventsController.addEvent(req, res, next));
+router.get('/:id/edit', (req, res, next) => req.eventsController.getEventForEdit(req, res, next));
 router.put('/:id', (req, res, next) => req.eventsController.updateEvent(req, res, next));
 router.delete('/:id', (req, res, next) => req.eventsController.deleteEvent(req, res, next));
 
@@ -41,6 +42,7 @@ router.post('/:uuid/photos', uploadToS3.single('photoFile'), (req, res, next) =>
   req.eventsController.uploadPhotos(req, res, next);
 });
 router.delete('/:uuid/photos/:photoId', (req, res, next) => req.eventsController.deletePhoto(req, res, next));
+router.patch('/:uuid/photos/:photoId/cover', (req, res, next) => req.eventsController.setCoverPhoto(req, res, next));
 
 
 module.exports = router;
