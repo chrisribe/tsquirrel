@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', function() {
   initLightbox();
   
   initUploadHandler();
+  
+  initCoverPhotoHandlers();
 });
 
 // Centralized gallery management
@@ -410,4 +412,125 @@ function initUploadHandler() {
       }
     }, 100);
   });
+}
+
+function initCoverPhotoHandlers() {
+  // Handle "Set as Cover" button clicks
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('set-cover-btn')) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const button = e.target;
+      const photoId = button.dataset.photoId;
+      const eventUuid = button.dataset.eventUuid;
+      
+      if (!photoId || !eventUuid) {
+        console.error('Missing photo ID or event UUID');
+        return;
+      }
+      
+      // Show loading state
+      const originalText = button.textContent;
+      button.textContent = '⏳ Setting...';
+      button.disabled = true;
+      
+      // Make PATCH request to set cover photo
+      fetch(`/events/${eventUuid}/photos/${photoId}/cover`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Show success feedback
+          button.textContent = '✅ Cover Set!';
+          button.style.background = '#28a745';
+          
+          // Reset all other buttons
+          document.querySelectorAll('.set-cover-btn').forEach(btn => {
+            if (btn !== button) {
+              btn.textContent = '🖼️ Set as Cover';
+              btn.style.background = '';
+              btn.disabled = false;
+            }
+          });
+          
+          // Reset this button after a delay
+          setTimeout(() => {
+            button.textContent = originalText;
+            button.disabled = false;
+          }, 2000);
+          
+          // Show success message
+          showNotification('Cover photo updated successfully! 🎉', 'success');
+        } else {
+          throw new Error(data.error || 'Failed to set cover photo');
+        }
+      })
+      .catch(error => {
+        console.error('Error setting cover photo:', error);
+        
+        // Reset button
+        button.textContent = originalText;
+        button.disabled = false;
+        
+        // Show error message
+        showNotification(error.message || 'Failed to set cover photo', 'error');
+      });
+    }
+  });
+}
+
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.textContent = message;
+  
+  // Style the notification
+  Object.assign(notification.style, {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    padding: '12px 20px',
+    borderRadius: '4px',
+    color: 'white',
+    fontWeight: 'bold',
+    zIndex: '10000',
+    transform: 'translateX(100%)',
+    transition: 'transform 0.3s ease'
+  });
+  
+  // Set background color based on type
+  switch(type) {
+    case 'success':
+      notification.style.background = '#28a745';
+      break;
+    case 'error':
+      notification.style.background = '#dc3545';
+      break;
+    default:
+      notification.style.background = '#007bff';
+  }
+  
+  // Add to page
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 10);
+  
+  // Remove after delay
+  setTimeout(() => {
+    notification.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
 }

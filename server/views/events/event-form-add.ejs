@@ -1,24 +1,20 @@
-<!-- Error display area -->
-<% if (pageData.error) { %>
-  <div class="error" role="alert">
-    <%= pageData.error %>
-  </div>
-<% } %>
-
-<label for="title">Title</label>
+<label for="title">Title <span class="required">*</span></label>
 <input type="text" id="title" name="title" 
-        value="<%= pageData.formData?.title || '' %>">
+        value="<%= pageData.formData?.title || '' %>" 
+        placeholder="What's the event called?" required>
 
 <label for="description">Description</label>
-<textarea id="description" name="description"><%= pageData.formData?.description || '' %></textarea>
+<textarea id="description" name="description" 
+          placeholder="Tell us more about your event..."><%= pageData.formData?.description || '' %></textarea>
 
-<label for="date">Date</label>
+<label for="date">Date & Time <span class="required">*</span></label>
 <input type="datetime-local" id="date" name="date" 
         value="<%= pageData.formData?.date || new Date().toISOString().substring(0, 16) %>" required>
 
 <label for="location">Location</label>
 <input type="text" id="location" name="location" 
-        value="<%= pageData.formData?.location || '' %>">
+        value="<%= pageData.formData?.location || '' %>"
+        placeholder="Where will it be? (optional)">
 
 <label for="category">Category</label>
 <select id="category" name="category">
@@ -38,3 +34,15 @@
 <small class="field-help">Use comma-separated keywords to categorize your event</small>
 
 <button type="submit" class="button primary">Add Event</button>
+
+<!-- Error display area -->
+<% if (pageData.error) { %>
+  <div class="error-message" role="alert">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="15" y1="9" x2="9" y2="15"></line>
+      <line x1="9" y1="9" x2="15" y2="15"></line>
+    </svg>
+    <%= pageData.error %>
+  </div>
+<% } %>

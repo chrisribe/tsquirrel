@@ -188,3 +188,51 @@
     font-size: 1rem;
   }
 }
+
+/* Photo Actions for Gallery Owner */
+.gallery-container .item {
+  position: relative;
+}
+
+.gallery-container .photo-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.gallery-container .item:hover .photo-actions {
+  opacity: 1;
+}
+
+.gallery-container .set-cover-btn {
+  background: rgba(0, 123, 255, 0.9);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+}
+
+.gallery-container .set-cover-btn:hover {
+  background: rgba(0, 123, 255, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.gallery-container .set-cover-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Notification styles */
+.notification {
+  font-family: system-ui, -apple-system, sans-serif;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

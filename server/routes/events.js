@@ -44,6 +44,7 @@ router.post('/:uuid/photos', uploadToS3.single('photoFile'), (req, res, next) =>
   req.eventsController.uploadPhotos(req, res, next);
 });
 router.delete('/:uuid/photos/:photoId', (req, res, next) => req.eventsController.deletePhoto(req, res, next));
+router.patch('/:uuid/photos/:photoId/cover', (req, res, next) => req.eventsController.setCoverPhoto(req, res, next));
 
 
 module.exports = router;

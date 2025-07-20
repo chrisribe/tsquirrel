@@ -8,14 +8,15 @@ class EventsController {
 
   async getAllEvents(req, res, next, templatePath = 'events-page') {
     try {
-      const userId = req.session.user.id; // Assuming req.user contains the logged-in user's info
+      const userId = req.session.user.id;
       
-      // Get events categorized by status with first photos
-      const upcomingEvents = await this.eventsDAO.getUpcomingEventsWithFirstPhotos(userId);
-      const pastEvents = await this.eventsDAO.getPastEventsWithFirstPhotos(userId);
-      const eventCounts = await this.eventsDAO.getEventCountsByUserId(userId);
+      // Use single method with different filters
+      const [upcomingEvents, pastEvents, eventCounts] = await Promise.all([
+        this.eventsDAO.getEvents({ userId, timeFilter: 'upcoming', includePhotos: true }),
+        this.eventsDAO.getEvents({ userId, timeFilter: 'past', includePhotos: true }),
+        this.eventsDAO.getEventCounts(userId)
+      ]);
       
-      // For backward compatibility, also provide all events
       const events = [...upcomingEvents, ...pastEvents];
       
       res.respondWithTemplateOrJson({
@@ -32,30 +33,32 @@ class EventsController {
   async addEvent(req, res, next) {
     try {
       const userId = req.session.user.id;
-      const { title, description, date, location, category, tags } = req.body;
+      const { title, description, date, location, category, capacity, tags } = req.body;
       
-      // Validation with specific error messages
-      if (!title) {
+      // Validation - only title and date are required
+      if (!title?.trim()) {
         res.setHeader('HX-Retarget', '#addEventForm');
         res.setHeader('HX-Reswap', 'innerHTML');
         return res.status(400).respondWithTemplateOrJson({
            error: 'Event title is required',
-           formData: {title, description, date, location, category, tags}
+           formData: {title, description, date, location, category, capacity, tags}
           }, 
           'events/event-form-add'
         );
       }
       
       if (!date) {
+        res.setHeader('HX-Retarget', '#addEventForm');
+        res.setHeader('HX-Reswap', 'innerHTML');
         return res.status(400).respondWithTemplateOrJson({
             error: 'Event date is required',
-            formData: {title, description, date, location, category, tags}
+            formData: {title, description, date, location, category, capacity, tags}
           }, 
           'events/event-form-add'
         );
       }
       
-      let eventData = new Event({ title, description, date, location, category, tags, userId });
+      let eventData = new Event({ title, description, date, location, category, capacity, tags, userId });
       const newEvent = await this.eventsDAO.addEvent(userId, eventData);
       //console.log('New event created:', newEvent);
 
@@ -68,11 +71,21 @@ class EventsController {
         'events/event-item'
       );
     } catch (error) {
-      // Database or other errors
-      return res.status(500).respondWithTemplateOrJson(
-        { error: 'Failed to create event. Please try again.' }, 
-        'events/event-form-error'
-      );
+      // Log the actual error for debugging
+      console.error('Event creation error:', error);
+      
+      // In development, show the actual error
+      const errorMessage = process.env.NODE_ENV === 'development' 
+        ? `Failed to create event: ${error.message}` 
+        : 'Failed to create event. Please try again.';
+      
+      res.setHeader('HX-Retarget', '#addEventForm');
+      res.setHeader('HX-Reswap', 'innerHTML');
+      
+      return res.status(500).respondWithTemplateOrJson({
+        error: errorMessage,
+        formData: req.body // Preserve form data
+      }, 'events/event-form-add');
     }
   }
 
@@ -81,11 +94,30 @@ class EventsController {
       const userId = req.session.user.id;
       const eventId = req.params.id;
 
-      const eventData = { ...req.body, userId };
-      const updatedEvent = await this.eventsDAO.updateEvent(eventId, eventData);
+      // First, verify the event exists and belongs to the user
+      const existingEvent = await this.eventsDAO.getEvent(eventId, false); // false = byId
       
-      // Return updated event with first photo for HTMX response
-      const eventWithPhoto = await this.eventsDAO.getEventWithFirstPhoto(eventId);
+      if (!existingEvent || existingEvent.user_id !== userId) {
+        return res.status(404).respondWithTemplateOrJson(
+          { error: 'Event not found' }, 
+          'errors/general-error'
+        );
+      }
+
+      // Don't include userId in eventData since we don't update the user_id field
+      const eventData = { ...req.body };
+      
+      // Handle empty capacity field - convert empty string to null for integer fields
+      if (eventData.capacity === '') {
+        eventData.capacity = null;
+      } else if (eventData.capacity && typeof eventData.capacity === 'string') {
+        // Convert string to integer if it's a valid number
+        const parsedCapacity = parseInt(eventData.capacity, 10);
+        eventData.capacity = isNaN(parsedCapacity) ? null : parsedCapacity;
+      }
+      
+      // Single DAO call that updates and returns event with photo
+      const eventWithPhoto = await this.eventsDAO.updateEventWithPhoto(eventId, eventData);
       const eventType = new Date(eventWithPhoto.date) > new Date() ? 'upcoming' : 'past';
       
       res.respondWithTemplateOrJson({
@@ -111,8 +143,8 @@ class EventsController {
         );
       }
       
-      // Get photos for cover selection
-      const photos = await this.eventsDAO.getPhotosByEventId(eventId);
+      // Get photos for cover selection using UUID (same as gallery)
+      const photos = await this.eventsDAO.getPhotos(event.uuid, true); // true = byUuid
       
       res.respondWithTemplateOrJson({
         event,
@@ -140,55 +172,37 @@ class EventsController {
       const searchTerm = req.query.searchTerm || '';
       const userId = req.session.user.id;
       
-      if (!searchTerm.trim()) {
-        // If no search term, return all events in sectioned format with photos
-        const upcomingEvents = await this.eventsDAO.getUpcomingEventsWithFirstPhotos(userId);
-        const pastEvents = await this.eventsDAO.getPastEventsWithFirstPhotos(userId);
-        const eventCounts = await this.eventsDAO.getEventCountsByUserId(userId);
-        const events = [...upcomingEvents, ...pastEvents];
-        
-        return res.respondWithTemplateOrJson({ 
-          events, 
-          upcomingEvents, 
-          pastEvents, 
-          eventCounts 
-        }, templatePath);
-      }
-      
-      // Search all events then categorize and add photos
-      const allSearchResults = await this.eventsDAO.searchEvents(searchTerm);
-      
-      // Filter by user and categorize by date
-      const userEvents = allSearchResults.filter(event => event.user_id === userId);
-      const now = new Date();
-      
-      // Get first photos for search results
-      const eventsWithPhotos = await Promise.all(
-        userEvents.map(async (event) => {
-          const eventWithPhoto = await this.eventsDAO.getEventWithFirstPhoto(event.id);
-          return eventWithPhoto || event;
+      // Simple parallel queries for categorized results
+      const [upcomingEvents, pastEvents] = await Promise.all([
+        this.eventsDAO.getEvents({ 
+          userId, 
+          searchTerm, 
+          timeFilter: 'upcoming', 
+          includePhotos: true,
+          orderBy: 'date',
+          orderDir: 'ASC'
+        }),
+        this.eventsDAO.getEvents({ 
+          userId, 
+          searchTerm, 
+          timeFilter: 'past', 
+          includePhotos: true,
+          orderBy: 'date',
+          orderDir: 'DESC'
         })
-      );
-      
-      const upcomingEvents = eventsWithPhotos.filter(event => new Date(event.date) > now)
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
-      const pastEvents = eventsWithPhotos.filter(event => new Date(event.date) <= now)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-      
+      ]);
+
       const eventCounts = {
-        total: eventsWithPhotos.length,
+        total: upcomingEvents.length + pastEvents.length,
         upcoming: upcomingEvents.length,
         past: pastEvents.length
       };
-
-      console.log('Search term:', searchTerm);
-      console.log('Events found:', eventsWithPhotos.length, 'events');
       
-      res.respondWithTemplateOrJson({ 
-        events: eventsWithPhotos, 
-        upcomingEvents, 
-        pastEvents, 
-        eventCounts 
+      res.respondWithTemplateOrJson({
+        events: [...upcomingEvents, ...pastEvents],
+        upcomingEvents,
+        pastEvents,
+        eventCounts
       }, templatePath);
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -199,14 +213,18 @@ class EventsController {
   async getEventGalleryByUuid(req, res, next) {
     try {
       const eventUuid = req.params.uuid;
+      const currentUserId = req.session?.user?.id; // Get current user ID if logged in
 
-      const event = await this.eventsDAO.getEventByUuid(eventUuid); 
+      const event = await this.eventsDAO.getEvent(eventUuid, true); // true = byUuid
       
       if (!event) {
         return res.status(404).respondWithTemplateOrJson({ error: 'Event not found' }, 'errors/general-error');
       }
       
-      const photos = await this.eventsDAO.getPhotosByEventUuid(eventUuid);
+      const photos = await this.eventsDAO.getPhotos(eventUuid, true); // true = byUuid
+      
+      // Check if current user is the event owner
+      const isOwner = currentUserId && currentUserId === event.user_id;
       
       // Generate S3 URLs for each photo using extension from s3_key
       const photosWithUrls = photos.map(photo => {
@@ -224,6 +242,7 @@ class EventsController {
       res.respondWithTemplateOrJson({ 
         event, 
         photos: photosWithUrls,
+        isOwner, // Pass owner status to template
         pageAssets: {
           css: ['gallery.css'],
           js: [
@@ -252,7 +271,7 @@ class EventsController {
       const parsedWidth = width ? parseInt(width, 10) : 400;
       const parsedHeight = height ? parseInt(height, 10) : 300;
 
-      // Save photo metadata to database with dimensions
+      // Save photo metadata to database with dimensions - UUID-based approach
       const photoData = {
         event_uuid: eventUuid,
         photo_id: photoMetadata.photoId,
@@ -302,6 +321,46 @@ class EventsController {
     } catch (error) {
       console.error('Photo delete error:', error);
       res.status(500).json({ error: 'Failed to delete photo' });
+    }
+  }
+
+  async setCoverPhoto(req, res, next) {
+    try {
+      const { uuid: eventUuid, photoId } = req.params;
+      const userId = req.session.user.id;
+      
+      // Get the event to verify ownership
+      const event = await this.eventsDAO.getEvent(eventUuid, true);
+      
+      if (!event || event.user_id !== userId) {
+        return res.status(403).json({ error: 'Only the event owner can set cover photos' });
+      }
+      
+      // Get the photo details to get the display URL
+      const photos = await this.eventsDAO.getPhotos(eventUuid, true);
+      const targetPhoto = photos.find(p => p.photo_id === photoId);
+      
+      if (!targetPhoto) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+      
+      // Generate the display URL for the photo
+      const extension = targetPhoto.s3_key ? targetPhoto.s3_key.substring(targetPhoto.s3_key.lastIndexOf('.')) : '.jpg';
+      const photoUrls = getPhotoUrls(eventUuid, photoId, extension);
+      
+      // Update the event's cover photo
+      await this.eventsDAO.updateEvent(event.id, { 
+        event_picture: photoUrls.display 
+      });
+      
+      res.status(200).json({ 
+        success: true, 
+        message: 'Cover photo updated successfully',
+        coverPhotoUrl: photoUrls.display
+      });
+    } catch (error) {
+      console.error('Set cover photo error:', error);
+      res.status(500).json({ error: 'Failed to set cover photo' });
     }
   }
 }
