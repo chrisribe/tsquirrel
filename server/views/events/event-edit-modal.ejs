@@ -13,11 +13,9 @@
   <button type="button" class="tab-btn active" data-tab="details">
     📝 Event Details
   </button>
-  <% if (photos && photos.length > 0) { %>
-    <button type="button" class="tab-btn" data-tab="photo">
-      🖼️ Cover Photo
-    </button>
-  <% } %>
+  <button type="button" class="tab-btn" data-tab="photo">
+    🖼️ Cover Photo
+  </button>
   <button type="button" class="tab-btn" data-tab="advanced">
     ⚙️ Advanced
   </button>
@@ -69,54 +67,49 @@
   </div>
 
   <!-- Tab 2: Cover Photo Selection -->
-  <% if (photos && photos.length > 0) { %>
-    <div class="tab-content" id="tab-photo">
-      <div class="form-section">
-        <h3>Cover Photo</h3>
-        <p class="help-text">Choose which photo represents this event on your dashboard</p>
-        
-        <div class="cover-photo-options">
-          <!-- Default option -->
-          <label class="photo-option">
-            <input type="radio" 
-                   name="event_picture" 
-                   value="" 
-                   <%= !formData?.event_picture ? 'checked' : '' %>>
-            <div class="photo-preview default-photo">
-              <img src="/static/img/selfie-friends.jpg" alt="Default">
-              <span class="photo-label">Default</span>
-            </div>
-          </label>
-
-          <!-- Auto-select first photo option -->
-          <label class="photo-option">
-            <input type="radio" 
-                   name="event_picture" 
-                   value="auto" 
-                   <%= formData?.event_picture === 'auto' ? 'checked' : '' %>>
-            <div class="photo-preview auto-photo">
-              <img src="<%= photos[0].photo_url %>" alt="First Photo">
-              <span class="photo-label">First Photo</span>
-            </div>
-          </label>
-
-          <!-- Individual photo options -->
-          <% photos.forEach(photo => { %>
-            <label class="photo-option">
-              <input type="radio" 
-                     name="event_picture" 
-                     value="<%= photo.photo_url %>" 
-                     <%= formData?.event_picture === photo.photo_url ? 'checked' : '' %>>
-              <div class="photo-preview">
-                <img src="<%= photo.photo_url %>" alt="Photo Option">
-                <span class="photo-label">Custom</span>
+  <div class="tab-content" id="tab-photo">
+    <div class="form-section">
+      <h3>Cover Photo</h3>
+      
+      <% if (photos && photos.length > 0) { %>
+        <div class="cover-photo-info">
+          <% if (formData?.event_picture && formData?.event_picture !== '' && formData?.event_picture !== 'auto') { %>
+            <div class="current-cover">
+              <p><strong>Current cover photo:</strong></p>
+              <div class="cover-preview">
+                <img src="<%= formData.event_picture %>" alt="Current cover photo" style="max-width: 200px; border-radius: 4px;">
               </div>
-            </label>
-          <% }) %>
+            </div>
+          <% } else { %>
+            <p>Currently using the default cover (first uploaded photo).</p>
+          <% } %>
+          
+          <div class="gallery-instruction">
+            <h4>💡 To change your cover photo:</h4>
+            <ol>
+              <li>Visit your <a href="/events/<%= event.uuid %>/gallery" target="_blank" rel="noopener">event gallery</a></li>
+              <li>Hover over your favorite photo</li>
+              <li>Click "Set as Cover"</li>
+            </ol>
+          </div>
         </div>
-      </div>
+      <% } else { %>
+        <div class="no-photos-info">
+          <p class="help-text">No photos uploaded yet.</p>
+          
+          <div class="upload-instruction">
+            <h4>� To add a cover photo:</h4>
+            <ol>
+              <li>Visit your <a href="/events/<%= event.uuid %>/gallery" target="_blank" rel="noopener">event gallery</a></li>
+              <li>Upload your favorite photos</li>
+              <li>Click "Set as Cover" on the photo you want as your cover</li>
+            </ol>
+            <p><small>Without a custom cover photo, your event will show a default image on the dashboard.</small></p>
+          </div>
+        </div>
+      <% } %>
     </div>
-  <% } %>
+  </div>
 
   <!-- Tab 3: Advanced Options -->
   <div class="tab-content" id="tab-advanced">
