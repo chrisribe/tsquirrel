@@ -32,7 +32,17 @@ A comprehensive image protection system to prevent hotlinking abuse and bandwidt
 
 ## Technical Approach Research
 
-### Option 1: S3 Bucket Policy with Referer Restrictions
+### Option 1: Cloudflare Proxy with Hotlink Protection (RECOMMENDED)
+**Implementation:** Route EventGlimpse through Cloudflare with built-in hotlink protection
+**Features:**
+- Native hotlink protection rules
+- DDoS and bot protection
+- Rate limiting and security analytics
+- Global CDN performance
+**Pros:** Professional protection, cost-effective ($0-20/month), easy setup, comprehensive security
+**Cons:** External dependency, DNS changes required, less customization than server-side
+
+### Option 2: S3 Bucket Policy with Referer Restrictions
 **Implementation:** Update S3 bucket policy to only allow requests from eventglimpse.com
 ```json
 {
@@ -58,26 +68,26 @@ A comprehensive image protection system to prevent hotlinking abuse and bandwidt
 **Pros:** Simple, immediate, cost-effective, minimal code changes
 **Cons:** Referer headers can be spoofed, may break direct image access, some browsers/tools don't send referer
 
-### Option 2: CloudFront Distribution with Custom Headers
+### Option 3: CloudFront Distribution with Custom Headers
 **Implementation:** Route S3 through CloudFront with custom origin headers
 **Pros:** Professional CDN, better performance, more security options, geo-distribution
 **Cons:** Additional AWS costs, more complex setup, potential latency during setup
 
-### Option 3: Proxy Images Through EventGlimpse Server
+### Option 4: Proxy Images Through EventGlimpse Server
 **Implementation:** Serve images through Express routes with access control
 **Pros:** Full control, custom logic possible, can implement any restrictions
 **Cons:** Increased server load, bandwidth costs shifted to app server, potential performance impact
 
-### Option 4: S3 Presigned URLs with Time-based Access
+### Option 5: S3 Presigned URLs with Time-based Access
 **Implementation:** Generate time-limited signed URLs for image access
 **Pros:** Highly secure, granular control, prevents long-term hotlinking
 **Cons:** Complex implementation, URLs expire requiring refresh, breaks direct linking
 
-## Recommended Approach: Hybrid Strategy
+## Recommended Approach: Cloudflare-First Strategy
 
-**Phase 1:** Implement referer-based S3 restrictions (quick win)
-**Phase 2:** Add server-side image proxy with intelligent caching
-**Phase 3:** Build embeddable widget system for authorized domains
+**Phase 1:** Implement Cloudflare hotlink protection (immediate professional solution)
+**Phase 2:** Add server-side image access controls for fine-grained permissions
+**Phase 3:** Build embeddable widget system leveraging both Cloudflare and server controls
 
 ## EventGlimpse Integration
 
@@ -155,10 +165,73 @@ CREATE INDEX idx_image_access_logs_accessed_at ON image_access_logs(accessed_at)
 - `/server/controllers/EventsController.js` - Use protected image URLs
 - `/infra/lambda-image-processor/S3-SETUP.md` - Updated setup instructions
 
+## Cloudflare Integration Considerations
+
+**DNS Configuration:**
+- EventGlimpse.com nameservers point to Cloudflare
+- Cloudflare proxies traffic to current hosting (maintain existing server setup)
+- SSL/TLS certificates managed by Cloudflare (free)
+
+**Cloudflare Rules Configuration:**
+```
+# Hotlink Protection Rule
+If (http.referer ne "eventglimpse.com" and http.referer ne "*.eventglimpse.com" and http.request.uri.path contains "/images/")
+Then Block
+
+# Rate Limiting Rule  
+If (http.request.uri.path contains "/images/")
+Then Rate Limit: 100 requests per minute per IP
+
+# Bot Protection Rule
+If (cf.bot_management.score lt 30 and http.request.uri.path contains "/images/")
+Then Managed Challenge
+```
+
+**Performance Benefits:**
+- Global CDN caching reduces S3 bandwidth costs
+- Image optimization through Cloudflare Polish (paid feature)
+- Brotli compression for faster loading
+- HTTP/3 and QUIC support for modern browsers
+
+**Cost Analysis with Cloudflare:**
+- **Free Plan**: Suitable for basic hotlink protection and DDoS protection
+- **Pro Plan ($20/month)**: Adds Polish image optimization, advanced analytics
+- **Business Plan ($200/month)**: Priority support, advanced WAF rules, custom SSL
+- **Recommendation**: Start with Pro plan for image optimization benefits
+
 ## Implementation Phases
 
-### Phase 1: Immediate Protection (2-3 days)
-**Goal:** Stop current hotlinking abuse quickly
+### Phase 1A: Cloudflare Protection (RECOMMENDED - 1 day)
+**Goal:** Professional hotlink protection with comprehensive security
+
+- [ ] **Set Up Cloudflare Account**
+  - [ ] Add eventglimpse.com domain to Cloudflare
+  - [ ] Update DNS nameservers to Cloudflare
+  - [ ] Verify domain ownership and SSL setup
+  - [ ] Test website functionality through Cloudflare
+
+- [ ] **Configure Hotlink Protection**
+  - [ ] Enable Cloudflare hotlink protection rules
+  - [ ] Create custom rule: Block if referer not eventglimpse.com/*
+  - [ ] Test protection blocks external embedding
+  - [ ] Verify legitimate gallery access still works
+
+- [ ] **Enable Security Features**
+  - [ ] Configure rate limiting for image paths (/api/images/*, *.jpg, *.png)
+  - [ ] Enable Bot Fight Mode for automated abuse detection
+  - [ ] Set up security level and challenge page
+  - [ ] Enable DDoS protection and firewall rules
+
+- [ ] **Configure Analytics**
+  - [ ] Set up Cloudflare Analytics dashboard
+  - [ ] Configure security event notifications
+  - [ ] Monitor blocked requests and abuse attempts
+  - [ ] Document security metrics and alerts
+
+**Test Criteria:** External sites cannot embed EventGlimpse images, bot traffic blocked, analytics show protection working
+
+### Phase 1B: Alternative S3 Protection (If Cloudflare not preferred - 2-3 days)
+**Goal:** Stop current hotlinking abuse using AWS-only solution
 
 - [ ] **Update S3 Bucket Policy**
   - [ ] Create referer-restricted bucket policy
@@ -179,7 +252,7 @@ CREATE INDEX idx_image_access_logs_accessed_at ON image_access_logs(accessed_at)
 
 **Test Criteria:** External sites cannot embed EventGlimpse images, legitimate gallery access works
 
-### Phase 2: Server-Side Protection (3-4 days)
+### Phase 2: Enhanced Server Controls (3-4 days)
 **Goal:** Add robust access control with fallback protection
 
 - [ ] **Create Image Access Service**
@@ -298,16 +371,24 @@ CREATE INDEX idx_image_access_logs_accessed_at ON image_access_logs(accessed_at)
 
 **Current State:**
 - Unlimited bandwidth exposure to hotlinking
-- Potential for significant unexpected AWS bills
+- Potential for significant unexpected AWS bills ($100s-$1000s/month)
 - No visibility into unauthorized usage
+- No DDoS or bot protection
 
-**With Protection:**
-- **Phase 1**: Minimal additional cost (CloudWatch monitoring)
-- **Phase 2**: Slight increase in server resources for image serving
+**With Cloudflare Protection:**
+- **Phase 1A (Cloudflare)**: $0-20/month (Free tier available, Pro recommended)
+- **Phase 2**: Slight increase in server resources for enhanced access controls  
 - **Phase 3**: Database storage for logs and analytics
-- **Overall**: Protection will likely reduce costs by preventing abuse
+- **Bandwidth Savings**: Cloudflare CDN reduces S3 egress costs
+- **Overall**: Likely net cost reduction due to prevented abuse + CDN savings
 
-**ROI:** Prevention of unauthorized bandwidth usage should offset implementation costs within first month.
+**Alternative Phase 1B (S3-only)**: Minimal additional cost (CloudWatch monitoring)
+
+**ROI Analysis:**
+- **Investment**: $20/month Cloudflare Pro + ~40 hours development time
+- **Savings**: Prevention of hotlinking abuse (potentially $50-500+/month)
+- **Payback**: Immediate ROI if current abuse costs $20+/month
+- **Added Value**: DDoS protection, global CDN, image optimization, analytics
 
 ## Security Considerations
 
