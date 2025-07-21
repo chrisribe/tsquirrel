@@ -1,10 +1,10 @@
 {
   "name": "project-state-analyzer",
   "version": "1.0.0",
-  "description": "Script to analyze EventGlimpse project and update project-state.md",
-  "main": "analyze-project-state.js",
+  "description": "Script to request EventGlimpse project state updates via GitHub Copilot",
+  "main": "create-copilot-request.js",
   "dependencies": {
-    "openai": "^4.0.0",
+    "@octokit/rest": "^20.0.0",
     "simple-git": "^3.0.0"
   },
   "engines": {

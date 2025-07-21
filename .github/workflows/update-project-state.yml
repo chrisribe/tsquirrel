@@ -1,4 +1,4 @@
-name: Update Project State
+name: Request Project State Update
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
   workflow_dispatch: # Allow manual triggering for testing
 
 permissions:
-  contents: write
-  pull-requests: read
+  contents: read
+  issues: write
 
 jobs:
-  update-project-state:
+  request-project-state-update:
     runs-on: ubuntu-latest
     
     steps:
@@ -29,28 +29,9 @@ jobs:
         cd .github/scripts
         npm install
         
-    - name: Analyze project and update state
+    - name: Analyze changes and create copilot request
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
         cd .github/scripts
-        node analyze-project-state.js
-        
-    - name: Check for changes
-      id: check_changes
-      run: |
-        if git diff --quiet plan/project-state.md; then
-          echo "changes=false" >> $GITHUB_OUTPUT
-        else
-          echo "changes=true" >> $GITHUB_OUTPUT
-        fi
-        
-    - name: Commit and push changes
-      if: steps.check_changes.outputs.changes == 'true'
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action - Project State Updater"
-        git add plan/project-state.md
-        git commit -m "chore: auto-update project-state.md based on recent changes"
-        git push
+        node create-copilot-request.js

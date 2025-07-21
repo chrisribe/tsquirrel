@@ -1,23 +1,16 @@
-# Setup Guide: Automated Project State Updates
+# Setup Guide: Automated Project State Updates via GitHub Copilot
 
 ## Quick Start
 
-This PR implements automated updates for `plan/project-state.md`. Here's how to activate it:
+This PR implements automated project state monitoring using GitHub Copilot. Here's how to activate it:
 
-### 1. Add API Key Secret
+### 1. Merge This PR
 
-Go to your repository Settings → Secrets and variables → Actions, then add:
+The automation will activate automatically when merged to main - no additional setup required!
 
-- **Name**: `OPENAI_API_KEY`
-- **Value**: Your OpenAI API key (starts with `sk-`)
+### 2. Test the System
 
-### 2. Merge This PR
-
-Once merged to main, the automation will activate automatically.
-
-### 3. Test the System
-
-After merging, make a small change and push to main. Check the Actions tab to see the workflow run.
+After merging, make a significant change (like adding a new feature) and push to main. Check the Issues tab to see if a @copilot review request is created.
 
 ## How It Works
 
@@ -25,16 +18,26 @@ After merging, make a small change and push to main. Check the Actions tab to se
 graph LR
     A[Push to Main] --> B[GitHub Actions Triggers]
     B --> C[Analyze Git Changes]
-    C --> D[LLM Reviews Changes]
-    D --> E{Significant Changes?}
-    E -->|Yes| F[Update project-state.md]
-    E -->|No| G[No Action Needed]
-    F --> H[Commit Changes]
+    C --> D{Significant Changes?}
+    D -->|Yes| E[Create Issue for @copilot]
+    D -->|No| F[No Action Needed]
+    E --> G[@copilot Reviews & Responds]
+    G --> H[Owner Reviews & Approves]
+    H --> I[Manual Update Applied]
 ```
 
-## What Gets Updated
+## Workflow Benefits
 
-The system updates project-state.md when it detects:
+This approach follows EventGlimpse's established pattern:
+- 🤖 **Automated Detection**: System identifies when review is needed
+- 📝 **@copilot Analysis**: GitHub Copilot provides intelligent analysis
+- 👤 **Human Oversight**: All changes require manual approval
+- 💰 **Cost Effective**: No external API fees
+- 🔍 **Transparent**: All analysis happens in public issues
+
+## What Triggers Review Requests
+
+The system creates @copilot review requests when it detects:
 - ✅ New features or architectural changes
 - ✅ Database schema modifications
 - ✅ New dependencies or tech stack changes
@@ -42,65 +45,101 @@ The system updates project-state.md when it detects:
 - ✅ New API endpoints or routes
 - ✅ Security or deployment changes
 
-It **skips** updates for:
+It **skips** requests for:
 - ❌ Minor bug fixes
 - ❌ Style/formatting changes
 - ❌ Documentation-only changes
 - ❌ Test updates
 
-## Files Created
+## Files Created/Modified
 
 | File | Purpose |
 |------|---------|
-| `.github/workflows/update-project-state.yml` | Main GitHub Actions workflow |
-| `.github/scripts/analyze-project-state.js` | LLM analysis script |
-| `.github/scripts/github-copilot-analyzer.js` | Alternative implementation for future |
-| `.github/scripts/README.md` | Detailed documentation |
+| `.github/workflows/update-project-state.yml` | GitHub Actions workflow (modified) |
+| `.github/scripts/create-copilot-request.js` | Issue creation script (new) |
+| `.github/scripts/package.json` | Dependencies (updated) |
+| `.github/scripts/README.md` | Documentation (updated) |
 | `plan/features/automated-project-state-updates-plan.md` | Feature plan |
 
-## Alternative: GitHub Copilot Integration
+## Example Workflow
 
-The system includes a future-ready implementation for GitHub Copilot Chat API. When GitHub releases this capability for Actions, simply:
-
-1. Replace OpenAI integration with GitHub Copilot
-2. Remove OPENAI_API_KEY requirement
-3. Use built-in GITHUB_TOKEN for authentication
+1. **Developer pushes new feature to main**
+2. **Automation detects significant changes**
+3. **System creates issue: "Update project-state.md based on recent changes"**
+4. **Issue includes @copilot request with:**
+   - Recent commit details
+   - Current project-state.md content
+   - Git diff of changes
+   - Project structure overview
+5. **@copilot analyzes and responds with:**
+   - Assessment of changes
+   - Updated project-state.md if needed
+   - Rationale for updates
+6. **Owner reviews @copilot's analysis**
+7. **Owner manually applies approved changes**
 
 ## Monitoring
 
-- **Success**: Check Actions tab for green checkmarks
-- **Failures**: Review action logs for errors
-- **Updates**: Look for commits with message "chore: auto-update project-state.md..."
+- **Success**: Check Issues tab for @copilot review requests
+- **Activity**: Look for issues with `project-state-update` label
+- **Workflow**: Review Actions tab for successful runs
+
+## Smart Duplicate Prevention
+
+The system automatically:
+- Checks for existing open project-state-update issues
+- Skips creation if one already exists
+- Prevents spam and duplicate requests
 
 ## Troubleshooting
 
-### No Updates Happening
-- Check if OPENAI_API_KEY secret is set
-- Verify recent changes meet update criteria
-- Review Actions logs for errors
+### No Review Requests Created
+- Verify recent changes meet significance criteria
+- Check Actions logs for workflow execution
+- Ensure workflow has `issues: write` permission
 
-### Too Many Updates
-- Adjust analysis criteria in the script
-- Consider adding cooldown period between updates
+### Too Many Requests
+- Adjust significance detection logic in script
+- Review what types of changes trigger requests
 
-### API Rate Limits
-- Monitor OpenAI usage in your dashboard
-- Consider upgrading API plan if needed
+### @copilot Not Responding
+- Ensure issue includes @copilot mention
+- Check if repository has GitHub Copilot access
+- Manually assign or mention @copilot in the issue
 
-## Cost Considerations
+## Advanced Configuration
 
-- Typical analysis: ~1000-3000 tokens per run
-- Estimated cost: $0.01-0.05 per analysis
-- Runs only on main branch pushes
-- Monthly cost typically under $5 for active repositories
+### Customizing Significance Detection
+Edit `create-copilot-request.js` to modify what changes trigger review requests:
+
+```javascript
+const significantKeywords = [
+  'feature', 'add', 'new', 'create', 'implement', 
+  // Add or remove keywords as needed
+];
+```
+
+### Modifying Issue Template
+Update the issue body template in `createCopilotIssue()` method to customize the @copilot request format.
+
+## Migration from Previous Version
+
+If you had the OpenAI-based version:
+- ✅ OPENAI_API_KEY secret is no longer needed
+- ✅ External API costs eliminated
+- ✅ Workflow now creates issues instead of auto-committing
+- ✅ All changes require human approval
 
 ## Support
 
 For issues or questions:
 1. Check the Actions logs first
-2. Review `.github/scripts/README.md` for detailed docs
-3. Open an issue with relevant log output
+2. Review `.github/scripts/README.md` for detailed docs  
+3. Look for open issues with `project-state-update` label
+4. Open an issue with relevant details
 
 ---
 
-**Ready to activate?** Just add the OPENAI_API_KEY secret and merge this PR! 🚀
+**Ready to activate?** Just merge this PR - no additional setup required! 🚀
+
+The system will start monitoring for significant changes and create @copilot review requests as needed.
