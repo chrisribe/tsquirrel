@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 
+/**
+ * DEPRECATED: This script used external OpenAI API for analysis.
+ * 
+ * The new approach uses GitHub Copilot via issue creation.
+ * See: create-copilot-request.js
+ * 
+ * Keeping this file for reference and potential future use.
+ */
+
 const fs = require('fs').promises;
 const path = require('path');
 const { simpleGit } = require('simple-git');
