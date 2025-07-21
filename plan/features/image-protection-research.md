@@ -132,32 +132,97 @@
 
 ---
 
+### Option 5: Cloudflare Proxy with Hotlink Protection
+
+**Implementation:**
+- Route domain through Cloudflare proxy
+- Enable Cloudflare's built-in hotlink protection
+- Configure security rules and rate limiting
+- Use Cloudflare's abuse detection features
+
+**Pros:**
+- ✅ **Built-in Hotlink Protection**: Native feature specifically for this use case
+- ✅ **Cost Effective**: Free tier available, pro plans much cheaper than CloudFront
+- ✅ **DDoS Protection**: Automatic protection against attacks and abuse
+- ✅ **Bot Detection**: Advanced bot management and challenge system
+- ✅ **Rate Limiting**: Configurable rate limits per IP/path
+- ✅ **Analytics**: Detailed traffic analytics and security insights
+- ✅ **Flexible Rules**: Custom firewall rules for specific protection needs
+- ✅ **Global CDN**: Performance benefits with worldwide edge locations
+- ✅ **Easy Setup**: Can be implemented without code changes
+- ✅ **WAF Features**: Web Application Firewall for additional security
+
+**Cons:**
+- ❌ **External Dependency**: Adds third-party service dependency
+- ❌ **DNS Changes**: Requires routing domain through Cloudflare
+- ❌ **Learning Curve**: Team needs to understand Cloudflare configuration
+- ❌ **Potential Conflicts**: May conflict with existing AWS services
+- ❌ **Limited Customization**: Less control than server-side solutions
+
+**Cost Impact:** $0-20/month depending on plan (Free tier available, Pro at $20/month)
+
+**Specific Cloudflare Features for EventGlimpse:**
+
+1. **Hotlink Protection Rule:**
+   ```
+   If (http.referer ne "eventglimpse.com" and http.referer ne "*.eventglimpse.com")
+   Then Block
+   ```
+
+2. **Rate Limiting:**
+   - Limit image requests per IP (e.g., 100 requests/minute)
+   - Custom rules for different image sizes
+   - Temporary blocking for suspected abuse
+
+3. **Bot Fight Mode:**
+   - Automatically challenges suspicious bot traffic
+   - Reduces automated scraping/hotlinking attempts
+
+4. **Security Analytics:**
+   - Real-time threat monitoring
+   - Detailed logs of blocked requests
+   - Geographic analysis of abuse attempts
+
+---
+
 ## Recommended Hybrid Approach
 
-### Phase 1: Quick Win (S3 Referer Restrictions)
+### **UPDATED RECOMMENDATION: Cloudflare-First Approach**
+
+### Phase 1A: Cloudflare Hotlink Protection (Preferred - 1 day)
+**Timeline:** 1 day  
+**Goal:** Comprehensive protection with minimal effort
+
+- Route EventGlimpse.com through Cloudflare
+- Enable built-in hotlink protection rules
+- Configure rate limiting for image paths
+- Set up security analytics dashboard
+- **Advantages:** Professional protection, cost-effective, includes DDoS/bot protection
+
+### Phase 1B: Fallback S3 Referer Restrictions (Alternative)
 **Timeline:** 1-2 days  
-**Goal:** Stop current hotlinking abuse immediately
+**Goal:** Stop current hotlinking abuse immediately (if Cloudflare not preferred)
 
 - Implement S3 referer-based policy
 - Monitor CloudWatch for blocked requests
 - Minimal risk, immediate protection
 
-### Phase 2: Robust Protection (Server-Proxied + Monitoring)
+### Phase 2: Enhanced Server-Side Controls (3-4 days)
 **Timeline:** 3-4 days  
-**Goal:** Add comprehensive access control and analytics
+**Goal:** Add application-level access control and analytics
 
-- Protected image serving routes
-- Access logging and analytics
-- Rate limiting and abuse detection
-- Foundation for future features
+- Protected image serving routes for fine-grained control
+- Access logging and user-based analytics
+- Foundation for embeddable widgets
+- Complement Cloudflare with application logic
 
-### Phase 3: Professional Features (CloudFront + Advanced Controls)
+### Phase 3: Professional Features (Future phases)
 **Timeline:** Future phases  
-**Goal:** Enterprise-grade image delivery and widget system
+**Goal:** Advanced widget system and business features
 
-- CloudFront distribution for performance
 - Embeddable widget system for pro users
-- Advanced analytics and controls
+- Advanced per-user analytics and controls
+- Integration with Cloudflare analytics
 
 ## Cost-Benefit Analysis
 
