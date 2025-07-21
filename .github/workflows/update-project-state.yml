@@ -1,0 +1,56 @@
+name: Update Project State
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual triggering for testing
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update-project-state:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Need full history to analyze changes
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install dependencies
+      run: |
+        cd .github/scripts
+        npm install
+        
+    - name: Analyze project and update state
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        cd .github/scripts
+        node analyze-project-state.js
+        
+    - name: Check for changes
+      id: check_changes
+      run: |
+        if git diff --quiet plan/project-state.md; then
+          echo "changes=false" >> $GITHUB_OUTPUT
+        else
+          echo "changes=true" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Commit and push changes
+      if: steps.check_changes.outputs.changes == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action - Project State Updater"
+        git add plan/project-state.md
+        git commit -m "chore: auto-update project-state.md based on recent changes"
+        git push
