@@ -1,0 +1,13 @@
+{
+  "name": "project-state-analyzer",
+  "version": "1.0.0",
+  "description": "Script to analyze EventGlimpse project and update project-state.md",
+  "main": "analyze-project-state.js",
+  "dependencies": {
+    "openai": "^4.0.0",
+    "simple-git": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
