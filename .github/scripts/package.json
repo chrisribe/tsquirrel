@@ -1,0 +1,13 @@
+{
+  "name": "project-state-analyzer",
+  "version": "1.0.0",
+  "description": "Script to request EventGlimpse project state updates via GitHub Copilot",
+  "main": "create-copilot-request.js",
+  "dependencies": {
+    "@octokit/rest": "^20.0.0",
+    "simple-git": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
