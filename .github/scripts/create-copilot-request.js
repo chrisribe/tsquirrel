@@ -35,8 +35,33 @@ class CopilotRequestCreator {
         return null;
       }
 
-      // Get diff of recent changes
-      const diff = await this.git.diff([`${latestCommit}~${log.all.length}`, latestCommit]);
+      let diff = '';
+      try {
+        // Check if we can safely reference the "from" commit
+        const fromCommitRef = `${latestCommit}~${log.all.length}`;
+        
+        // Try to verify the from commit exists before attempting diff
+        await this.git.catFile(['-e', fromCommitRef]);
+        
+        // Get diff of recent changes
+        diff = await this.git.diff([fromCommitRef, latestCommit]);
+      } catch (diffError) {
+        console.log('Cannot get full diff (likely shallow repository), attempting alternative approach...');
+        
+        try {
+          // Fallback: get diff from the oldest available commit
+          if (log.all.length > 1) {
+            const oldestCommit = log.all[log.all.length - 1].hash;
+            diff = await this.git.diff([oldestCommit, latestCommit]);
+          } else {
+            // Single commit: show the commit diff
+            diff = await this.git.show([latestCommit]);
+          }
+        } catch (fallbackError) {
+          console.log('Cannot get diff, continuing without it...');
+          diff = 'Unable to generate diff - repository may have shallow history';
+        }
+      }
       
       return {
         commits: log.all,
