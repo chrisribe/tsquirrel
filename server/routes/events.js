@@ -30,8 +30,6 @@ router.delete('/:id', (req, res, next) => req.eventsController.deleteEvent(req, 
 
 // In routes/events.js
 router.get('/search', (req, res, next) => {
-  // normalize the search term
-  req.query.searchTerm = req.query.q || '';
   req.eventsController.searchEvents(req, res, next, 'events/events-list');
 });
 

@@ -169,7 +169,7 @@ class EventsController {
 
   async searchEvents(req, res, next, templatePath = 'events/events-list') {
     try {
-      const searchTerm = req.query.searchTerm || '';
+      const searchTerm = req.query.q || '';
       const userId = req.session.user.id;
       
       // Simple parallel queries for categorized results
