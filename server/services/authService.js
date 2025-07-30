@@ -13,8 +13,17 @@ async function authenticateUser(email, password) {
   if (!user) {
     user = await userDAO.getUserByUsername(email);
   }  
-  // Check if the user exists and the password is correct
-  if (user && await argon2.verify(user.password, password)) {
+  
+  // Always hash the password even if user doesn't exist
+  // This prevents timing attacks that could reveal valid usernames
+  if (!user) {
+    // Hash a dummy password to maintain consistent timing
+    await argon2.hash('dummy-password-to-maintain-timing');
+    return null;
+  }
+  
+  // Check if the password is correct
+  if (await argon2.verify(user.password, password)) {
     return user;
   }
 
@@ -25,11 +34,10 @@ async function registerUser(username, password, email) {
   // Check if the user already exists
   const userByUsername = await userDAO.getUserByUsername(username);
   const userByEmail = await userDAO.getUserByEmail(email);
+  
   if (userByUsername !== undefined || userByEmail !== undefined) {
-    let error = new Error('Username or email is already taken');
-    error.fields = [
-      {id: 'username'}, {id: 'email'}
-    ];
+    // Generic error - don't reveal which specific field is taken
+    let error = new Error('Registration failed. An account with these credentials may already exist.');
     throw error;
   }
   
