@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-const authMiddleware = require('./../middleware/authMiddleware'); // Import the auth middleware
-const EventsDAO = require('./../dao/EventsDAO');
+const authMiddleware = require('../middleware/authMiddleware');
+const EventsDAO = require('../dao/EventsDAO');
 const EventsController = require('../controllers/EventsController');
-const { uploadToS3 } = require('../services/s3Service');
+const { extractDimensions } = require('../middleware/fileUploadMiddleware');
 
 
 // Middleware enriching the request with an event controller
@@ -36,11 +36,10 @@ router.get('/search', (req, res, next) => {
 });
 
 // Photo upload routes (authenticated) 
-// Note: uploadToS3 middleware adds photoMetadata to req before controller
-router.post('/:uuid/photos', uploadToS3.single('photoFile'), (req, res, next) => {
-  // uploadToS3 middleware has processed the file and added:
-  // - req.photoMetadata: { photoId, originalName, s3Key, extension }
-  // - req.body: { width, height } from client-side extraction
+// Note: extractDimensions middleware processes files and adds photoMetadata to req before controller
+router.post('/:uuid/photos', extractDimensions, (req, res, next) => {
+  // extractDimensions middleware has processed the file(s) and added:
+  // - req.photoMetadata: Array of { photoId, originalName, s3Key, extension, width, height, buffer }
   req.eventsController.uploadPhotos(req, res, next);
 });
 router.delete('/:uuid/photos/:photoId', (req, res, next) => req.eventsController.deletePhoto(req, res, next));
