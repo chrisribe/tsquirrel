@@ -1,5 +1,5 @@
 const Event = require('../models/Event');
-const { getPhotoUrls } = require('../services/s3Service');
+const { getPhotoUrls, uploadFilesToS3 } = require('../services/s3Service');
 
 class EventsController {
   constructor(eventsDAO) {
@@ -261,49 +261,63 @@ class EventsController {
     try {
       const eventUuid = req.params.uuid;
       const { photoMetadata } = req;
-      const { width, height } = req.body; // Get dimensions from form
       
-      if (!photoMetadata) {
+      if (!photoMetadata || !Array.isArray(photoMetadata) || photoMetadata.length === 0) {
         return res.status(400).json({ error: 'No photo metadata found' });
       }
 
-      // Parse dimensions with better error handling
-      const parsedWidth = width ? parseInt(width, 10) : 400;
-      const parsedHeight = height ? parseInt(height, 10) : 300;
+      // Upload all files to S3 first
+      await uploadFilesToS3(photoMetadata);
 
-      // Save photo metadata to database with dimensions - UUID-based approach
-      const photoData = {
-        event_uuid: eventUuid,
-        photo_id: photoMetadata.photoId,
-        original_name: photoMetadata.originalName,
-        s3_key: photoMetadata.s3Key,
-        width: parsedWidth,
-        height: parsedHeight,
-        uploaded_at: new Date()
-      };
+      const uploadedPhotos = [];
 
-      await this.eventsDAO.addPhoto(photoData);
+      // Process each uploaded photo
+      for (const photo of photoMetadata) {
+        // Use dimensions that were extracted during processing
+        const parsedWidth = photo.width || 400;
+        const parsedHeight = photo.height || 300;
 
-      // Get all photo URLs including the immediately available uploaded version
-      const photoUrls = getPhotoUrls(eventUuid, photoMetadata.photoId, photoMetadata.extension, photoMetadata.s3Key);
+        console.log(`Processing photo ${photo.originalName}: ${parsedWidth}x${parsedHeight}`);
 
-      // For HTMX requests, return the photo template to be inserted into the gallery
-      const photoForTemplate = {
-        photo_id: photoMetadata.photoId,
-        original_name: photoMetadata.originalName,
-        thumb_url: photoUrls.thumb,       // 200px - Fast gallery loading
-        photo_url: photoUrls.display,     // 800px - Lightbox preview  
-        original_url: photoUrls.original, // Full res - Lightbox zoom/download
-        width: photoData.width,
-        height: photoData.height
-      };
+        // Save photo metadata to database with dimensions - UUID-based approach
+        const photoData = {
+          event_uuid: eventUuid,
+          photo_id: photo.photoId,
+          original_name: photo.originalName,
+          s3_key: photo.s3Key,
+          width: parsedWidth,
+          height: parsedHeight,
+          uploaded_at: new Date()
+        };
 
+        await this.eventsDAO.addPhoto(photoData);
+
+        // Get all photo URLs including the immediately available uploaded version
+        const photoUrls = getPhotoUrls(eventUuid, photo.photoId, photo.extension, photo.s3Key);
+
+        // For HTMX requests, return the photo template to be inserted into the gallery
+        const photoForTemplate = {
+          photo_id: photo.photoId,
+          original_name: photo.originalName,
+          thumb_url: photoUrls.thumb,       // 200px - Fast gallery loading
+          photo_url: photoUrls.display,     // 800px - Lightbox preview  
+          original_url: photoUrls.original, // Full res - Lightbox zoom/download
+          width: photoData.width,
+          height: photoData.height
+        };
+
+        uploadedPhotos.push(photoForTemplate);
+      }
+
+      console.log(`Successfully processed ${uploadedPhotos.length} photos`);
+
+      // For multiple uploads, return all photos as HTML to be inserted
       res.status(201).respondWithTemplateOrJson({
-        photo: photoForTemplate
-      }, 'events/photo-item');
+        photos: uploadedPhotos
+      }, 'events/photo-items-multiple');
     } catch (error) {
       console.error('Photo upload error:', error);
-      res.status(500).json({ error: 'Failed to upload photo' });
+      res.status(500).json({ error: 'Failed to upload photo(s)' });
     }
   }
 
