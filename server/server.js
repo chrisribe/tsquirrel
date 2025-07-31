@@ -59,6 +59,7 @@ async function startServer() {
   app.use('/auth', require('./routes/auth'));
   app.use('/users', require('./routes/users'));
   app.use('/events', require('./routes/events'));
+  app.use('/admin', require('./routes/admin'));
   app.use('/', require('./routes/web'));
   
   // Error handler
