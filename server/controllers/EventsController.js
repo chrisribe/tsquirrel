@@ -23,7 +23,11 @@ class EventsController {
         events,
         upcomingEvents,
         pastEvents,
-        eventCounts
+        eventCounts,
+        pageAssets: {
+          css: ['events.css'],
+          js: ['events.js']
+        }
       }, templatePath);
     } catch (error) {
       next(error);
@@ -62,13 +66,22 @@ class EventsController {
       const newEvent = await this.eventsDAO.addEvent(userId, eventData);
       //console.log('New event created:', newEvent);
 
-      // Return only the new event with proper eventType
-      const eventType = new Date(newEvent.date) > new Date() ? 'upcoming' : 'past';
+      // After creating the event, return the updated events list
+      const [upcomingEvents, pastEvents, eventCounts] = await Promise.all([
+        this.eventsDAO.getEvents({ userId, timeFilter: 'upcoming', includePhotos: true }),
+        this.eventsDAO.getEvents({ userId, timeFilter: 'past', includePhotos: true }),
+        this.eventsDAO.getEventCounts(userId)
+      ]);
+      
+      const events = [...upcomingEvents, ...pastEvents];
+      
       res.status(201).respondWithTemplateOrJson({
-          event : newEvent,
-          eventType : eventType
+          events,
+          upcomingEvents,
+          pastEvents,
+          eventCounts
         }, 
-        'events/event-item'
+        'events/events-list'
       );
     } catch (error) {
       // Log the actual error for debugging
