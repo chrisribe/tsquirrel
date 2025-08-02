@@ -22,41 +22,65 @@ class CopilotRequestCreator {
   async getRecentChanges(since = '24 hours ago') {
     try {
       // Get commits since last project-state.md update or last 24 hours
-      const log = await this.git.log(['--since', since, '--oneline']);
+      // Note: --oneline with --since has issues in simple-git, so we'll get recent commits and filter
+      const allRecentLog = await this.git.log(['-20']); // Get last 20 commits
       
-      if (log.all.length === 0) {
+      // Convert since parameter to a date for filtering
+      const sinceDate = new Date();
+      if (since.includes('hours ago')) {
+        const hours = parseInt(since.match(/(\d+)/)?.[1] || '24');
+        sinceDate.setHours(sinceDate.getHours() - hours);
+      } else if (since.includes('days ago')) {
+        const days = parseInt(since.match(/(\d+)/)?.[1] || '1');
+        sinceDate.setDate(sinceDate.getDate() - days);
+      } else {
+        // Default to 24 hours ago if parsing fails
+        sinceDate.setHours(sinceDate.getHours() - 24);
+      }
+      
+      // Filter commits by date
+      const recentCommits = allRecentLog.all.filter(commit => {
+        const commitDate = new Date(commit.date);
+        return commitDate >= sinceDate;
+      });
+      
+      if (recentCommits.length === 0) {
         console.log('No recent changes found');
         return null;
       }
 
-      // Get detailed diff for analysis
-      const latestCommit = log.latest?.hash;
+      // Get the latest commit hash (clean)
+      const latestCommit = recentCommits[0].hash;
       if (!latestCommit) {
         return null;
       }
 
       let diff = '';
       try {
-        // Check if we can safely reference the "from" commit
-        const fromCommitRef = `${latestCommit}~${log.all.length}`;
-        
-        // Try to verify the from commit exists before attempting diff
-        await this.git.catFile(['-e', fromCommitRef]);
-        
-        // Get diff of recent changes
-        diff = await this.git.diff([fromCommitRef, latestCommit]);
+        // For a single commit, just show the commit
+        if (recentCommits.length === 1) {
+          diff = await this.git.show([latestCommit, '--stat']);
+        } else {
+          // Multiple commits: get diff from oldest to newest
+          const oldestCommit = recentCommits[recentCommits.length - 1].hash;
+          
+          // Verify commits exist
+          await this.git.catFile(['-e', oldestCommit]);
+          await this.git.catFile(['-e', latestCommit]);
+          
+          diff = await this.git.diff([`${oldestCommit}^`, latestCommit]);
+        }
       } catch (diffError) {
         console.log('Cannot get full diff (likely shallow repository), attempting alternative approach...');
         
         try {
-          // Fallback: get diff from the oldest available commit
-          if (log.all.length > 1) {
-            const oldestCommit = log.all[log.all.length - 1].hash;
-            diff = await this.git.diff([oldestCommit, latestCommit]);
-          } else {
-            // Single commit: show the commit diff
-            diff = await this.git.show([latestCommit]);
-          }
+          // Fallback: show individual commits
+          const commitShows = await Promise.all(
+            recentCommits.slice(0, 3).map(commit => 
+              this.git.show([commit.hash, '--stat']).catch(() => '')
+            )
+          );
+          diff = commitShows.filter(show => show).join('\n---\n');
         } catch (fallbackError) {
           console.log('Cannot get diff, continuing without it...');
           diff = 'Unable to generate diff - repository may have shallow history';
@@ -64,9 +88,9 @@ class CopilotRequestCreator {
       }
       
       return {
-        commits: log.all,
+        commits: recentCommits,
         diff: diff,
-        commitCount: log.all.length
+        commitCount: recentCommits.length
       };
     } catch (error) {
       console.error('Error getting recent changes:', error);
@@ -134,12 +158,20 @@ class CopilotRequestCreator {
     const significantKeywords = [
       'feature', 'add', 'new', 'create', 'implement', 'architecture', 
       'database', 'schema', 'migration', 'api', 'endpoint', 'route',
-      'dependency', 'package', 'install', 'security', 'auth', 'deploy'
+      'dependency', 'package', 'install', 'security', 'auth', 'deploy',
+      'merge', 'pull request', 'refactor', 'restructure', 'reorganize'
     ];
 
     const commitMessages = changes.commits.map(c => c.message.toLowerCase()).join(' ');
     const hasSignificantChanges = significantKeywords.some(keyword => 
       commitMessages.includes(keyword)
+    );
+
+    // Check for merge commits specifically (these are often significant)
+    const hasMergeCommits = changes.commits.some(commit => 
+      commit.message.toLowerCase().includes('merge') ||
+      commit.message.toLowerCase().includes('pull request') ||
+      commit.message.toLowerCase().includes('pr #')
     );
 
     // Also check if changes affect key directories
@@ -148,7 +180,21 @@ class CopilotRequestCreator {
       'package.json', 'docker', 'schema', 'migration'
     ].some(pattern => changes.diff.includes(pattern));
 
-    return hasSignificantChanges || affectsKeyAreas;
+    // Consider it significant if we have multiple commits (likely a meaningful change)
+    const hasMultipleCommits = changes.commitCount > 1;
+
+    const shouldCreate = hasSignificantChanges || hasMergeCommits || affectsKeyAreas || hasMultipleCommits;
+    
+    console.log('Significance analysis:', {
+      hasSignificantChanges,
+      hasMergeCommits,
+      affectsKeyAreas,
+      hasMultipleCommits,
+      commitCount: changes.commitCount,
+      shouldCreate
+    });
+
+    return shouldCreate;
   }
 
   async checkExistingIssues() {
