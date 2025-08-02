@@ -6,6 +6,7 @@
   --pico-link-color: black;
   --pico-hover-background-color: #e9ecef;
   --pico-spacing: 1.00rem;
+  --pico-block-spacing-vertical: 0.5rem; /* Override Pico's default block spacing */
 }
 
 html, body {
