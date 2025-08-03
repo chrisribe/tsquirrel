@@ -9,11 +9,16 @@
  * 1. User uploads photo via EventGlimpse → lands in uploads/event-uuid/photo.jpg
  * 2. S3 triggers this Lambda function
  * 3. Lambda downloads original image
- * 4. Creates 3 optimized versions in public folders:
- *    - thumbs/: 200px wide thumbnails
- *    - display/: 800px wide gallery images  
- *    - originals/: full-size optimized copies
+ * 4. Creates 3 optimized versions in public folders with auto-rotation:
+ *    - thumbs/: 200px wide thumbnails (respects EXIF orientation)
+ *    - display/: 800px wide gallery images (respects EXIF orientation)
+ *    - originals/: full-size optimized copies (respects EXIF orientation)
  * 5. Deletes the private upload to save storage
+ * 
+ * Features:
+ * - Automatic EXIF orientation correction for mobile photos
+ * - High-quality JPEG compression using mozjpeg encoder
+ * - Responsive image sizes for different display contexts
  * 
  * Dependencies:
  * - AWS SDK v3 for S3 operations
@@ -101,12 +106,15 @@ exports.handler = async (event) => {
         
         let processedImage;
         if (sizeName === 'original') {
-          // For originals, just optimize without resizing
-          // TODO: Could add light compression here while maintaining quality
-          processedImage = Buffer.from(image);
+          // For originals, apply auto-rotation and light compression while maintaining dimensions
+          processedImage = await sharp(image)
+            .rotate()                       // Auto-rotate based on EXIF orientation data
+            .jpeg({ quality: 90, mozjpeg: true }) // Light compression for originals
+            .toBuffer();
         } else {
           // Resize and optimize for thumbnails/display images
           processedImage = await sharp(image)
+            .rotate()                       // Auto-rotate based on EXIF orientation data
             .resize(config.width)           // Resize to target width (maintains aspect ratio)
             .jpeg({ quality: 85, mozjpeg: true }) // High quality JPEG with mozjpeg encoder
             .toBuffer();
