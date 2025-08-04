@@ -7,8 +7,10 @@ COPY package*.json ./
 # Debug: Show what was copied
 RUN ls -la && cat package.json | grep qrcode
 
-# Install dependencies
-RUN npm ci --only=production || npm install
+# Install dependencies with increased memory and verbose output
+RUN npm config set fetch-retry-maxtimeout 600000 && \
+    npm config set fetch-retry-mintimeout 10000 && \
+    npm ci --only=production --verbose || npm install --verbose
 
 # Debug: Verify qrcode was installed
 RUN npm list qrcode || echo "qrcode not found in node_modules"
