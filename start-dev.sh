@@ -19,7 +19,21 @@ export DB_PASSWORD
 # Run docker-compose up
 # Check if the first argument is 'build'
 if [ "$1" == "build" ]; then
-  docker-compose build --no-cache
+  # Use dev override if it exists (development)
+  if [ -f "docker-compose.dev.yml" ]; then
+    docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache
+  else
+    docker-compose build --no-cache
+  fi
 fi
+
 docker image prune -f
-docker-compose up
+
+# Start containers with or without dev override
+if [ -f "docker-compose.dev.yml" ]; then
+  echo "🚀 Starting in DEVELOPMENT mode with docker-compose.dev.yml"
+  docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+else
+  echo "🚀 Starting in PRODUCTION mode"
+  docker-compose up
+fi
