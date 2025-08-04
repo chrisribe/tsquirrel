@@ -23,7 +23,18 @@ else
 fi
 
 echo "Running migration: $1"
-docker-compose exec -T -e PGPASSWORD="$DB_PASSWORD" db psql -U dockeruser -d mydb < "$1"
+
+# Check which docker compose command is available
+if command -v docker-compose >/dev/null 2>&1; then
+    DOCKER_COMPOSE="docker-compose"
+elif docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+else
+    echo "Error: Neither 'docker-compose' nor 'docker compose' found"
+    exit 1
+fi
+
+$DOCKER_COMPOSE exec -T -e PGPASSWORD="$DB_PASSWORD" db psql -U dockeruser -d mydb < "$1"
 
 if [ $? -eq 0 ]; then
     echo "✓ Migration completed successfully"
