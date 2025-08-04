@@ -24,7 +24,8 @@ class AdminController {
   }
 
   async updateUserStatus(req, res, next) {
-    const { userId, status } = req.body;
+    const { id: userId } = req.params;  // Get userId from URL parameter
+    const { status } = req.body;        // Get status from request body
     
     try {
       // Validate input
@@ -41,9 +42,12 @@ class AdminController {
         });
       }
 
-      await this.userDAO.updateUserStatus(userId, status);
+      const updatedUser = await this.userDAO.updateUserStatus(userId, status);
       
       res.status(200).respondWithTemplateOrJson({ 
+        user: updatedUser,
+        currentUser: req.session.user 
+      }, 'admin/user-row-partial', {
         message: `User status updated to ${status}`,
         success: true 
       });
@@ -68,12 +72,13 @@ class AdminController {
       }
 
       // Soft delete by setting status to 'deleted'
-      await this.userDAO.updateUserStatus(id, 'deleted');
+      const updatedUser = await this.userDAO.updateUserStatus(id, 'deleted');
       
+      // Return updated row showing 'deleted' status
       res.status(200).respondWithTemplateOrJson({ 
-        message: 'User deleted successfully',
-        success: true 
-      });
+        user: updatedUser,
+        currentUser: req.session.user 
+      }, 'admin/user-row-partial');
     } catch (err) {
       console.error('Delete user error:', err);
       res.status(500).respondWithTemplateOrJson({ 
