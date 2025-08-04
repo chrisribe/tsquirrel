@@ -6,11 +6,10 @@
     <div class="content-box">
       <h1>Register</h1>
       <form 
+        id="registerForm"
         hx-post="/auth/register" 
         hx-target="#message" 
-        hx-swap="innerHTML" 
-        hx-on="htmx:responseError"
-        data-redirect-on-success="/">
+        hx-swap="innerHTML">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required>
 
@@ -35,7 +34,48 @@
       var confirmPassword = document.getElementById('confirmPassword').value;
       if (password !== confirmPassword) {
           event.preventDefault();
-          document.getElementById('message').innerText = 'Passwords do not match!';
+          document.getElementById('message').innerHTML = '<div style="color: red;">Passwords do not match!</div>';
       }
   };
+
+  // Handle HTMX responses
+  document.body.addEventListener('htmx:afterRequest', function(event) {
+    if (event.detail.target.id === 'message') {
+      const xhr = event.detail.xhr;
+      
+      try {
+        const response = JSON.parse(xhr.responseText);
+        
+        if (response.success && response.redirect) {
+          // Success with redirect
+          document.getElementById('message').innerHTML = '<div style="color: green; padding: 10px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px;">' + response.message + '</div>';
+          setTimeout(() => {
+            window.location.href = response.redirect;
+          }, 1500);
+        } else if (response.error) {
+          // Error response
+          document.getElementById('message').innerHTML = '<div style="color: #721c24; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;">' + response.error + '</div>';
+        } else if (response.success) {
+          // Success without redirect
+          document.getElementById('message').innerHTML = '<div style="color: green; padding: 10px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px;">' + (response.message || 'Registration successful!') + '</div>';
+        }
+      } catch (e) {
+        // If response is not JSON, treat as error
+        document.getElementById('message').innerHTML = '<div style="color: #721c24; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;">An error occurred. Please try again.</div>';
+      }
+    }
+  });
+
+  // Handle HTMX errors (network issues, server errors, etc.)
+  document.body.addEventListener('htmx:responseError', function(event) {
+    if (event.detail.target.id === 'message') {
+      document.getElementById('message').innerHTML = '<div style="color: #721c24; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;">Network error. Please check your connection and try again.</div>';
+    }
+  });
+
+  document.body.addEventListener('htmx:sendError', function(event) {
+    if (event.detail.target.id === 'message') {
+      document.getElementById('message').innerHTML = '<div style="color: #721c24; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;">Failed to send request. Please try again.</div>';
+    }
+  });
 </script>

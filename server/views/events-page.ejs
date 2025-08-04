@@ -1,6 +1,5 @@
 <% const {events, upcomingEvents, pastEvents, eventCounts} = pageData %>
 
-<link rel="stylesheet" href="/static/css/events.css">
 <div class="events-container">
   <hgroup>
     <h2>Planned events</h2>
@@ -53,20 +52,14 @@
     <h2>Add New Event</h2>
     <form id="addEventForm" 
       hx-post="/events" 
-      hx-target="#events-list ul"
-      hx-swap="afterbegin"
+      hx-target="#events-list"
+      hx-swap="innerHTML"
       hx-on::after-request="if(event.detail.successful) { this.reset(); document.getElementById('addEventModal').close(); }"
     >
 
       <%- include('events/event-form-add', {pageData: pageData}) %>
 
     </form>
-    <script>
-      document.getElementById('addEventForm').addEventListener('htmx:error', function(evt) {
-        document.getElementById('addEventForm').innerHTML = evt.detail.errorInfo.xhr.responseText || 
-        '<div class="error">Network error. Please try again.</div>';
-      });
-    </script>
 
   </article>
 </dialog>
