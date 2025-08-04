@@ -51,6 +51,40 @@
   border-radius: 4px;
 }
 
+/* Photo Actions - Overlay controls for event owners */
+.gallery-container .photo-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.gallery-container .flex-images .item:hover .photo-actions {
+  opacity: 1;
+}
+
+.gallery-container .set-cover-btn {
+  background: rgba(0, 123, 255, 0.9);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
+.gallery-container .set-cover-btn:hover {
+  background: rgba(0, 86, 179, 0.95);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+}
+
 /* Lightbox styles */
 .lightbox {
   position: fixed;

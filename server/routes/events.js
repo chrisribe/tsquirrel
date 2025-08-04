@@ -19,6 +19,14 @@ router.use((req, res, next) => {
 // Public routes
 router.get('/:uuid/gallery', (req, res, next) => req.eventsController.getEventGalleryByUuid(req, res, next));
 
+// Photo upload routes (public - no authentication required)
+// Note: extractDimensions middleware processes files and adds photoMetadata to req before controller
+router.post('/:uuid/photos', extractDimensions, (req, res, next) => {
+  // extractDimensions middleware has processed the file(s) and added:
+  // - req.photoMetadata: Array of { photoId, originalName, s3Key, extension, width, height, buffer }
+  req.eventsController.uploadPhotos(req, res, next);
+});
+
 // Should be logged in to access the events
 router.use(authMiddleware);
 
@@ -33,14 +41,10 @@ router.get('/search', (req, res, next) => {
   req.eventsController.searchEvents(req, res, next, 'events/events-list');
 });
 
-// Photo upload routes (authenticated) 
-// Note: extractDimensions middleware processes files and adds photoMetadata to req before controller
-router.post('/:uuid/photos', extractDimensions, (req, res, next) => {
-  // extractDimensions middleware has processed the file(s) and added:
-  // - req.photoMetadata: Array of { photoId, originalName, s3Key, extension, width, height, buffer }
-  req.eventsController.uploadPhotos(req, res, next);
-});
+// Photo management routes (authenticated - only event owners)
 router.delete('/:uuid/photos/:photoId', (req, res, next) => req.eventsController.deletePhoto(req, res, next));
+
+// Cover photo setting requires authentication (only event owner can set cover)
 router.patch('/:uuid/photos/:photoId/cover', (req, res, next) => req.eventsController.setCoverPhoto(req, res, next));
 
 
