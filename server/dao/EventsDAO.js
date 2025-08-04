@@ -214,6 +214,8 @@ class EventsDAO {
       throw new Error('No fields to update');
     }
 
+
+
     const query = `
       UPDATE events 
       SET ${fields.join(', ')}
@@ -222,6 +224,14 @@ class EventsDAO {
     
     const rows = await this.query(query, params);
     return rows[0];
+  }
+
+  async updateEventQRCode(eventUuid, qrCodeUrl) {
+    const result = await this.pool.query(
+      'UPDATE events SET qr_code_url = $1 WHERE uuid = $2 RETURNING *',
+      [qrCodeUrl, eventUuid]
+    );
+    return result.rows[0];
   }
 
   /**

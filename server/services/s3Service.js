@@ -66,11 +66,40 @@ async function uploadFilesToS3(photoMetadata) {
   await Promise.all(uploadPromises);
 }
 
+/**
+ * Uploads QR code image to S3
+ * @param {string} eventUuid - Event UUID for the QR code
+ * @param {Buffer} qrBuffer - QR code image buffer
+ * @returns {Promise<string>} Promise that resolves to the QR code URL
+ */
+async function uploadQRCodeToS3(eventUuid, qrBuffer) {
+  const s3Key = `qr-codes/${eventUuid}.png`;
+  
+  const uploadParams = {
+    Bucket: BUCKET_NAME,
+    Key: s3Key,
+    Body: qrBuffer,
+    ContentType: 'image/png',
+    CacheControl: 'max-age=31536000' // Cache for 1 year
+  };
+
+  try {
+    await s3.send(new PutObjectCommand(uploadParams));
+    const qrUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`;
+    console.log(`Successfully uploaded QR code for event ${eventUuid} to S3`);
+    return qrUrl;
+  } catch (error) {
+    console.error(`Failed to upload QR code for event ${eventUuid} to S3:`, error);
+    throw error;
+  }
+}
+
 // ============================================================================
 // Module Exports
 // ============================================================================
 
 module.exports = {
   uploadFilesToS3,
+  uploadQRCodeToS3,
   getPhotoUrls
 };
