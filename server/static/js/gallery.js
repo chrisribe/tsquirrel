@@ -636,6 +636,77 @@ const Gallery = (function() {
   };
   
   // ========================================================================
+  // Share Management
+  // ========================================================================
+  
+  const Share = {
+    toggleShare() {
+      const shareContent = document.getElementById('shareContent');
+      const shareBtn = document.getElementById('shareBtn');
+      const shareArrow = shareBtn?.querySelector('.share-arrow');
+      
+      if (!shareContent || !shareArrow) return;
+      
+      if (shareContent.style.display === 'none') {
+        // Show share content
+        shareContent.style.display = 'grid';
+        shareArrow.textContent = '▲';
+        shareBtn.classList.add('active');
+      } else {
+        // Hide share content
+        shareContent.style.display = 'none';
+        shareArrow.textContent = '▼';
+        shareBtn.classList.remove('active');
+      }
+    },
+    
+    copyCurrentUrl() {
+      const copyBtn = document.querySelector('.copy-btn');
+      const copyText = copyBtn?.querySelector('.copy-text');
+      const copyCheck = copyBtn?.querySelector('.copy-check');
+      
+      if (!copyBtn) return;
+      
+      const currentUrl = window.location.href;
+      
+      try {
+        navigator.clipboard.writeText(currentUrl).then(() => {
+          this.showCopyFeedback(copyText, copyCheck, copyBtn);
+        }).catch(() => {
+          this.fallbackCopy(currentUrl, copyText, copyCheck, copyBtn);
+        });
+      } catch (err) {
+        this.fallbackCopy(currentUrl, copyText, copyCheck, copyBtn);
+      }
+    },
+    
+    showCopyFeedback(copyText, copyCheck, copyBtn) {
+      copyText.style.display = 'none';
+      copyCheck.style.display = 'inline';
+      copyBtn.style.background = '#28a745';
+      
+      setTimeout(() => {
+        copyText.style.display = 'inline';
+        copyCheck.style.display = 'none';
+        copyBtn.style.background = '';
+      }, 2000);
+    },
+    
+    fallbackCopy(currentUrl, copyText, copyCheck, copyBtn) {
+      // Create temporary input element for fallback
+      const tempInput = document.createElement('input');
+      tempInput.value = currentUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      tempInput.setSelectionRange(0, 99999);
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      
+      this.showCopyFeedback(copyText, copyCheck, copyBtn);
+    }
+  };
+  
+  // ========================================================================
   // Public API
   // ========================================================================
   
@@ -661,7 +732,11 @@ const Gallery = (function() {
     refreshLayout: () => Layout.initFlexImages(),
     refreshLightbox: () => Lightbox.refreshListeners(),
     initNewPhotos: () => ImagePoller.initNewPhotos(),
-    showNotification: (message, type) => UI.showNotification(message, type)
+    showNotification: (message, type) => UI.showNotification(message, type),
+    
+    // Share functionality
+    toggleShare: () => Share.toggleShare(),
+    copyCurrentUrl: () => Share.copyCurrentUrl()
   };
   
 })();

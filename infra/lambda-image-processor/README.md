@@ -2,6 +2,8 @@
 
 AWS Lambda function for processing uploaded images from EventGlimpse events. Automatically creates thumbnail, display, and optimized original versions when photos are uploaded to S3.
 
+> **⚠️ Security Note**: Replace `YOUR_ACCOUNT_ID` with your actual AWS account ID in all commands below. Never commit real account IDs to public repositories.
+
 ## Prerequisites
 
 - AWS Account with proper permissions
@@ -57,14 +59,32 @@ npm run build
 ```
 
 ### 4. Deploy Function
+
+**First time setup:**
 ```bash
 aws lambda create-function \
   --function-name image-processor \
   --runtime nodejs20.x \
-  --role arn:aws:iam::ACCOUNT:role/lambda-execution-role \
+  --role arn:aws:iam::YOUR_ACCOUNT_ID:role/lambda-execution-role \
   --handler index.handler \
   --zip-file fileb://dist/lambda-package.zip \
-  --layers arn:aws:lambda:REGION:ACCOUNT:layer:sharp-layer:VERSION
+  --layers arn:aws:lambda:us-east-1:YOUR_ACCOUNT_ID:layer:sharp-layer:4 \
+```
+
+**Update existing function (most common):**
+```bash
+# Just update the code
+aws lambda update-function-code \
+  --function-name image-processor \
+  --zip-file fileb://dist/lambda-package.zip
+```
+
+**Update layer version:**
+```bash
+# When you need a new layer version
+aws lambda update-function-configuration \
+  --function-name image-processor \
+  --layers arn:aws:lambda:us-east-1:YOUR_ACCOUNT_ID:layer:sharp-layer:5
 ```
 
 ### 5. Configure S3 Trigger

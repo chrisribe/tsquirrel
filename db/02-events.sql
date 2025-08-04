@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS events (
   organizer VARCHAR(255),
   tags VARCHAR(255),
   event_picture VARCHAR(255),
+  qr_code_url VARCHAR(512),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
-const { getPhotoUrls, uploadFilesToS3 } = require('../services/s3Service');
+const { getPhotoUrls, uploadFilesToS3, uploadQRCodeToS3 } = require('../services/s3Service');
+const QRCode = require('qrcode');
 
 class EventsController {
   constructor(eventsDAO) {
@@ -232,6 +233,34 @@ class EventsController {
       
       if (!event) {
         return res.status(404).respondWithTemplateOrJson({ error: 'Event not found' }, 'errors/general-error');
+      }
+
+      // Generate QR code if it doesn't exist
+      if (!event.qr_code_url) {
+        try {
+          const galleryUrl = `${req.protocol}://${req.get('host')}/events/${eventUuid}/gallery`;
+          
+          // Generate QR code as PNG buffer
+          const qrCodeBuffer = await QRCode.toBuffer(galleryUrl, {
+            width: 400,
+            margin: 2,
+            color: {
+              dark: '#000000',
+              light: '#FFFFFF'
+            },
+            type: 'png'
+          });
+          
+          // Upload QR code to S3 and get URL
+          const qrCodeUrl = await uploadQRCodeToS3(eventUuid, qrCodeBuffer);
+          
+          // Store the S3 URL in the database
+          await this.eventsDAO.updateEventQRCode(eventUuid, qrCodeUrl);
+          event.qr_code_url = qrCodeUrl;
+        } catch (qrError) {
+          console.error('QR code generation error:', qrError);
+          // Continue without QR code if generation fails
+        }
       }
       
       const photos = await this.eventsDAO.getPhotos(eventUuid, true); // true = byUuid

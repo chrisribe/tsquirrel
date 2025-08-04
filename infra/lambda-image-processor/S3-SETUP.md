@@ -40,7 +40,8 @@ Create **1 S3 bucket** for the EventGlimpse image processing workflow:
       "Resource": [
         "arn:aws:s3:::eventglimpse/thumbs/*",
         "arn:aws:s3:::eventglimpse/display/*",
-        "arn:aws:s3:::eventglimpse/originals/*"
+        "arn:aws:s3:::eventglimpse/originals/*",
+        "arn:aws:s3:::eventglimpse/qr-codes/*"
       ]
     }
   ]
@@ -77,9 +78,11 @@ eventglimpse/
 ├── display/                # Output (800px max display size)
 │   └── {event-uuid}/
 │       └── {photo-id}.{ext}
-└── originals/              # Output (optimized originals)
-    └── {event-uuid}/
-        └── {photo-id}.{ext}
+├── originals/              # Output (optimized originals)
+│   └── {event-uuid}/
+│       └── {photo-id}.{ext}
+└── qr-codes/               # QR codes for gallery sharing
+    └── {event-uuid}.png
 ```
 
 ## Verification
