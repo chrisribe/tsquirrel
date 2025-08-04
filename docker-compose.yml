@@ -3,6 +3,7 @@ services:
     build:
       context: ./db
       dockerfile: pgdb.dockerfile
+    pull_policy: build
     environment:
       POSTGRES_USER: dockeruser
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -22,6 +23,7 @@ services:
     build:
       context: ./server
       dockerfile: dockerfile
+    pull_policy: build
     ports:
       - "3000:80"
     depends_on:
