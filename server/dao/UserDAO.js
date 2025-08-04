@@ -54,8 +54,11 @@ class UserDAO {
 
   // Admin-specific methods for user management
 
-  async getUsersWithAssetCounts() {
-    const query = `
+  // Helper method to build asset count query with optional user filter
+  _buildAssetCountQuery(userId = null) {
+    const whereClause = userId ? 'WHERE u.id = $1' : '';
+    
+    return `
       SELECT 
         u.id,
         u.username,
@@ -73,11 +76,15 @@ class UserDAO {
       LEFT JOIN (
         SELECT e.user_id, COUNT(ep.*) as total_photos
         FROM events e
-        LEFT JOIN event_photos ep ON e.id = ep.event_id
+        LEFT JOIN event_photos ep ON (e.id = ep.event_id OR e.uuid = ep.event_uuid)
         GROUP BY e.user_id
       ) photo_counts ON u.id = photo_counts.user_id
+      ${whereClause}
       ORDER BY u.id`;
-    
+  }
+
+  async getUsersWithAssetCounts() {
+    const query = this._buildAssetCountQuery();
     const result = await this.pool.query(query);
     return result.rows;
   }
@@ -88,35 +95,28 @@ class UserDAO {
       throw new Error('Invalid user status');
     }
     
+    // Update status and return updated user with asset counts
     await this.pool.query(
       'UPDATE users SET status = $1 WHERE id = $2',
       [status, userId]
     );
+
+    // Return the updated user with asset counts
+    const query = this._buildAssetCountQuery(userId);
+    const result = await this.pool.query(query, [userId]);
+    return result.rows[0];
   }
 
   async getUserAssetCounts(userId) {
-    const query = `
-      SELECT 
-        COALESCE(event_counts.total_events, 0) as total_events,
-        COALESCE(photo_counts.total_photos, 0) as total_photos
-      FROM users u
-      LEFT JOIN (
-        SELECT user_id, COUNT(*) as total_events
-        FROM events 
-        WHERE user_id = $1
-        GROUP BY user_id
-      ) event_counts ON u.id = event_counts.user_id
-      LEFT JOIN (
-        SELECT e.user_id, COUNT(ep.*) as total_photos
-        FROM events e
-        LEFT JOIN event_photos ep ON e.id = ep.event_id
-        WHERE e.user_id = $1
-        GROUP BY e.user_id
-      ) photo_counts ON u.id = photo_counts.user_id
-      WHERE u.id = $1`;
-    
+    const query = this._buildAssetCountQuery(userId);
     const result = await this.pool.query(query, [userId]);
-    return result.rows[0] || { total_events: 0, total_photos: 0 };
+    
+    if (result.rows.length === 0) {
+      return { total_events: 0, total_photos: 0 };
+    }
+    
+    const { total_events, total_photos } = result.rows[0];
+    return { total_events, total_photos };
   }
 
 }
