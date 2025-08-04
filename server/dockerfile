@@ -4,8 +4,14 @@ WORKDIR /app
 # Copy package.json and package-lock.json first
 COPY package*.json ./
 
+# Debug: Show what was copied
+RUN ls -la && cat package.json | grep qrcode
+
 # Install dependencies
-RUN npm install
+RUN npm ci --only=production || npm install
+
+# Debug: Verify qrcode was installed
+RUN npm list qrcode || echo "qrcode not found in node_modules"
 
 # Copy the rest of the application files
 COPY . .
