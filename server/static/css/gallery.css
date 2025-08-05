@@ -59,15 +59,17 @@
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .gallery-container .flex-images .item:hover .photo-actions {
   opacity: 1;
 }
 
-.gallery-container .set-cover-btn {
-  background: rgba(0, 123, 255, 0.9);
-  color: white;
+.gallery-container .set-cover-btn,
+.gallery-container .delete-photo-btn {
   border: none;
   padding: 6px 12px;
   border-radius: 6px;
@@ -79,10 +81,26 @@
   backdrop-filter: blur(4px);
 }
 
+.gallery-container .set-cover-btn {
+  background: rgba(0, 123, 255, 0.9);
+  color: white;
+}
+
 .gallery-container .set-cover-btn:hover {
   background: rgba(0, 86, 179, 0.95);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+}
+
+.gallery-container .delete-photo-btn {
+  background: rgba(220, 53, 69, 0.9);
+  color: white;
+}
+
+.gallery-container .delete-photo-btn:hover {
+  background: rgba(200, 35, 51, 0.95);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
 }
 
 /* Lightbox styles */
@@ -301,9 +319,11 @@
     opacity: 1; /* Always visible on mobile */
     top: 4px;
     right: 4px;
+    gap: 2px;
   }
   
-  .gallery-container .set-cover-btn {
+  .gallery-container .set-cover-btn,
+  .gallery-container .delete-photo-btn {
     padding: 4px 8px;
     font-size: 0.7rem;
   }

@@ -27,7 +27,7 @@
           "arn": "arn:aws:s3:::eventglimpse"
         },
         "object": {
-          "key": "uploads/6cb047f1-91be-4603-8de8-f85a51961c90/349f2b07-5dfe-4496-b80b-1213906d7461.png",
+          "key": "uploads/0b5ff7eb-3504-4c07-9034-20f11199e822/efd0dd8b-f454-4b74-a718-c194cbdee5e1.jpg",
           "size": 225113,
           "eTag": "0123456789abcdef0123456789abcdef",
           "sequencer": "0A1B2C3D4E5F678901"

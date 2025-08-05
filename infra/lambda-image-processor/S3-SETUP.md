@@ -48,6 +48,11 @@ Create **1 S3 bucket** for the EventGlimpse image processing workflow:
 }
 ```
 
+**⚠️ IMPORTANT:** 
+- Replace `eventglimpse` with your **exact bucket name**
+- Check that **Block Public Access** settings allow this policy
+- Verify the file path matches the policy (case-sensitive)
+
 3. Click **Save changes**
 
 ### 3. Configure Lambda Event Trigger

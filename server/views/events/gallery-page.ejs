@@ -67,6 +67,12 @@
                         title="Set as cover photo">
                   🖼️ Set as Cover
                 </button>
+                <button class="delete-photo-btn" 
+                        data-photo-id="<%= photo.photo_id %>"
+                        data-event-uuid="<%= pageData.event.uuid %>"
+                        title="Delete photo">
+                  🗑️ Delete
+                </button>
               </div>
             <% } %>
           </div>

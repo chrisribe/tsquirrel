@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
 // ============================================================================
 // Configuration
@@ -94,6 +94,57 @@ async function uploadQRCodeToS3(eventUuid, qrBuffer) {
   }
 }
 
+/**
+ * Deletes all variants of a photo from S3
+ * @param {string} eventUuid - Event UUID
+ * @param {string} photoId - Photo ID
+ * @param {string} extension - File extension
+ * @returns {Promise} Promise that resolves when all deletions complete
+ */
+async function deletePhotoFromS3(eventUuid, photoId, extension) {
+  const deletePromises = [];
+  
+  // Delete all three processed variants
+  const variants = ['thumbs', 'display', 'originals'];
+  
+  for (const variant of variants) {
+    const s3Key = `${variant}/${eventUuid}/${photoId}${extension}`;
+    
+    const deleteParams = {
+      Bucket: BUCKET_NAME,
+      Key: s3Key
+    };
+    
+    deletePromises.push(
+      s3.send(new DeleteObjectCommand(deleteParams))
+        .then(() => console.log(`Deleted ${s3Key} from S3`))
+        .catch(error => {
+          // Log but don't fail if file doesn't exist (404 is acceptable)
+          if (error.name !== 'NoSuchKey') {
+            console.error(`Failed to delete ${s3Key} from S3:`, error);
+          }
+        })
+    );
+  }
+  
+  // Also try to delete from uploads folder (in case processing hasn't completed)
+  const uploadKey = `uploads/${eventUuid}/${photoId}${extension}`;
+  deletePromises.push(
+    s3.send(new DeleteObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: uploadKey
+    }))
+    .then(() => console.log(`Deleted ${uploadKey} from S3`))
+    .catch(error => {
+      if (error.name !== 'NoSuchKey') {
+        console.error(`Failed to delete ${uploadKey} from S3:`, error);
+      }
+    })
+  );
+  
+  await Promise.all(deletePromises);
+}
+
 // ============================================================================
 // Module Exports
 // ============================================================================
@@ -101,5 +152,6 @@ async function uploadQRCodeToS3(eventUuid, qrBuffer) {
 module.exports = {
   uploadFilesToS3,
   uploadQRCodeToS3,
-  getPhotoUrls
+  getPhotoUrls,
+  deletePhotoFromS3
 };

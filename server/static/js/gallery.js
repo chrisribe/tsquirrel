@@ -11,7 +11,7 @@ const Gallery = (function() {
   
   const config = {
     flexImages: {
-      rowHeight: 200,
+      rowHeight: 300,
       maxRows: 0,
       truncate: 0,
       container: '.item',
@@ -581,6 +581,108 @@ const Gallery = (function() {
   };
   
   // ========================================================================
+  // Photo Delete Management
+  // ========================================================================
+  
+  const PhotoDelete = {
+    init() {
+      // Scope the listener to the gallery container
+      const galleryContainer = document.getElementById('flexGallery');
+      if (!galleryContainer) {
+        console.log('PhotoDelete: Gallery container not found, skipping initialization');
+        return;
+      }
+      
+      galleryContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('delete-photo-btn')) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          this.handleDeletePhoto(e.target);
+        }
+      });
+    },
+    
+    handleDeletePhoto(button) {
+      const photoId = button.dataset.photoId;
+      const eventUuid = button.dataset.eventUuid;
+      
+      if (!photoId || !eventUuid) {
+        console.error('Missing photo ID or event UUID');
+        return;
+      }
+      
+      // Show confirmation dialog
+      if (!confirm('Are you sure you want to delete this photo? This action cannot be undone.')) {
+        return;
+      }
+      
+      // Show loading state
+      const originalText = button.textContent;
+      button.textContent = '⏳ Deleting...';
+      button.disabled = true;
+      
+      // Make DELETE request
+      fetch(`/events/${eventUuid}/photos/${photoId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          this.handleDeleteSuccess(button, photoId);
+        } else {
+          throw new Error(data.error || 'Failed to delete photo');
+        }
+      })
+      .catch(error => {
+        this.handleDeleteError(button, originalText, error);
+      });
+    },
+    
+    handleDeleteSuccess(button, photoId) {
+      // Find and remove the photo item from DOM
+      const photoItem = button.closest('.item');
+      if (photoItem) {
+        // Animate removal
+        photoItem.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        photoItem.style.opacity = '0';
+        photoItem.style.transform = 'scale(0.8)';
+        
+        setTimeout(() => {
+          photoItem.remove();
+          
+          // Refresh layout and lightbox
+          Layout.initFlexImages();
+          Lightbox.refreshListeners();
+          
+          // Check if gallery is now empty
+          const galleryItems = document.querySelectorAll('#flexGallery .item');
+          if (galleryItems.length === 0) {
+            const emptyState = document.querySelector('.empty-state');
+            if (emptyState) {
+              emptyState.style.display = 'block';
+            }
+          }
+        }, 300);
+      }
+      
+      UI.showNotification('Photo deleted successfully! 🗑️', 'success');
+    },
+    
+    handleDeleteError(button, originalText, error) {
+      console.error('Error deleting photo:', error);
+      
+      button.textContent = originalText;
+      button.disabled = false;
+      
+      UI.showNotification(error.message || 'Failed to delete photo', 'error');
+    }
+  };
+  
+  // ========================================================================
   // UI Utilities
   // ========================================================================
   
@@ -722,6 +824,7 @@ const Gallery = (function() {
       Lightbox.init();
       Upload.init();
       CoverPhoto.init();
+      PhotoDelete.init();
       
       state.isInitialized = true;
       console.log('Gallery module initialized');

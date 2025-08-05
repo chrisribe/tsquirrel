@@ -1,5 +1,5 @@
 const Event = require('../models/Event');
-const { getPhotoUrls, uploadFilesToS3, uploadQRCodeToS3 } = require('../services/s3Service');
+const { getPhotoUrls, uploadFilesToS3, uploadQRCodeToS3, deletePhotoFromS3 } = require('../services/s3Service');
 const QRCode = require('qrcode');
 
 class EventsController {
@@ -366,14 +366,37 @@ class EventsController {
   async deletePhoto(req, res, next) {
     try {
       const { uuid: eventUuid, photoId } = req.params;
+      const userId = req.session.user.id;
       
-      // Delete from database
+      // First, verify the event exists and belongs to the user
+      const event = await this.eventsDAO.getEvent(eventUuid, true); // true = byUuid
+      
+      if (!event || event.user_id !== userId) {
+        return res.status(403).json({ error: 'Only the event owner can delete photos' });
+      }
+      
+      // Get the photo details to determine the file extension
+      const photos = await this.eventsDAO.getPhotos(eventUuid, true);
+      const targetPhoto = photos.find(p => p.photo_id === photoId);
+      
+      if (!targetPhoto) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+      
+      // Extract extension from s3_key or use default
+      const extension = targetPhoto.s3_key ? 
+        targetPhoto.s3_key.substring(targetPhoto.s3_key.lastIndexOf('.')) : '.jpg';
+      
+      // Delete from database first
       await this.eventsDAO.deletePhoto(eventUuid, photoId);
       
-      // TODO: Delete from S3 (all sizes)
-      // This would require additional S3 delete operations
+      // Delete all variants from S3 (thumbs, display, originals, uploads)
+      await deletePhotoFromS3(eventUuid, photoId, extension);
       
-      res.status(200).json({ success: true });
+      res.status(200).json({ 
+        success: true, 
+        message: 'Photo deleted successfully' 
+      });
     } catch (error) {
       console.error('Photo delete error:', error);
       res.status(500).json({ error: 'Failed to delete photo' });
