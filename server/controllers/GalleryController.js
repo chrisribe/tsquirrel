@@ -137,18 +137,45 @@ class GalleryController {
         return res.status(404).json({ error: 'Gallery not found' });
       }
 
-      // Upload to S3
-      await uploadFilesToS3(photoMetadata);
+      // Filter out duplicates by hash
+      const newPhotos = [];
+      let skippedCount = 0;
+      for (const photo of photoMetadata) {
+        const isDupe = await this.galleryDAO.hashExists(uuid, photo.fileHash);
+        if (!isDupe) {
+          newPhotos.push(photo);
+        } else {
+          skippedCount++;
+        }
+      }
+
+      if (newPhotos.length === 0) {
+        // All photos were duplicates
+        const photoCount = await this.galleryDAO.getPhotoCount(uuid);
+        res.setHeader('HX-Trigger', JSON.stringify({
+          uploadComplete: { added: 0, skipped: skippedCount }
+        }));
+        return res.status(200).respondWithTemplateOrJson({
+          gallery,
+          photos: [],
+          photoCount,
+          isOwner: req.session?.user?.id === gallery.user_id
+        }, 'galleries/photo-items');
+      }
+
+      // Upload only new photos to S3
+      await uploadFilesToS3(newPhotos);
 
       // Save to database
       const uploadedPhotos = [];
-      for (const photo of photoMetadata) {
+      for (const photo of newPhotos) {
         await this.galleryDAO.addPhoto(
           uuid,
           photo.photoId,
           photo.s3Key,
           photo.width,
-          photo.height
+          photo.height,
+          photo.fileHash
         );
 
         const urls = getPhotoUrls(uuid, photo.photoId, photo.extension);
@@ -165,6 +192,10 @@ class GalleryController {
       // Get new count for live update
       const photoCount = await this.galleryDAO.getPhotoCount(uuid);
       const isOwner = req.session?.user?.id === gallery.user_id;
+
+      res.setHeader('HX-Trigger', JSON.stringify({
+        uploadComplete: { added: newPhotos.length, skipped: skippedCount }
+      }));
 
       res.status(201).respondWithTemplateOrJson({
         gallery,

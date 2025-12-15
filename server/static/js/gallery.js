@@ -37,38 +37,55 @@ const Gallery = {
     }
   },
 
-  // After upload completes
+  // After upload completes - hide status
   onUploadComplete(event) {
     document.getElementById('uploadStatus').style.display = 'none';
+  },
+
+  // Handle upload result via HX-Trigger event
+  onUploadResult(event) {
+    const { added, skipped } = event.detail;
     
-    // Show success feedback
-    if (event.detail.successful) {
+    if (added > 0 && skipped > 0) {
+      this.showToast(`${added} added, ${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`);
+    } else if (added > 0) {
       this.showToast('Photos uploaded! ✓');
+    } else if (skipped > 0) {
+      this.showToast(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`, 'warning');
     }
   },
 
   // Simple toast notification
-  showToast(message) {
+  showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.textContent = message;
+    const bgColor = type === 'warning' ? '#b45309' : '#333';
     toast.style.cssText = `
       position: fixed;
       bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #333;
+      left: 0;
+      right: 0;
+      margin: 0 auto;
+      width: fit-content;
+      background: ${bgColor};
       color: white;
       padding: 1rem 2rem;
       border-radius: 0.5rem;
       z-index: 1001;
-      animation: fadeIn 0.3s ease;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     `;
     document.body.appendChild(toast);
+    
+    // Trigger fade in after append
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+    });
     
     setTimeout(() => {
       toast.style.opacity = '0';
       setTimeout(() => toast.remove(), 300);
-    }, 2000);
+    }, 3000);
   },
 
   // Lightbox
@@ -113,9 +130,17 @@ const Gallery = {
   }
 };
 
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    Gallery.closeLightbox();
-  }
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      Gallery.closeLightbox();
+    }
+  });
+
+  // Listen for HX-Trigger uploadComplete event
+  document.body.addEventListener('uploadComplete', (e) => {
+    Gallery.onUploadResult(e);
+  });
 });

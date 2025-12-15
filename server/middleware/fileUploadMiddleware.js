@@ -52,6 +52,7 @@ function extractDimensions(req, res, next) {
         const photoId = crypto.randomUUID();
         const extension = path.extname(file.originalname);
         const dims = getImageDimensions(file.buffer, file.originalname);
+        const fileHash = crypto.createHash('md5').update(file.buffer).digest('hex');
         
         req.photoMetadata.push({
           photoId,
@@ -61,7 +62,8 @@ function extractDimensions(req, res, next) {
           width: dims.width,
           height: dims.height,
           buffer: file.buffer,
-          mimetype: file.mimetype
+          mimetype: file.mimetype,
+          fileHash
         });
       });
     }
