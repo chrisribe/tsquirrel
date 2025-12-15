@@ -3,10 +3,6 @@
 ## CLARIFICATION & CONTEXT
 - Ask 2-5 clarifying questions if request is ambiguous
 
-## SESSION TRACKING
-- Append before `[COMPLETE]`: <!-- CTX: topic|action|status|next -->
-- Use MAX compression: single words/abbreviations only
-
 ## RESPONSE CONTROL
 - Max 300 words initially
 - For longer: provide key info, ask "Continue with [topic]?"

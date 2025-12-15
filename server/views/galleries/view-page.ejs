@@ -1,0 +1,78 @@
+<div class="gallery-view">
+  <!-- Header -->
+  <header class="gallery-header">
+    <h1><%= pageData.gallery.title %></h1>
+    <div class="photo-counter">
+      <span id="photoCount"><%= pageData.photoCount %></span> photos
+    </div>
+  </header>
+
+  <!-- Big Upload Button -->
+  <div class="upload-zone">
+    <form 
+      id="uploadForm"
+      hx-post="/g/<%= pageData.gallery.uuid %>/photos"
+      hx-encoding="multipart/form-data"
+      hx-target="#photoGrid"
+      hx-swap="afterbegin"
+      hx-on::after-request="Gallery.onUploadComplete(event)">
+      
+      <label for="photoInput" class="upload-btn-big">
+        <span class="upload-icon">📷</span>
+        <span class="upload-text">Add Photos</span>
+        <input 
+          type="file" 
+          id="photoInput" 
+          name="photoFile" 
+          accept="image/*" 
+          multiple 
+          hidden
+          onchange="Gallery.onFilesSelected(this)">
+      </label>
+      
+      <div id="uploadStatus" class="upload-status" style="display: none;">
+        <progress id="uploadProgress"></progress>
+        <span>Uploading...</span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Photo Grid -->
+  <div class="photo-grid" id="photoGrid">
+    <% if (pageData.photos && pageData.photos.length > 0) { %>
+      <% pageData.photos.forEach((photo, index) => { %>
+        <div class="photo-item" data-photo-id="<%= photo.photo_id %>">
+          <img 
+            src="<%= photo.thumb_url %>" 
+            alt="Photo"
+            loading="lazy"
+            onload="this.classList.add('loaded')"
+            onerror="Gallery.retryImage(this)"
+            onclick="Gallery.openLightbox('<%= photo.display_url %>', '<%= photo.original_url %>')">
+          
+          <% if (pageData.isOwner) { %>
+            <button 
+              class="delete-btn"
+              onclick="Gallery.deletePhoto('<%= pageData.gallery.uuid %>', '<%= photo.photo_id %>', this)">
+              ×
+            </button>
+          <% } %>
+        </div>
+      <% }); %>
+    <% } %>
+  </div>
+
+  <% if (!pageData.photos || pageData.photos.length === 0) { %>
+    <div class="empty-state" id="emptyState">
+      <p>No photos yet</p>
+      <p class="hint">Be the first to share a memory!</p>
+    </div>
+  <% } %>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox" onclick="Gallery.closeLightbox()" style="display: none;">
+    <img id="lightboxImg" src="" alt="Full size photo">
+    <a id="lightboxDownload" href="" download class="download-btn">⬇ Download</a>
+    <button class="close-btn" onclick="Gallery.closeLightbox()">×</button>
+  </div>
+</div>

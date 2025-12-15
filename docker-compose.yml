@@ -1,0 +1,42 @@
+services:
+  db:
+    build:
+      context: ./db
+      dockerfile: pgdb.dockerfile
+    environment:
+      POSTGRES_USER: dockeruser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - app_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dockeruser -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+      
+  server:
+    build:
+      context: ./server
+      dockerfile: dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://dockeruser:${DB_PASSWORD:-changeme}@db:5432/appdb
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-eventglimpse}
+    restart: unless-stopped
+
+volumes:
+  app_db_data:
+    driver: local

@@ -1,0 +1,27 @@
+<% pageData.photos.forEach((photo, index) => { %>
+  <div class="photo-item photo-new" data-photo-id="<%= photo.photo_id %>">
+    <img 
+      src="<%= photo.thumb_url %>" 
+      alt="Photo"
+      loading="lazy"
+      onload="this.classList.add('loaded')"
+      onerror="Gallery.retryImage(this)"
+      onclick="Gallery.openLightbox('<%= photo.display_url %>', '<%= photo.original_url %>')">
+    
+    <% if (pageData.isOwner) { %>
+      <button 
+        class="delete-btn"
+        onclick="Gallery.deletePhoto('<%= pageData.gallery.uuid %>', '<%= photo.photo_id %>', this)">
+        ×
+      </button>
+    <% } %>
+  </div>
+<% }); %>
+
+<script>
+  // Update counter
+  document.getElementById('photoCount').textContent = '<%= pageData.photoCount %>';
+  // Hide empty state if it exists
+  const empty = document.getElementById('emptyState');
+  if (empty) empty.style.display = 'none';
+</script>

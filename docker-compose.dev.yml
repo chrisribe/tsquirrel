@@ -1,0 +1,14 @@
+# Development overrides
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: devpassword123
+
+  server:
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    environment:
+      DATABASE_URL: postgres://dockeruser:devpassword123@db:5432/appdb
+      NODE_ENV: development
+    command: npm run dev

@@ -1,0 +1,22 @@
+<tr id="user-<%= pageData.user.id %>">
+  <td><%= pageData.user.id %></td>
+  <td><%= pageData.user.username %></td>
+  <td><%= pageData.user.email %></td>
+  <td><%= pageData.user.role %></td>
+  <td><%= pageData.user.status %></td>
+  <td>
+    <% if (pageData.user.status === 'active') { %>
+      <button hx-patch="/admin/users/<%= pageData.user.id %>/status" 
+              hx-vals='{"status":"paused"}' 
+              hx-target="#user-<%= pageData.user.id %>"
+              hx-swap="outerHTML"
+              class="outline secondary">Pause</button>
+    <% } else { %>
+      <button hx-patch="/admin/users/<%= pageData.user.id %>/status" 
+              hx-vals='{"status":"active"}' 
+              hx-target="#user-<%= pageData.user.id %>"
+              hx-swap="outerHTML"
+              class="outline">Activate</button>
+    <% } %>
+  </td>
+</tr>

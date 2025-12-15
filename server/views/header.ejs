@@ -1,0 +1,21 @@
+<header class="container">
+  <nav>
+    <ul>
+      <li><a href="/" class="logo"><strong>EventGlimpse</strong></a></li>
+    </ul>
+    <ul class="nav-right">
+      <% if (user) { %>
+        <li><a href="/galleries">My Galleries</a></li>
+        <% if (user.role === 'admin') { %>
+          <li><a href="/admin">Admin</a></li>
+        <% } %>
+        <li>
+          <a href="#" hx-post="/auth/logout" hx-swap="none">Logout</a>
+        </li>
+      <% } else { %>
+        <li><a href="/auth/login">Login</a></li>
+        <li><a href="/register" role="button">Get Started</a></li>
+      <% } %>
+    </ul>
+  </nav>
+</header>

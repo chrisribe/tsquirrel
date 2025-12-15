@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App</title>
+  <link rel="stylesheet" href="/static/css/pico.min.css">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <% if (typeof pageAssets !== 'undefined' && pageAssets && pageAssets.css) { %>
+    <% pageAssets.css.forEach(cssFile => { %>
+      <link rel="stylesheet" href="/static/css/<%= cssFile %>">
+    <% }); %>
+  <% } %>
+  <script src="/static/js/htmx.min.js"></script>
+  <script>
+    // Handle HTMX errors - swap into error containers
+    document.addEventListener('DOMContentLoaded', function() {
+      document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (evt.detail.xhr.status >= 400 && evt.detail.xhr.status < 500) {
+          evt.detail.shouldSwap = true;
+          evt.detail.isError = false;
+          // Retarget to error message container if it exists
+          var errorTarget = document.getElementById('admin-messages') || document.getElementById('form-messages');
+          if (errorTarget) {
+            evt.detail.target = errorTarget;
+          }
+        }
+      });
+    });
+  </script>
+  <% if (typeof pageAssets !== 'undefined' && pageAssets && pageAssets.js) { %>
+    <% pageAssets.js.forEach(jsFile => { %>
+      <script src="/static/js/<%= jsFile %>"></script>
+    <% }); %>
+  <% } %>
+</head>
+<body>
+  <%- include('./header.ejs') %>
+  <main class="container">
+    <%- include(template, { pageData }) %>
+  </main>
+  <%- include('./footer.ejs') %>
+</body>
+</html>

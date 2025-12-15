@@ -1,0 +1,101 @@
+/**
+ * GalleryDAO - Simplified data access for galleries and photos
+ */
+class GalleryDAO {
+  constructor(pool) {
+    this.pool = pool;
+  }
+
+  // ============================================
+  // GALLERY METHODS
+  // ============================================
+
+  async createGallery(userId, title) {
+    const result = await this.pool.query(
+      'INSERT INTO galleries (user_id, title) VALUES ($1, $2) RETURNING *',
+      [userId, title]
+    );
+    return result.rows[0];
+  }
+
+  async getGalleryByUuid(uuid) {
+    const result = await this.pool.query(
+      'SELECT * FROM galleries WHERE uuid = $1',
+      [uuid]
+    );
+    return result.rows[0];
+  }
+
+  async getUserGalleries(userId) {
+    const result = await this.pool.query(
+      `SELECT g.*, 
+              COUNT(p.id) as photo_count,
+              cover.s3_key as cover_photo_key,
+              cover.photo_id as cover_photo_id
+       FROM galleries g 
+       LEFT JOIN photos p ON g.uuid = p.gallery_uuid 
+       LEFT JOIN LATERAL (
+         SELECT s3_key, photo_id 
+         FROM photos 
+         WHERE gallery_uuid = g.uuid 
+         ORDER BY uploaded_at 
+         LIMIT 1
+       ) cover ON true
+       WHERE g.user_id = $1 
+       GROUP BY g.id, cover.s3_key, cover.photo_id
+       ORDER BY g.created_at DESC`,
+      [userId]
+    );
+    return result.rows;
+  }
+
+  async deleteGallery(userId, galleryId) {
+    const result = await this.pool.query(
+      'DELETE FROM galleries WHERE id = $1 AND user_id = $2 RETURNING *',
+      [galleryId, userId]
+    );
+    return result.rows[0];
+  }
+
+  // ============================================
+  // PHOTO METHODS
+  // ============================================
+
+  async addPhoto(galleryUuid, photoId, s3Key, width, height) {
+    const result = await this.pool.query(
+      `INSERT INTO photos (gallery_uuid, photo_id, s3_key, width, height) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [galleryUuid, photoId, s3Key, width, height]
+    );
+    return result.rows[0];
+  }
+
+  async getPhotos(galleryUuid) {
+    const result = await this.pool.query(
+      `SELECT photo_id, s3_key, width, height, uploaded_at 
+       FROM photos 
+       WHERE gallery_uuid = $1 
+       ORDER BY uploaded_at DESC`,
+      [galleryUuid]
+    );
+    return result.rows;
+  }
+
+  async getPhotoCount(galleryUuid) {
+    const result = await this.pool.query(
+      'SELECT COUNT(*) as count FROM photos WHERE gallery_uuid = $1',
+      [galleryUuid]
+    );
+    return parseInt(result.rows[0].count);
+  }
+
+  async deletePhoto(galleryUuid, photoId) {
+    const result = await this.pool.query(
+      'DELETE FROM photos WHERE gallery_uuid = $1 AND photo_id = $2 RETURNING *',
+      [galleryUuid, photoId]
+    );
+    return result.rows[0];
+  }
+}
+
+module.exports = GalleryDAO;

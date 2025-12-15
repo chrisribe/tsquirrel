@@ -1,0 +1,26 @@
+/* Base styles - customize for your project */
+:root {
+  --primary: #2B6CB8;
+  --success: #10B981;
+  --error: #DC2626;
+}
+
+.error {
+  color: var(--error);
+  background: #FEE2E2;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.success {
+  color: #065F46;
+  background: #D1FAE5;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.logo {
+  text-decoration: none;
+}

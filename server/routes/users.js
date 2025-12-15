@@ -1,0 +1,31 @@
+const express = require('express');
+const router = express.Router();
+const UserDAO = require('../dao/UserDAO');
+const UserController = require('../controllers/UserController');
+const authMiddleware = require('../middleware/authMiddleware');
+const { validate } = require('../middleware/validateInput');
+
+// Inject UserController with DAO on each request
+router.use((req, res, next) => {
+  const pool = req.app.get('pool');
+  const userDAO = new UserDAO(pool);
+  req.userController = new UserController(userDAO);
+  next();
+});
+
+// Routes (protected)
+router.get('/', authMiddleware, (req, res, next) => req.userController.getAllUsers(req, res, next));
+router.post('/', authMiddleware,
+  validate({ username: 'username', email: 'email', password: 'password' }),
+  (req, res, next) => req.userController.addUser(req, res, next)
+);
+router.put('/:id', authMiddleware,
+  validate({ id: 'id', username: 'username', email: 'email', password: ['optional', 'password'] }),
+  (req, res, next) => req.userController.updateUser(req, res, next)
+);
+router.delete('/:id', authMiddleware,
+  validate({ id: 'id' }),
+  (req, res, next) => req.userController.deleteUser(req, res, next)
+);
+
+module.exports = router;

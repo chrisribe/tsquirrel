@@ -1,0 +1,49 @@
+<section>
+  <h1>Admin Dashboard</h1>
+  
+  <div id="admin-messages"></div>
+  
+  <article>
+    <header>User Management</header>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (pageData && pageData.users) { %>
+          <% pageData.users.forEach(u => { %>
+            <tr id="user-<%= u.id %>">
+              <td><%= u.id %></td>
+              <td><%= u.username %></td>
+              <td><%= u.email %></td>
+              <td><%= u.role %></td>
+              <td><%= u.status %></td>
+              <td>
+                <% if (u.status === 'active') { %>
+                  <button hx-patch="/admin/users/<%= u.id %>/status" 
+                          hx-vals='{"status":"paused"}' 
+                          hx-target="#user-<%= u.id %>"
+                          hx-swap="outerHTML"
+                          class="outline secondary">Pause</button>
+                <% } else { %>
+                  <button hx-patch="/admin/users/<%= u.id %>/status" 
+                          hx-vals='{"status":"active"}' 
+                          hx-target="#user-<%= u.id %>"
+                          hx-swap="outerHTML"
+                          class="outline">Activate</button>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </article>
+</section>

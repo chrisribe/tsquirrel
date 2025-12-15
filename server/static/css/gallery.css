@@ -1,0 +1,305 @@
+/* Gallery View Page */
+.gallery-view {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.gallery-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.photo-counter {
+  background: var(--pico-primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-weight: bold;
+}
+
+/* Big Upload Button */
+.upload-zone {
+  margin-bottom: 2rem;
+}
+
+.upload-btn-big {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 2rem;
+  background: var(--pico-secondary-background);
+  border: 3px dashed var(--pico-primary);
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-btn-big:hover {
+  background: var(--pico-primary-focus);
+  transform: scale(1.01);
+}
+
+.upload-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.upload-text {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--pico-primary);
+}
+
+.upload-status {
+  text-align: center;
+  padding: 1rem;
+}
+
+.upload-status progress {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+/* Photo Grid */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+.photo-item {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: var(--pico-secondary-background);
+}
+
+.photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.3s ease;
+  /* Hide broken image icon/alt text until loaded */
+  opacity: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Show image once loaded */
+.photo-item img.loaded {
+  opacity: 1;
+}
+
+/* Loading placeholder */
+.photo-item::before {
+  content: "⏳";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  opacity: 0.5;
+  z-index: 0;
+}
+
+.photo-item:hover img {
+  transform: scale(1.05);
+}
+
+.photo-item .delete-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  margin: 0;
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.photo-item:hover .delete-btn {
+  opacity: 1;
+}
+
+/* New photo animation */
+.photo-new {
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--pico-muted-color);
+}
+
+.empty-state .hint {
+  font-size: 0.9rem;
+}
+
+/* Lightbox */
+.lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox img {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+}
+
+.lightbox .close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  margin: 0;
+  background: white;
+  color: black;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.lightbox .download-btn {
+  position: absolute;
+  bottom: 2rem;
+  padding: 1rem 2rem;
+  background: var(--pico-primary);
+  color: white;
+  text-decoration: none;
+  border-radius: 0.5rem;
+}
+
+/* Gallery List Page */
+.gallery-list {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.gallery-list .list-header h1 {
+  margin-bottom: 1.5rem;
+}
+
+.gallery-list .create-gallery-form {
+  margin-bottom: 2rem;
+}
+
+.gallery-list .create-gallery-form fieldset {
+  margin-bottom: 0;
+}
+
+.gallery-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gallery-card {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background: var(--pico-card-background-color);
+  border-radius: 0.5rem;
+  border: 1px solid var(--pico-muted-border-color);
+}
+
+.gallery-card .gallery-link {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.gallery-card .gallery-link strong {
+  color: var(--pico-primary);
+}
+
+.gallery-card .photo-count {
+  font-size: 0.85rem;
+  color: var(--pico-muted-color);
+}
+
+.gallery-card .delete-btn {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  margin: 0 0 0 1rem;
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.gallery-card:hover .delete-btn {
+  opacity: 1;
+}
+
+/* Nav alignment fix */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-right li {
+  display: flex;
+  align-items: center;
+}
+
