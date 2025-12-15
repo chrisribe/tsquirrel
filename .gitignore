@@ -1,7 +1,0 @@
-.db_password
-.env
-node_modules
-*.log
-dist/
-lambda-package.zip
-sharp-layer.zip
