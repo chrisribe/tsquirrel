@@ -46,7 +46,8 @@ volumes:
     driver: local
 
 networks:
-  proxy-ne:
+  proxy-net:
+    external: true
   default:
     external: true
     name: proxy-net
