@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
- * Create Application Owner Account
- * Creates a user account with admin privileges for managing the app.
- * This is YOUR account to create galleries, not a system admin.
+ * Create or Reset Admin Account
+ * Creates a user account with admin privileges, or resets password if exists.
  * 
  * Run: npm run create-admin
  * Or:  docker-compose exec server npm run create-admin
@@ -22,27 +21,13 @@ function prompt(question) {
 }
 
 async function main() {
-  console.log('\n=== Create Your Account ===\n');
-  console.log('This creates your personal account to manage galleries.\n');
+  console.log('\n=== Create or Reset Admin Account ===\n');
   
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
   });
   
   try {
-    // Check if admin already exists
-    const existing = await pool.query(
-      "SELECT id FROM users WHERE role = 'admin' LIMIT 1"
-    );
-    
-    if (existing.rows.length > 0) {
-      const overwrite = await prompt('An account already exists. Create another? (y/N): ');
-      if (overwrite.toLowerCase() !== 'y') {
-        console.log('Cancelled.');
-        process.exit(0);
-      }
-    }
-    
     // Get admin details
     const username = await prompt('Username: ');
     const email = await prompt('Email: ');
@@ -62,20 +47,33 @@ async function main() {
       process.exit(1);
     }
     
-    // Hash password and create user
+    // Hash password
     const hashedPassword = await argon2.hash(password);
     
-    await pool.query(
+    // Try to update existing user first, otherwise insert
+    const result = await pool.query(
       `INSERT INTO users (username, email, password, role, status) 
-       VALUES ($1, $2, $3, 'admin', 'active')`,
+       VALUES ($1, $2, $3, 'admin', 'active')
+       ON CONFLICT (username) DO UPDATE SET 
+         password = $3,
+         email = $2,
+         role = 'admin',
+         status = 'active'
+       RETURNING (xmax = 0) AS inserted`,
       [username, email, hashedPassword]
     );
     
-    console.log(`\n✓ Account '${username}' created! You can now sign in.\n`);
+    const wasInserted = result.rows[0].inserted;
+    
+    if (wasInserted) {
+      console.log(`\n✓ Account '${username}' created!\n`);
+    } else {
+      console.log(`\n✓ Account '${username}' password reset!\n`);
+    }
     
   } catch (err) {
-    if (err.code === '23505') { // Unique violation
-      console.error('Error: Username or email already exists');
+    if (err.code === '23505') { // Unique violation (email)
+      console.error('Error: Email already used by another account');
     } else {
       console.error('Error:', err.message);
     }

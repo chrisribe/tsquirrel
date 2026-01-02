@@ -94,7 +94,8 @@ const Gallery = {
     const img = document.getElementById('lightboxImg');
     const download = document.getElementById('lightboxDownload');
     
-    img.src = displayUrl;
+    // Use original for full quality viewing
+    img.src = originalUrl;
     download.href = originalUrl;
     lightbox.style.display = 'flex';
     

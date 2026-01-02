@@ -8,6 +8,10 @@ class AuthController {
       const user = await authService.authenticateUser(email, password);
       
       if (!user) {
+        // For HTMX, return just the error message
+        if (req.headers['hx-request']) {
+          return res.send('<p class="error">Invalid credentials</p>');
+        }
         return res.respondWithTemplateOrJson({
           error: 'Invalid credentials'
         }, 'auth/login');
@@ -20,12 +24,17 @@ class AuthController {
         role: user.role
       };
       
-      return res.respondWithTemplateOrJson({
-        success: true,
-        user: req.session.user,
-        redirect: '/dashboard'
-      }, 'dashboard-page');
+      // For HTMX, redirect via header
+      if (req.headers['hx-request']) {
+        res.setHeader('HX-Redirect', '/dashboard');
+        return res.send('');
+      }
+      
+      return res.redirect('/dashboard');
     } catch (error) {
+      if (req.headers['hx-request']) {
+        return res.send(`<p class="error">${error.message}</p>`);
+      }
       return res.respondWithTemplateOrJson({
         error: error.message
       }, 'auth/login');

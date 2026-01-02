@@ -14,8 +14,12 @@
     </ol>
   </article>
   
-  <div class="grid">
-    <a href="/register" role="button">Create Your First Gallery</a>
-    <a href="/auth/login" role="button" class="outline">Sign In</a>
-  </div>
+  <% if (user) { %>
+    <a href="/galleries" role="button">Go to My Galleries</a>
+  <% } else { %>
+    <div class="grid">
+      <a href="/register" role="button">Create Your First Gallery</a>
+      <a href="/auth/login" role="button" class="outline">Sign In</a>
+    </div>
+  <% } %>
 </section>

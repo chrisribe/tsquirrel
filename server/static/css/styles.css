@@ -1,6 +1,18 @@
 /* Base styles - customize for your project */
+
+/* Override Pico's default blue with warm coral */
+[data-theme="light"],
+:root:not([data-theme="dark"]) {
+  --pico-primary: #e17055;
+  --pico-primary-background: #e17055;
+  --pico-primary-hover: #d63031;
+  --pico-primary-hover-background: #d63031;
+  --pico-primary-focus: rgba(225, 112, 85, 0.25);
+  --pico-primary-inverse: #fff;
+}
+
 :root {
-  --primary: #2B6CB8;
+  --primary: #e17055;
   --success: #10B981;
   --error: #DC2626;
 }
