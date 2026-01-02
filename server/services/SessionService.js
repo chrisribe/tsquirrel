@@ -13,6 +13,11 @@ class SessionService {
     await this.secretService.initialize();
     const secrets = await this.secretService.getSecrets();
     
+    // Trust proxy for production (NPM terminates SSL)
+    if (process.env.NODE_ENV === 'production') {
+      app.set('trust proxy', 1);
+    }
+    
     app.use(session({ 
       store: new pgSession({
         pool: this.pool,
@@ -23,7 +28,7 @@ class SessionService {
       }),
       secret: secrets,
       resave: false,
-      saveUninitialized: true,
+      saveUninitialized: false,
       rolling: true,
       cookie: { 
         secure: process.env.NODE_ENV === 'production',
