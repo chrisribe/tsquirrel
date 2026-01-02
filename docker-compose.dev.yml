@@ -12,3 +12,8 @@ services:
       DATABASE_URL: postgres://dockeruser:devpassword123@db:5432/appdb
       NODE_ENV: development
     command: npm run dev
+
+# Don't use external proxy network in dev mode
+networks:
+  default:
+    external: false

@@ -3,6 +3,7 @@ services:
     build:
       context: ./db
       dockerfile: pgdb.dockerfile
+    pull_policy: build
     environment:
       POSTGRES_USER: dockeruser
       POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
@@ -22,8 +23,9 @@ services:
     build:
       context: ./server
       dockerfile: dockerfile
+    pull_policy: build
     ports:
-      - "3000:3000"
+      - "80:3000"
     depends_on:
       db:
         condition: service_healthy
@@ -35,13 +37,16 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-eventglimpse}
-    restart: unless-stopped
+    networks:
+      - proxy-net
+      - default
 
 volumes:
   app_db_data:
     driver: local
 
 networks:
+  proxy-ne:
   default:
     external: true
     name: proxy-net
