@@ -40,3 +40,8 @@ services:
 volumes:
   app_db_data:
     driver: local
+
+networks:
+  default:
+    external: true
+    name: proxy-net
