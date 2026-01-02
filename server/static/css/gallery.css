@@ -233,6 +233,38 @@
   opacity: 1;
   background: rgba(255, 255, 255, 0.3);
 }
+
+.lightbox .nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3rem;
+  height: 4rem;
+  padding: 0;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.lightbox .nav-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.lightbox .prev-btn {
+  left: 1rem;
+  border-radius: 0.25rem;
+}
+
+.lightbox .next-btn {
+  right: 1rem;
+  border-radius: 0.25rem;
 }
 
 /* Gallery List Page */

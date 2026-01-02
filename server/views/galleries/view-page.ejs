@@ -71,8 +71,10 @@
 
   <!-- Lightbox -->
   <div id="lightbox" class="lightbox" onclick="Gallery.closeLightbox()" style="display: none;">
-    <img id="lightboxImg" src="" alt="Full size photo">
-    <a id="lightboxDownload" href="" download class="download-btn">⬇ Download</a>
+    <button id="lightboxPrev" class="nav-btn prev-btn" onclick="event.stopPropagation(); Gallery.prevPhoto()">‹</button>
+    <img id="lightboxImg" src="" alt="Full size photo" onclick="event.stopPropagation()">
+    <button id="lightboxNext" class="nav-btn next-btn" onclick="event.stopPropagation(); Gallery.nextPhoto()">›</button>
+    <a id="lightboxDownload" href="" download class="download-btn" onclick="event.stopPropagation()">⬇ Download</a>
     <button class="close-btn" onclick="Gallery.closeLightbox()">×</button>
   </div>
 </div>

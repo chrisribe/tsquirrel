@@ -88,23 +88,71 @@ const Gallery = {
     }, 3000);
   },
 
+  // Lightbox state
+  currentPhotoIndex: -1,
+  photoUrls: [],
+
   // Lightbox
   openLightbox(displayUrl, originalUrl) {
     const lightbox = document.getElementById('lightbox');
     const img = document.getElementById('lightboxImg');
     const download = document.getElementById('lightboxDownload');
     
+    // Build photo URLs array for navigation
+    this.photoUrls = Array.from(document.querySelectorAll('.photo-item img')).map(img => {
+      const onclick = img.getAttribute('onclick');
+      const match = onclick.match(/Gallery\.openLightbox\('([^']+)',\s*'([^']+)'\)/);
+      return match ? { display: match[1], original: match[2] } : null;
+    }).filter(Boolean);
+    
+    // Find current index
+    this.currentPhotoIndex = this.photoUrls.findIndex(p => p.original === originalUrl);
+    
     // Use original for full quality viewing
     img.src = originalUrl;
     download.href = originalUrl;
     lightbox.style.display = 'flex';
     
+    // Show/hide nav arrows
+    this.updateNavArrows();
+    
     document.body.style.overflow = 'hidden';
+  },
+
+  updateNavArrows() {
+    const prevBtn = document.getElementById('lightboxPrev');
+    const nextBtn = document.getElementById('lightboxNext');
+    if (prevBtn) prevBtn.style.display = this.currentPhotoIndex > 0 ? 'flex' : 'none';
+    if (nextBtn) nextBtn.style.display = this.currentPhotoIndex < this.photoUrls.length - 1 ? 'flex' : 'none';
+  },
+
+  prevPhoto() {
+    if (this.currentPhotoIndex > 0) {
+      this.currentPhotoIndex--;
+      this.showCurrentPhoto();
+    }
+  },
+
+  nextPhoto() {
+    if (this.currentPhotoIndex < this.photoUrls.length - 1) {
+      this.currentPhotoIndex++;
+      this.showCurrentPhoto();
+    }
+  },
+
+  showCurrentPhoto() {
+    const photo = this.photoUrls[this.currentPhotoIndex];
+    const img = document.getElementById('lightboxImg');
+    const download = document.getElementById('lightboxDownload');
+    img.src = photo.original;
+    download.href = photo.original;
+    this.updateNavArrows();
   },
 
   closeLightbox() {
     document.getElementById('lightbox').style.display = 'none';
     document.body.style.overflow = '';
+    this.currentPhotoIndex = -1;
   },
 
   // Delete photo
@@ -135,8 +183,15 @@ const Gallery = {
 document.addEventListener('DOMContentLoaded', () => {
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      Gallery.closeLightbox();
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox && lightbox.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        Gallery.closeLightbox();
+      } else if (e.key === 'ArrowLeft') {
+        Gallery.prevPhoto();
+      } else if (e.key === 'ArrowRight') {
+        Gallery.nextPhoto();
+      }
     }
   });
 
