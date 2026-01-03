@@ -101,6 +101,7 @@ const Gallery = {
     // Build photo URLs array for navigation
     this.photoUrls = Array.from(document.querySelectorAll('.photo-item img')).map(img => {
       const onclick = img.getAttribute('onclick');
+      if (!onclick) return null;
       const match = onclick.match(/Gallery\.openLightbox\('([^']+)',\s*'([^']+)'\)/);
       return match ? { display: match[1], original: match[2] } : null;
     }).filter(Boolean);
