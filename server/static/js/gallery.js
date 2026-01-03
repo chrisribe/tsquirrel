@@ -109,8 +109,17 @@ const Gallery = {
     // Find current index
     this.currentPhotoIndex = this.photoUrls.findIndex(p => p.original === originalUrl);
     
+    // Show loading state
+    img.style.opacity = '0.5';
+    img.style.cursor = 'wait';
+    
     // Use original for full quality viewing
     img.src = originalUrl;
+    img.onload = () => {
+      img.style.opacity = '1';
+      img.style.cursor = '';
+    };
+    img.onerror = () => this.retryLightboxImage(img, originalUrl);
     download.href = originalUrl;
     lightbox.style.display = 'flex';
     
@@ -118,6 +127,15 @@ const Gallery = {
     this.updateNavArrows();
     
     document.body.style.overflow = 'hidden';
+  },
+
+  retryLightboxImage(img, originalUrl, retries = 5) {
+    if (retries <= 0) return;
+    
+    setTimeout(() => {
+      img.src = originalUrl + '?retry=' + Date.now();
+      img.onerror = () => this.retryLightboxImage(img, originalUrl, retries - 1);
+    }, 2000);
   },
 
   updateNavArrows() {
@@ -145,7 +163,17 @@ const Gallery = {
     const photo = this.photoUrls[this.currentPhotoIndex];
     const img = document.getElementById('lightboxImg');
     const download = document.getElementById('lightboxDownload');
+    
+    // Show loading state
+    img.style.opacity = '0.5';
+    img.style.cursor = 'wait';
+    
     img.src = photo.original;
+    img.onload = () => {
+      img.style.opacity = '1';
+      img.style.cursor = '';
+    };
+    img.onerror = () => this.retryLightboxImage(img, photo.original);
     download.href = photo.original;
     this.updateNavArrows();
   },
