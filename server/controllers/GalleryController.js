@@ -1,4 +1,5 @@
-const { getPhotoUrls, uploadFilesToS3, deletePhotoFromS3 } = require('../services/s3Service');
+const { getPhotoUrls, uploadFilesToS3, deletePhotoFromS3, uploadQRCodeToS3 } = require('../services/s3Service');
+const QRCode = require('qrcode');
 
 class GalleryController {
   constructor(galleryDAO) {
@@ -88,8 +89,42 @@ class GalleryController {
         );
       }
 
+      // Generate QR code if it doesn't exist
+      if (!gallery.qr_code_url) {
+        try {
+          // Use PUBLIC_URL env var if set (for dev testing), otherwise use request host
+          const baseUrl = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+          const galleryUrl = `${baseUrl}/g/${gallery.uuid}`;
+          
+          // Generate QR code as PNG buffer
+          const qrCodeBuffer = await QRCode.toBuffer(galleryUrl, {
+            width: 400,
+            margin: 2,
+            color: {
+              dark: '#000000',
+              light: '#FFFFFF'
+            },
+            type: 'png'
+          });
+          
+          // Upload QR code to S3 and get URL
+          const qrCodeUrl = await uploadQRCodeToS3(gallery.uuid, qrCodeBuffer);
+          
+          // Store the S3 URL in the database
+          await this.galleryDAO.updateGalleryQRCode(gallery.uuid, qrCodeUrl);
+          gallery.qr_code_url = qrCodeUrl;
+        } catch (qrError) {
+          console.error('QR code generation error:', qrError);
+          // Continue without QR code if generation fails
+        }
+      }
+
       const photos = await this.galleryDAO.getPhotos(gallery.uuid);
       const isOwner = req.session?.user?.id === gallery.user_id;
+
+      // Generate share URL
+      const baseUrl = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+      const shareUrl = `${baseUrl}/g/${gallery.uuid}`;
 
       // Add URLs to photos
       const photosWithUrls = photos.map(photo => {
@@ -107,6 +142,7 @@ class GalleryController {
         gallery,
         photos: photosWithUrls,
         photoCount: photos.length,
+        shareUrl,
         isOwner,
         pageAssets: {
           css: ['gallery.css'],

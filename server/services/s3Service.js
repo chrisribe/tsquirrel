@@ -76,8 +76,35 @@ async function deletePhotoFromS3(galleryUuid, photoId, extension) {
   await Promise.all(deletes);
 }
 
+/**
+ * Uploads QR code image to S3
+ * @param {string} galleryUuid - Gallery UUID for the QR code
+ * @param {Buffer} qrBuffer - QR code image buffer
+ * @returns {Promise<string>} Promise that resolves to the QR code URL
+ */
+async function uploadQRCodeToS3(galleryUuid, qrBuffer) {
+  const s3Key = `qr-codes/${galleryUuid}.png`;
+  
+  try {
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      Body: qrBuffer,
+      ContentType: 'image/png'
+    }));
+
+    const qrUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`;
+    console.log(`Successfully uploaded QR code for gallery ${galleryUuid} to S3`);
+    return qrUrl;
+  } catch (error) {
+    console.error(`Failed to upload QR code for gallery ${galleryUuid} to S3:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   getPhotoUrls,
   uploadFilesToS3,
-  deletePhotoFromS3
+  deletePhotoFromS3,
+  uploadQRCodeToS3
 };

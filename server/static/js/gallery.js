@@ -214,6 +214,69 @@ const Gallery = {
     } catch (error) {
       alert('Failed to delete photo');
     }
+  },
+
+  // Share modal
+  toggleShare() {
+    const modal = document.getElementById('shareModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+  },
+
+  closeShare() {
+    const modal = document.getElementById('shareModal');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  },
+
+  copyLink() {
+    const input = document.getElementById('shareUrl');
+    const url = input.value;
+    
+    // Use modern Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        this.showToast('Link copied! ✓');
+      }).catch(() => {
+        // Fallback to old method
+        this.fallbackCopy(input);
+      });
+    } else {
+      // Fallback for older browsers
+      this.fallbackCopy(input);
+    }
+  },
+
+  copyMobileLink() {
+    const input = document.getElementById('mobileShareUrl');
+    const url = input.value;
+    
+    // Use modern Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        this.showToast('Link copied! ✓');
+      }).catch(() => {
+        // Fallback to old method
+        this.fallbackCopy(input);
+      });
+    } else {
+      // Fallback for older browsers
+      this.fallbackCopy(input);
+    }
+  },
+
+  fallbackCopy(input) {
+    input.select();
+    try {
+      document.execCommand('copy');
+      this.showToast('Link copied! ✓');
+    } catch (err) {
+      this.showToast('Failed to copy', 'warning');
+    }
   }
 };
 
@@ -222,6 +285,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     const lightbox = document.getElementById('lightbox');
+    const shareModal = document.getElementById('shareModal');
+    
     if (lightbox && lightbox.style.display === 'flex') {
       if (e.key === 'Escape') {
         Gallery.closeLightbox();
@@ -229,6 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
         Gallery.prevPhoto();
       } else if (e.key === 'ArrowRight') {
         Gallery.nextPhoto();
+      }
+    } else if (shareModal && shareModal.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        Gallery.closeShare();
       }
     }
   });

@@ -17,6 +17,7 @@ At events (parties, weddings, BBQs), everyone takes photos but sharing is a pain
 ```bash
 cp .env.example .env
 # Add your AWS credentials for S3
+# Optional: Set PUBLIC_URL for QR code testing (see below)
 ```
 
 ### 2. Start with Docker
@@ -39,6 +40,29 @@ docker-compose exec server npm run create-admin
 3. Create a gallery (just a title)
 4. Share the `/g/[uuid]` link
 5. Anyone can upload photos
+
+## Testing QR Codes Locally
+
+QR codes won't work from `localhost:3000` on mobile devices. To test:
+
+**Option 1: Use ngrok or similar**
+```bash
+ngrok http 3000
+# Copy the https URL (e.g., https://abc123.ngrok.io)
+```
+
+**Option 2: Use production domain**
+```bash
+# In .env file:
+PUBLIC_URL=https://event-glimpse.com
+```
+
+Then restart server:
+```bash
+docker-compose restart server
+```
+
+QR codes will now point to the PUBLIC_URL instead of localhost.
 
 ## Tech Stack
 

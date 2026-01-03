@@ -57,6 +57,14 @@ class GalleryDAO {
     return result.rows[0];
   }
 
+  async updateGalleryQRCode(galleryUuid, qrCodeUrl) {
+    const result = await this.pool.query(
+      'UPDATE galleries SET qr_code_url = $1 WHERE uuid = $2 RETURNING *',
+      [qrCodeUrl, galleryUuid]
+    );
+    return result.rows[0];
+  }
+
   // ============================================
   // PHOTO METHODS
   // ============================================

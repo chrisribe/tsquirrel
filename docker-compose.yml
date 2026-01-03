@@ -33,6 +33,7 @@ services:
       DATABASE_URL: postgres://dockeruser:${DB_PASSWORD:-changeme}@db:5432/appdb
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
+      PUBLIC_URL: ${PUBLIC_URL:-}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}

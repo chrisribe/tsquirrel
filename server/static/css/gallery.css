@@ -10,11 +10,21 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .gallery-header h1 {
   margin: 0;
   font-size: 1.5rem;
+  flex: 1;
+  min-width: 150px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .photo-counter {
@@ -23,6 +33,224 @@
   padding: 0.5rem 1rem;
   border-radius: 2rem;
   font-weight: bold;
+  white-space: nowrap;
+}
+
+.share-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--pico-primary);
+  color: white;
+  border: none;
+  border-radius: 2rem;
+  cursor: pointer;
+  font-weight: bold;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.share-btn:hover {
+  background: color-mix(in srgb, var(--pico-primary) 90%, black);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.share-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.share-text {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+/* Share Modal */
+.share-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.share-content {
+  position: relative;
+  background: var(--pico-card-background-color);
+  padding: 2rem;
+  border-radius: 1rem;
+  max-width: 450px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.share-content h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--pico-color);
+}
+
+.share-content .close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--pico-color);
+  border: none;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.share-content .close-btn:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.qr-display {
+  margin: 1rem 0 2rem;
+}
+
+.qr-code-large {
+  width: 280px;
+  height: 280px;
+  margin: 0 auto 1rem;
+  border: 3px solid var(--pico-primary);
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  background: white;
+}
+
+.qr-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--pico-muted-color);
+  font-weight: 500;
+}
+
+.share-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.share-link input {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  font-family: 'Courier New', monospace;
+  border: 2px solid var(--pico-muted-border-color);
+  border-radius: 0.5rem;
+  background: var(--pico-background-color);
+  text-align: center;
+  color: var(--pico-color);
+}
+
+.share-link input:focus {
+  border-color: var(--pico-primary);
+  outline: none;
+}
+
+.share-link .copy-btn {
+  padding: 0.75rem 1.5rem;
+  margin: 0;
+  background: var(--pico-primary);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.share-link .copy-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Modal Responsive Styles */
+@media (max-width: 640px) {
+  .share-content {
+    padding: 1.5rem 1rem;
+    width: 95%;
+  }
+  
+  .qr-code-large {
+    width: 220px;
+    height: 220px;
+  }
+  
+  .header-actions {
+    flex-wrap: wrap;
+  }
+  
+  .share-text {
+    display: none;
+  }
+  
+  .share-btn {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .share-content {
+    padding: 1rem;
+  }
+  
+  .qr-code-large {
+    width: 180px;
+    height: 180px;
+  }
+}
+
+/* Responsive: Mobile stacking */
+@media (max-width: 640px) {
+  .gallery-header {
+    flex-wrap: wrap;
+  }
+  
+  .gallery-header h1 {
+    font-size: 1.35rem;
+    width: 100%;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .share-btn .share-text {
+    display: none; /* Icon only on mobile */
+  }
+  
+  .share-btn {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .photo-counter {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.75rem;
+  }
 }
 
 /* Big Upload Button */
@@ -36,10 +264,10 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 2rem;
+  padding: 1.25rem;
   background: var(--pico-secondary-background);
-  border: 3px dashed var(--pico-primary);
-  border-radius: 1rem;
+  border: 2px dashed var(--pico-primary);
+  border-radius: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -50,12 +278,12 @@
 }
 
 .upload-icon {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
 }
 
 .upload-text {
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: bold;
   color: var(--pico-primary);
 }
