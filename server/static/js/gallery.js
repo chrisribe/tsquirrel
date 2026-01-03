@@ -109,15 +109,12 @@ const Gallery = {
     // Find current index
     this.currentPhotoIndex = this.photoUrls.findIndex(p => p.original === originalUrl);
     
-    // Try original first
-    img.src = originalUrl;
-    img.style.opacity = '0.5';
+    // Show display version immediately, try to load original in background
+    img.src = displayUrl;
+    img.style.opacity = '0.7';
     img.style.cursor = 'wait';
-    img.onload = () => {
-      img.style.opacity = '1';
-      img.style.cursor = '';
-    };
-    img.onerror = () => this.retryLightboxImage(img, originalUrl, displayUrl);
+    
+    this.loadOriginalImage(img, originalUrl, displayUrl);
     
     download.href = originalUrl;
     lightbox.style.display = 'flex';
@@ -128,24 +125,28 @@ const Gallery = {
     document.body.style.overflow = 'hidden';
   },
 
-  retryLightboxImage(img, originalUrl, displayUrl, retries = 5) {
-    if (retries <= 0) {
-      // Give up on original - fallback to display version
-      img.src = displayUrl;
+  loadOriginalImage(img, originalUrl, displayUrl, retries = 5) {
+    const testImg = new Image();
+    testImg.src = originalUrl;
+    testImg.onload = () => {
+      img.src = originalUrl;
       img.style.opacity = '1';
       img.style.cursor = '';
-      return;
-    }
-    
-    setTimeout(() => {
-      img.src = originalUrl + '?retry=' + Date.now();
-      img.onload = () => {
+    };
+    testImg.onerror = () => {
+      if (retries > 0) {
+        setTimeout(() => {
+          this.loadOriginalImage(img, originalUrl + '?retry=' + Date.now(), displayUrl, retries - 1);
+        }, 2000);
+      } else {
+        // Give up - keep display version
         img.style.opacity = '1';
         img.style.cursor = '';
-      };
-      img.onerror = () => this.retryLightboxImage(img, originalUrl, displayUrl, retries - 1);
-    }, 2000);
+      }
+    };
   },
+
+
 
   updateNavArrows() {
     const prevBtn = document.getElementById('lightboxPrev');
@@ -173,15 +174,12 @@ const Gallery = {
     const img = document.getElementById('lightboxImg');
     const download = document.getElementById('lightboxDownload');
     
-    // Try original first
-    img.src = photo.original;
-    img.style.opacity = '0.5';
+    // Show display version, load original in background
+    img.src = photo.display;
+    img.style.opacity = '0.7';
     img.style.cursor = 'wait';
-    img.onload = () => {
-      img.style.opacity = '1';
-      img.style.cursor = '';
-    };
-    img.onerror = () => this.retryLightboxImage(img, photo.original, photo.display);
+    
+    this.loadOriginalImage(img, photo.original, photo.display);
     
     download.href = photo.original;
     this.updateNavArrows();
