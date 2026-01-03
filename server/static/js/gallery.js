@@ -109,11 +109,7 @@ const Gallery = {
     // Find current index
     this.currentPhotoIndex = this.photoUrls.findIndex(p => p.original === originalUrl);
     
-    // Show display version immediately, try to load original in background
-    img.src = displayUrl;
-    img.style.opacity = '0.7';
-    img.style.cursor = 'wait';
-    
+    // Try original first in background, show display only on error
     this.loadOriginalImage(img, originalUrl, displayUrl);
     
     download.href = originalUrl;
@@ -126,24 +122,34 @@ const Gallery = {
   },
 
   loadOriginalImage(img, originalUrl, displayUrl, retries = 5) {
+    // Try loading original in hidden Image
     const testImg = new Image();
     testImg.src = originalUrl;
+    
     testImg.onload = () => {
+      // Success - show original
       img.src = originalUrl;
       img.style.opacity = '1';
       img.style.cursor = '';
     };
+    
     testImg.onerror = () => {
       if (retries > 0) {
+        // Retry original after delay
         setTimeout(() => {
           this.loadOriginalImage(img, originalUrl + '?retry=' + Date.now(), displayUrl, retries - 1);
         }, 2000);
       } else {
-        // Give up - keep display version
+        // All retries failed - fallback to display version
+        img.src = displayUrl;
         img.style.opacity = '1';
         img.style.cursor = '';
       }
     };
+    
+    // Show loading state while testing
+    img.style.opacity = '0.5';
+    img.style.cursor = 'wait';
   },
 
 
@@ -174,11 +180,7 @@ const Gallery = {
     const img = document.getElementById('lightboxImg');
     const download = document.getElementById('lightboxDownload');
     
-    // Show display version, load original in background
-    img.src = photo.display;
-    img.style.opacity = '0.7';
-    img.style.cursor = 'wait';
-    
+    // Try original first, fallback to display on error
     this.loadOriginalImage(img, photo.original, photo.display);
     
     download.href = photo.original;
