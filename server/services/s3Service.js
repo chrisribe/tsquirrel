@@ -10,6 +10,10 @@ const s3 = new S3Client({
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'eventglimpse';
 
+// CDN URL for serving images (Cloudflare proxied subdomain)
+// Falls back to direct S3 if not configured
+const CDN_BASE_URL = process.env.CDN_BASE_URL || `https://${BUCKET_NAME}.s3.amazonaws.com`;
+
 // ============================================================================
 // URL Generation
 // ============================================================================
@@ -19,11 +23,10 @@ const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'eventglimpse';
  * Lambda processes uploads into these three folders automatically
  */
 function getPhotoUrls(galleryUuid, photoId, extension) {
-  const baseUrl = `https://${BUCKET_NAME}.s3.amazonaws.com`;
   return {
-    thumb: `${baseUrl}/thumbs/${galleryUuid}/${photoId}${extension}`,
-    display: `${baseUrl}/display/${galleryUuid}/${photoId}${extension}`,
-    original: `${baseUrl}/originals/${galleryUuid}/${photoId}${extension}`
+    thumb: `${CDN_BASE_URL}/thumbs/${galleryUuid}/${photoId}${extension}`,
+    display: `${CDN_BASE_URL}/display/${galleryUuid}/${photoId}${extension}`,
+    original: `${CDN_BASE_URL}/originals/${galleryUuid}/${photoId}${extension}`
   };
 }
 
@@ -95,7 +98,7 @@ async function uploadQRCodeToS3(galleryUuid, qrBuffer) {
       ServerSideEncryption: 'AES256'
     }));
 
-    const qrUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`;
+    const qrUrl = `${CDN_BASE_URL}/${s3Key}`;
     console.log(`Successfully uploaded QR code for gallery ${galleryUuid} to S3`);
     return qrUrl;
   } catch (error) {

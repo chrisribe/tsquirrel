@@ -59,4 +59,9 @@ router.delete('/:uuid/photos/:photoId', requireAuth, (req, res, next) =>
   controller.deletePhoto(req, res, next)
 );
 
+// Download photo with proper Content-Disposition header
+router.get('/download/:photoId', (req, res, next) => 
+  controller.downloadPhoto(req, res, next)
+);
+
 module.exports = router;

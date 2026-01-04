@@ -20,10 +20,9 @@
         <span id="photoCount"><%= pageData.photoCount %></span> photos
       </div>
       <% if (pageData.gallery.qr_code_url) { %>
-        <button class="share-btn" onclick="Gallery.toggleShare()" title="Share this gallery">
-          <span class="share-icon">📤</span>
-          <span class="share-text">Share</span>
-        </button>
+        <div class="share-btn" onclick="Gallery.toggleShare()" title="Share this gallery">
+          <span class="share-text">📋 Share</span>
+        </div>
       <% } %>
     </div>
   </header>
@@ -63,7 +62,7 @@
   <div class="photo-grid" id="photoGrid">
     <% if (pageData.photos && pageData.photos.length > 0) { %>
       <% pageData.photos.forEach((photo, index) => { %>
-        <div class="photo-item" data-photo-id="<%= photo.photo_id %>">
+        <div class="photo-item" data-photo-id="<%= photo.photo_id %>" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
           <img 
             src="<%= photo.thumb_url %>" 
             alt="Photo"
@@ -112,7 +111,8 @@
   <!-- Lightbox -->
   <div id="lightbox" class="lightbox" onclick="Gallery.closeLightbox()" style="display: none;">
     <button id="lightboxPrev" class="nav-btn prev-btn" onclick="event.stopPropagation(); Gallery.prevPhoto()">‹</button>
-    <img id="lightboxImg" src="" alt="Full size photo" onclick="event.stopPropagation()">
+    <div id="lightboxLoading" class="lightbox-loading">⏳ Loading...</div>
+    <img id="lightboxImg" src="" alt="Full size photo" onclick="event.stopPropagation()" style="display: none;">
     <button id="lightboxNext" class="nav-btn next-btn" onclick="event.stopPropagation(); Gallery.nextPhoto()">›</button>
     <a id="lightboxDownload" href="" download class="download-btn" onclick="event.stopPropagation()">⬇ Download</a>
     <button class="close-btn" onclick="Gallery.closeLightbox()">×</button>

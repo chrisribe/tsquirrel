@@ -144,7 +144,9 @@ const Gallery = {
     // Try original first in background, show display only on error
     this.loadOriginalImage(img, originalUrl, displayUrl);
     
-    download.href = originalUrl;
+    // Use download proxy to force download instead of opening in browser
+    const photoId = originalUrl.split('/').pop().split('.')[0];
+    download.href = `/galleries/download/${photoId}`;
     lightbox.style.display = 'flex';
     
     // Show/hide nav arrows
@@ -154,15 +156,22 @@ const Gallery = {
   },
 
   loadOriginalImage(img, originalUrl, displayUrl, retries = 5) {
-    // Try loading original in hidden Image
+    const loading = document.getElementById('lightboxLoading');
+    
+    // Show loading, hide image
+    loading.style.display = 'block';
+    img.style.display = 'none';
+    img.src = '';
+    
+    // Try loading original
     const testImg = new Image();
     testImg.src = originalUrl;
     
     testImg.onload = () => {
-      // Success - show original
+      // Success - hide loading, show original
+      loading.style.display = 'none';
       img.src = originalUrl;
-      img.style.opacity = '1';
-      img.style.cursor = '';
+      img.style.display = 'block';
     };
     
     testImg.onerror = () => {
@@ -173,15 +182,11 @@ const Gallery = {
         }, 2000);
       } else {
         // All retries failed - fallback to display version
+        loading.style.display = 'none';
         img.src = displayUrl;
-        img.style.opacity = '1';
-        img.style.cursor = '';
+        img.style.display = 'block';
       }
     };
-    
-    // Show loading state while testing
-    img.style.opacity = '0.5';
-    img.style.cursor = 'wait';
   },
 
 
@@ -215,7 +220,9 @@ const Gallery = {
     // Try original first, fallback to display on error
     this.loadOriginalImage(img, photo.original, photo.display);
     
-    download.href = photo.original;
+    // Use download proxy
+    const photoId = photo.original.split('/').pop().split('.')[0];
+    download.href = `/galleries/download/${photoId}`;
     this.updateNavArrows();
   },
 

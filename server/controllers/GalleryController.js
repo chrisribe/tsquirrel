@@ -318,6 +318,55 @@ class GalleryController {
       res.status(500).json({ error: 'Delete failed' });
     }
   }
+
+  // ============================================
+  // PHOTO DOWNLOAD (Force download header)
+  // ============================================
+
+  async downloadPhoto(req, res, next) {
+    try {
+      const { photoId } = req.params;
+      
+      // Find photo in database to get S3 key
+      const pool = this.galleryDAO.pool;
+      const result = await pool.query(
+        'SELECT s3_key, gallery_uuid FROM photos WHERE photo_id = $1',
+        [photoId]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      const { s3_key, gallery_uuid } = result.rows[0];
+      const ext = s3_key.substring(s3_key.lastIndexOf('.'));
+      const urls = getPhotoUrls(gallery_uuid, photoId, ext);
+      
+      // Fetch file from S3 and stream it to client with download header
+      const filename = `eventglimpse-${photoId}${ext}`;
+      const response = await fetch(urls.original);
+      
+      if (!response.ok) {
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
+      
+      // Set headers to force download
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+      
+      // Stream the response body to client
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(Buffer.from(value));
+      }
+      res.end();
+    } catch (error) {
+      console.error('Download error:', error);
+      res.status(500).json({ error: 'Download failed' });
+    }
+  }
 }
 
 module.exports = GalleryController;
