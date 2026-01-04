@@ -8,7 +8,7 @@ const path = require('path');
 // ============================================================================
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_FILES = 10;
+const MAX_FILES = 8; // Limit to prevent Lambda memory issues
 const ALLOWED_TYPES = /jpeg|jpg|png/;
 
 // ============================================================================
@@ -41,7 +41,20 @@ function extractDimensions(req, res, next) {
   }).array('photoFile', MAX_FILES);
 
   upload(req, res, (err) => {
-    if (err) return next(err);
+    if (err) {
+      // Handle Multer errors with user-friendly messages
+      if (err.code === 'LIMIT_FILE_COUNT' || err.message === 'Too many files') {
+        return res.status(400).json({ 
+          error: `Too many files. Please select up to ${MAX_FILES} photos at a time.` 
+        });
+      }
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ 
+          error: 'File too large. Maximum size is 10MB per photo.' 
+        });
+      }
+      return next(err);
+    }
 
     req.photoMetadata = [];
     

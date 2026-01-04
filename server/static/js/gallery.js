@@ -37,9 +37,23 @@ const Gallery = {
     }
   },
 
-  // After upload completes - hide status
+  // After upload completes - hide status and handle errors
   onUploadComplete(event) {
     document.getElementById('uploadStatus').style.display = 'none';
+    
+    // Check for error response
+    if (!event.detail.successful) {
+      try {
+        const response = JSON.parse(event.detail.xhr.responseText);
+        if (response.error) {
+          this.showToast(response.error, 'warning');
+        } else {
+          this.showToast('Upload failed. Please try again.', 'warning');
+        }
+      } catch {
+        this.showToast('Upload failed. Please try again.', 'warning');
+      }
+    }
   },
 
   // Handle upload result via HX-Trigger event

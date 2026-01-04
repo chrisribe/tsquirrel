@@ -354,6 +354,12 @@
   color: var(--pico-primary);
 }
 
+.upload-hint {
+  font-size: 0.75rem;
+  color: var(--pico-muted-color);
+  margin-top: 0.25rem;
+}
+
 .upload-status {
   text-align: center;
   padding: 1rem;

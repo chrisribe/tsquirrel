@@ -66,6 +66,11 @@
     document.addEventListener('DOMContentLoaded', function() {
       document.body.addEventListener('htmx:beforeSwap', function(evt) {
         if (evt.detail.xhr.status >= 400 && evt.detail.xhr.status < 500) {
+          // Don't swap error responses for photo uploads - let JS handle via toast
+          if (evt.detail.requestConfig.path && evt.detail.requestConfig.path.includes('/photos')) {
+            evt.detail.shouldSwap = false;
+            return;
+          }
           evt.detail.shouldSwap = true;
           evt.detail.isError = false;
           // Retarget to error message container if it exists
