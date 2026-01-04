@@ -124,6 +124,44 @@ git checkout <hash>
 docker compose up -d --build
 ```
 
+## Running Migrations
+
+Migrations are SQL files in `db/` that modify the database schema.
+
+### After Deploying New Migration Files
+
+```bash
+# 1. Rebuild db container to include new migration file
+docker compose up -d --build db
+
+# 2. Run the migration manually (init scripts only run on fresh DBs)
+docker exec eventglimpse-db-1 psql -U dockeruser -d appdb -f /docker-entrypoint-initdb.d/05-photo-taken-at.sql
+```
+
+### Check Migration Status
+
+```bash
+# List available migrations in container
+docker exec eventglimpse-db-1 ls /docker-entrypoint-initdb.d/
+
+# Check if a column exists (example: taken_at)
+docker exec eventglimpse-db-1 psql -U dockeruser -d appdb -c "\d photos"
+
+# Run ad-hoc SQL
+docker exec eventglimpse-db-1 psql -U dockeruser -d appdb -c "SELECT column_name FROM information_schema.columns WHERE table_name='photos';"
+```
+
+### Adding New Migrations
+
+1. Create SQL file: `db/##-description.sql` (numbered sequentially)
+2. Rebuild and run:
+   ```bash
+   docker compose up -d --build db
+   docker exec eventglimpse-db-1 psql -U dockeruser -d appdb -f /docker-entrypoint-initdb.d/##-description.sql
+   ```
+
+**Note:** The Dockerfile uses `COPY ./*.sql` so new migrations are automatically included - no Dockerfile edits needed. Scripts run in alphabetical order, so use numbered prefixes (01-, 02-, etc.).
+
 ## URLs
 
 - App: https://event-glimpse.com
