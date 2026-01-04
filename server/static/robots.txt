@@ -1,4 +1,20 @@
 # EventGlimpse robots.txt
+
+# Allow Facebook/Meta crawlers for share previews
+User-agent: facebookexternalhit
+Allow: /g/
+Allow: /
+
+# Allow other social media crawlers
+User-agent: Twitterbot
+Allow: /g/
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /g/
+Allow: /
+
+# Default rules for all other bots
 User-agent: *
 
 # Allow public pages
@@ -7,7 +23,7 @@ Allow: /about
 Allow: /privacy
 Allow: /terms
 
-# Block private galleries and auth pages
+# Block private galleries and auth pages from search engines
 Disallow: /g/
 Disallow: /galleries
 Disallow: /auth/
