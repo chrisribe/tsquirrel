@@ -100,9 +100,20 @@
         <img src="<%= pageData.gallery.qr_code_url %>" alt="QR Code" class="qr-code-large">
         <p class="qr-hint">Scan with phone camera</p>
       </div>
+      <div class="share-buttons">
+        <a href="https://www.facebook.com/sharer/sharer.php?u=<%- encodeURIComponent(pageData.shareUrl) %>" 
+           target="_blank" 
+           rel="noopener noreferrer" 
+           class="share-btn-facebook">
+          <span>Facebook</span>
+        </a>
+        <button onclick="Gallery.copyLink()" class="share-btn-copy">
+          <span class="share-icon">🔗</span>
+          <span>Copy Link</span>
+        </button>
+      </div>
       <div class="share-link">
         <input type="text" id="shareUrl" value="<%= pageData.shareUrl %>" readonly onclick="this.select()">
-        <button onclick="Gallery.copyLink()" class="copy-btn">Copy Link</button>
       </div>
     </div>
   </div>
