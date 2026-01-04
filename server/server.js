@@ -73,6 +73,16 @@ async function startServer() {
   app.use(require('./middleware/responseHandler'));
   app.use(require('./middleware/sessionMiddleware'));  
   
+  // Health check (before auth routes)
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // robots.txt (serve from root)
+  app.get('/robots.txt', (req, res) => {
+    res.sendFile(path.join(__dirname, 'static', 'robots.txt'));
+  });
+  
   // Routes
   app.use('/auth', require('./routes/auth'));
   app.use('/users', require('./routes/users'));
@@ -87,6 +97,14 @@ async function startServer() {
     res.status(500).respondWithTemplateOrJson(
       { error: 'Something went wrong' }, 
       'errors/general-error'
+    );
+  });
+
+  // 404 handler (must be last)
+  app.use((req, res) => {
+    res.status(404).respondWithTemplateOrJson(
+      { error: 'Page not found' },
+      'errors/404'
     );
   });
   

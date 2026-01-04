@@ -1,0 +1,21 @@
+# EventGlimpse robots.txt
+User-agent: *
+
+# Allow public pages
+Allow: /
+Allow: /about
+Allow: /privacy
+Allow: /terms
+
+# Block private galleries and auth pages
+Disallow: /g/
+Disallow: /galleries
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /register
+
+# Block static assets from indexing
+Disallow: /static/
+
+# Sitemap (if added later)
+# Sitemap: https://event-glimpse.com/sitemap.xml
