@@ -20,11 +20,11 @@ fi
 
 echo "Running migration: $MIGRATION_FILE"
 
-# Get database container name
-DB_CONTAINER=$(docker-compose ps -q db)
+# Get database container name (try docker compose v2, fallback to v1)
+DB_CONTAINER=$(docker compose ps -q db 2>/dev/null || docker-compose ps -q db 2>/dev/null)
 
 if [ -z "$DB_CONTAINER" ]; then
-    echo "Error: Database container not found. Is docker-compose running?"
+    echo "Error: Database container not found. Is docker compose running?"
     exit 1
 fi
 
