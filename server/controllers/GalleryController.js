@@ -249,7 +249,8 @@ class GalleryController {
           photo.s3Key,
           photo.width,
           photo.height,
-          photo.fileHash
+          photo.fileHash,
+          photo.takenAt
         );
 
         const urls = getPhotoUrls(uuid, photo.photoId, photo.extension);

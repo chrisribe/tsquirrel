@@ -1,4 +1,5 @@
 const { imageSize } = require('image-size');
+const ExifParser = require('exif-parser');
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
@@ -23,6 +24,29 @@ function getImageDimensions(buffer, filename) {
     console.warn(`Could not get dimensions for ${filename}`);
     return { width: 400, height: 300 };
   }
+}
+
+/**
+ * Extract EXIF DateTimeOriginal from JPEG buffer
+ * Returns Date object or null if not available
+ */
+function getExifDate(buffer, filename) {
+  try {
+    const parser = ExifParser.create(buffer);
+    const result = parser.parse();
+    
+    // DateTimeOriginal is when photo was taken (preferred)
+    // CreateDate is fallback
+    const timestamp = result.tags.DateTimeOriginal || result.tags.CreateDate;
+    
+    if (timestamp) {
+      // EXIF timestamps are in seconds since epoch
+      return new Date(timestamp * 1000);
+    }
+  } catch {
+    // PNG files and some JPEGs don't have EXIF - this is fine
+  }
+  return null;
 }
 
 // ============================================================================
@@ -66,6 +90,7 @@ function extractDimensions(req, res, next) {
         const extension = path.extname(file.originalname);
         const dims = getImageDimensions(file.buffer, file.originalname);
         const fileHash = crypto.createHash('md5').update(file.buffer).digest('hex');
+        const takenAt = getExifDate(file.buffer, file.originalname);
         
         req.photoMetadata.push({
           photoId,
@@ -76,7 +101,8 @@ function extractDimensions(req, res, next) {
           height: dims.height,
           buffer: file.buffer,
           mimetype: file.mimetype,
-          fileHash
+          fileHash,
+          takenAt
         });
       });
     }

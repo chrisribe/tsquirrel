@@ -77,11 +77,11 @@ class GalleryDAO {
   // PHOTO METHODS
   // ============================================
 
-  async addPhoto(galleryUuid, photoId, s3Key, width, height, fileHash = null) {
+  async addPhoto(galleryUuid, photoId, s3Key, width, height, fileHash = null, takenAt = null) {
     const result = await this.pool.query(
-      `INSERT INTO photos (gallery_uuid, photo_id, s3_key, width, height, file_hash) 
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [galleryUuid, photoId, s3Key, width, height, fileHash]
+      `INSERT INTO photos (gallery_uuid, photo_id, s3_key, width, height, file_hash, taken_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [galleryUuid, photoId, s3Key, width, height, fileHash, takenAt]
     );
     return result.rows[0];
   }
@@ -96,10 +96,10 @@ class GalleryDAO {
 
   async getPhotos(galleryUuid) {
     const result = await this.pool.query(
-      `SELECT photo_id, s3_key, width, height, uploaded_at 
+      `SELECT photo_id, s3_key, width, height, uploaded_at, taken_at 
        FROM photos 
        WHERE gallery_uuid = $1 
-       ORDER BY uploaded_at DESC`,
+       ORDER BY COALESCE(taken_at, uploaded_at) DESC`,
       [galleryUuid]
     );
     return result.rows;
