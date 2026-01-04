@@ -23,7 +23,7 @@ cp .env.example .env
 ### 2. Start with Docker
 ```bash
 # Linux/Mac
-./start-dev.sh
+./scripts/start-dev.sh
 
 # Or manually
 docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
