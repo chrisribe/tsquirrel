@@ -98,3 +98,19 @@ docker exec -it eventglimpse-server-1 bash
 # Environment variables
 docker exec eventglimpse-server-1 printenv | grep AWS
 ```
+
+## Maintenance Scripts
+
+### Cleanup Orphaned S3 Files
+
+When galleries/photos are deleted, S3 files may remain orphaned. Run periodically to clean up:
+
+```bash
+# Preview what would be deleted (safe, no changes)
+docker exec eventglimpse-server-1 node scripts/cleanup-orphaned-s3.js --dry-run
+
+# Actually delete orphaned files
+docker exec eventglimpse-server-1 node scripts/cleanup-orphaned-s3.js --delete
+```
+
+Scans: `uploads/`, `thumbs/`, `display/`, `originals/`, `qr-codes/`
