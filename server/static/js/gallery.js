@@ -46,12 +46,30 @@ const Gallery = {
   onUploadResult(event) {
     const { added, skipped } = event.detail;
     
+    // Track upload success in Google Analytics
+    if (added > 0) {
+      this.trackUploadSuccess(added, skipped);
+    }
+    
     if (added > 0 && skipped > 0) {
       this.showToast(`${added} added, ${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`);
     } else if (added > 0) {
       this.showToast('Photos uploaded! ✓');
     } else if (skipped > 0) {
       this.showToast(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`, 'warning');
+    }
+  },
+
+  // Track photo upload success in Google Analytics
+  trackUploadSuccess(photosAdded, photosSkipped) {
+    if (typeof gtag === 'function') {
+      gtag('event', 'photo_upload', {
+        event_category: 'Gallery',
+        event_label: 'Upload Success',
+        photos_added: photosAdded,
+        photos_skipped: photosSkipped,
+        total_photos: photosAdded + photosSkipped
+      });
     }
   },
 

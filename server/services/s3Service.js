@@ -43,7 +43,8 @@ async function uploadFilesToS3(photoMetadata) {
         Bucket: BUCKET_NAME,
         Key: photo.s3Key,
         Body: photo.buffer,
-        ContentType: photo.mimetype
+        ContentType: photo.mimetype,
+        ServerSideEncryption: 'AES256'
       }));
       console.log(`Uploaded ${photo.originalName} to S3`);
     } catch (error) {
@@ -90,7 +91,8 @@ async function uploadQRCodeToS3(galleryUuid, qrBuffer) {
       Bucket: BUCKET_NAME,
       Key: s3Key,
       Body: qrBuffer,
-      ContentType: 'image/png'
+      ContentType: 'image/png',
+      ServerSideEncryption: 'AES256'
     }));
 
     const qrUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`;
