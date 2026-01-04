@@ -295,6 +295,50 @@ const Gallery = {
     } catch (err) {
       this.showToast('Failed to copy', 'warning');
     }
+  },
+
+  // Title editing - cached elements
+  _titleElements: null,
+  
+  getTitleElements() {
+    if (!this._titleElements) {
+      this._titleElements = {
+        title: document.getElementById('galleryTitle'),
+        form: document.getElementById('titleEditForm'),
+        input: document.getElementById('titleInput')
+      };
+    }
+    return this._titleElements;
+  },
+
+  editTitle() {
+    const { title, form, input } = this.getTitleElements();
+    if (title && form) {
+      title.style.display = 'none';
+      form.style.display = 'flex';
+      input.focus();
+      input.select();
+    }
+  },
+
+  cancelEditTitle() {
+    const { title, form, input } = this.getTitleElements();
+    if (title && form) {
+      form.style.display = 'none';
+      title.style.display = 'block';
+      input.value = title.textContent;
+    }
+  },
+
+  onTitleSaved(event) {
+    const { title, form } = this.getTitleElements();
+    if (event.detail.successful) {
+      form.style.display = 'none';
+      title.style.display = 'block';
+      this.showToast('Title updated ✓');
+    } else {
+      this.showToast('Failed to update title', 'warning');
+    }
   }
 };
 
@@ -304,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => {
     const lightbox = document.getElementById('lightbox');
     const shareModal = document.getElementById('shareModal');
+    const titleForm = document.getElementById('titleEditForm');
     
     if (lightbox && lightbox.style.display === 'flex') {
       if (e.key === 'Escape') {
@@ -316,6 +361,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (shareModal && shareModal.style.display === 'flex') {
       if (e.key === 'Escape') {
         Gallery.closeShare();
+      }
+    } else if (titleForm && titleForm.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        Gallery.cancelEditTitle();
       }
     }
   });

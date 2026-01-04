@@ -65,6 +65,14 @@ class GalleryDAO {
     return result.rows[0];
   }
 
+  async updateGalleryTitle(galleryUuid, userId, title) {
+    const result = await this.pool.query(
+      'UPDATE galleries SET title = $1 WHERE uuid = $2 AND user_id = $3 RETURNING *',
+      [title, galleryUuid, userId]
+    );
+    return result.rows[0];
+  }
+
   // ============================================
   // PHOTO METHODS
   // ============================================

@@ -76,6 +76,32 @@ class GalleryController {
     }
   }
 
+  async updateGalleryTitle(req, res, next) {
+    try {
+      const { uuid } = req.params;
+      const { title } = req.body;
+
+      if (!title?.trim()) {
+        return res.status(400).json({ error: 'Title is required' });
+      }
+
+      const updated = await this.galleryDAO.updateGalleryTitle(
+        uuid,
+        req.session.user.id,
+        title.trim()
+      );
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Gallery not found or not authorized' });
+      }
+
+      // Return the new title for HTMX swap
+      res.status(200).send(updated.title);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // ============================================
   // PUBLIC GALLERY VIEW
   // ============================================

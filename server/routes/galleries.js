@@ -35,6 +35,11 @@ router.delete('/:id', requireAuth, (req, res, next) =>
   controller.deleteGallery(req, res, next)
 );
 
+// Update gallery title (owner only)
+router.patch('/:uuid/title', requireAuth, (req, res, next) => 
+  controller.updateGalleryTitle(req, res, next)
+);
+
 // ============================================
 // PUBLIC ROUTES (view & upload)
 // ============================================
