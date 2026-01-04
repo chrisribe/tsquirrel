@@ -26,6 +26,8 @@ class GalleryController {
       
       res.respondWithTemplateOrJson({
         galleries: galleriesWithThumbs,
+        pageTitle: 'My Galleries - EventGlimpse',
+        pageDescription: 'Manage your event photo galleries. Create new galleries and view uploaded photos.',
         pageAssets: { css: ['gallery.css'] }
       }, 'galleries/list-page');
     } catch (error) {
@@ -138,12 +140,22 @@ class GalleryController {
         };
       });
 
+      // SEO metadata
+      const photoCountText = photos.length === 1 ? '1 photo' : `${photos.length} photos`;
+      const pageTitle = `${gallery.title} - EventGlimpse Gallery`;
+      const pageDescription = `View and share photos from ${gallery.title}. ${photoCountText} shared. Add your own photos - no account required!`;
+      const pageImage = photosWithUrls.length > 0 ? photosWithUrls[0].display_url : null;
+
       res.respondWithTemplateOrJson({
         gallery,
         photos: photosWithUrls,
         photoCount: photos.length,
         shareUrl,
         isOwner,
+        pageTitle,
+        pageDescription,
+        pageImage,
+        pageUrl: shareUrl,
         pageAssets: {
           css: ['gallery.css'],
           js: ['gallery.js']

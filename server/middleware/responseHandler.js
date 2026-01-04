@@ -31,7 +31,11 @@ module.exports = (req, res, next) => {
     return res.render('layout-main', { 
       template: templatePath,
       pageData,
-      pageAssets: pageData.pageAssets || {}  // Make pageAssets available at layout level
+      pageAssets: pageData.pageAssets || {},  // Make pageAssets available at layout level
+      pageTitle: pageData.pageTitle,
+      pageDescription: pageData.pageDescription,
+      pageImage: pageData.pageImage,
+      pageUrl: pageData.pageUrl
     });
   };
   

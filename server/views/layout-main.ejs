@@ -3,7 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EventGlimpse</title>
+  
+  <!-- Page Title -->
+  <title><%= typeof pageTitle !== 'undefined' ? pageTitle : 'EventGlimpse - Simple Photo Sharing for Events' %></title>
+  
+  <!-- Meta Description -->
+  <% if (typeof pageDescription !== 'undefined' && pageDescription) { %>
+  <meta name="description" content="<%= pageDescription %>">
+  <% } else { %>
+  <meta name="description" content="Create event galleries and share photos effortlessly. No accounts needed for guests to upload. Perfect for weddings, parties, and family gatherings.">
+  <% } %>
+  
+  <!-- Open Graph Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="<%= typeof pageTitle !== 'undefined' ? pageTitle : 'EventGlimpse - Simple Photo Sharing for Events' %>">
+  <meta property="og:description" content="<%= typeof pageDescription !== 'undefined' ? pageDescription : 'Create event galleries and share photos effortlessly. No accounts needed for guests to upload.' %>">
+  <% if (typeof pageImage !== 'undefined' && pageImage) { %>
+  <meta property="og:image" content="<%= pageImage %>">
+  <% } else { %>
+  <meta property="og:image" content="https://www.event-glimpse.com/static/images/og-default.jpg">
+  <% } %>
+  <meta property="og:url" content="<%= typeof pageUrl !== 'undefined' ? pageUrl : 'https://www.event-glimpse.com' %>">
+  <meta property="og:site_name" content="EventGlimpse">
+  
+  <!-- Twitter Card Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= typeof pageTitle !== 'undefined' ? pageTitle : 'EventGlimpse - Simple Photo Sharing for Events' %>">
+  <meta name="twitter:description" content="<%= typeof pageDescription !== 'undefined' ? pageDescription : 'Create event galleries and share photos effortlessly. No accounts needed for guests to upload.' %>">
+  <% if (typeof pageImage !== 'undefined' && pageImage) { %>
+  <meta name="twitter:image" content="<%= pageImage %>">
+  <% } else { %>
+  <meta name="twitter:image" content="https://www.event-glimpse.com/static/images/og-default.jpg">
+  <% } %>
+  
+  <!-- Canonical URL -->
+  <link rel="canonical" href="<%= typeof pageUrl !== 'undefined' ? pageUrl : 'https://www.event-glimpse.com' %>">
   
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-7FEMFZ957N"></script>
