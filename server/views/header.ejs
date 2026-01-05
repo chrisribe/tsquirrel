@@ -3,7 +3,9 @@
     <ul>
       <li><a href="/" class="logo"><span class="logo-icon">⚡</span><strong>EventGlimpse</strong></a></li>
     </ul>
-    <ul class="nav-right">
+    
+    <!-- Desktop nav -->
+    <ul class="nav-right nav-desktop">
       <% if (user) { %>
         <li><a href="/galleries" class="nav-btn">📸 My Galleries</a></li>
         <% if (user.role === 'admin') { %>
@@ -17,5 +19,24 @@
         <li><a href="/auth/register" class="nav-btn-primary">Sign up free</a></li>
       <% } %>
     </ul>
+    
+    <!-- Mobile hamburger -->
+    <div class="nav-mobile">
+      <div class="hamburger-menu">
+        <button class="hamburger-btn" aria-label="Menu">☰</button>
+        <div class="hamburger-dropdown">
+          <% if (user) { %>
+            <a href="/galleries">📸 My Galleries</a>
+            <% if (user.role === 'admin') { %>
+              <a href="/admin">⚙️ Admin</a>
+            <% } %>
+            <a href="#" hx-post="/auth/logout" hx-swap="none">🚪 Logout</a>
+          <% } else { %>
+            <a href="/auth/login">Log in</a>
+            <a href="/auth/register">Sign up free</a>
+          <% } %>
+        </div>
+      </div>
+    </div>
   </nav>
 </header>

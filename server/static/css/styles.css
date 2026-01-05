@@ -233,6 +233,302 @@ body > header nav a {
   color: white !important;
 }
 
+/* Mobile nav - hamburger dropdown */
+.nav-mobile {
+  display: none;
+}
+
+.nav-desktop {
+  display: flex;
+}
+
+@media (max-width: 576px) {
+  .nav-desktop {
+    display: none !important;
+  }
+  
+  .nav-mobile {
+    display: block;
+  }
+  
+  .logo strong {
+    font-size: 0.95rem;
+  }
+  
+  .logo-icon {
+    font-size: 1.1rem !important;
+  }
+}
+
+.hamburger-menu {
+  position: relative;
+}
+
+.hamburger-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  color: #333;
+}
+
+.hamburger-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.hamburger-menu:focus-within .hamburger-dropdown {
+  display: block;
+}
+
+.hamburger-dropdown a {
+  display: block;
+  padding: 0.75rem 1rem;
+  color: #333;
+  text-decoration: none;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 500;
+}
+
+.hamburger-dropdown a:last-child {
+  border-bottom: none;
+}
+
+.hamburger-dropdown a:hover {
+  background: #f8f8f8;
+  color: #e17055;
+}
+
+/* Admin dashboard responsive */
+.admin-cards-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .admin-table-desktop {
+    display: none;
+  }
+  
+  .admin-cards-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+.user-card {
+  background: #f8f8f8;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.user-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.user-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 1rem;
+  font-weight: 600;
+}
+
+.user-badge.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.user-badge.paused {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.user-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #666;
+  margin-bottom: 0.75rem;
+}
+
+.user-card-actions button {
+  width: 100%;
+  margin: 0;
+}
+
+/* How It Works - Numbered Steps */
+.how-it-works {
+  padding: 3rem 0;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 2.5rem;
+  color: #333;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  position: relative;
+  padding-bottom: 2rem;
+}
+
+.step:last-child {
+  padding-bottom: 0;
+}
+
+/* Connecting line */
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 44px;
+  width: 2px;
+  height: calc(100% - 24px);
+  background: linear-gradient(180deg, #e17055 0%, #d63031 100%);
+}
+
+.step-number {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  box-shadow: 0 3px 10px rgba(225, 112, 85, 0.3);
+}
+
+.step-content h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.step-content p {
+  margin: 0;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 576px) {
+  .how-it-works {
+    padding: 2rem 0;
+  }
+  
+  .section-title {
+    font-size: 1.5rem;
+  }
+  
+  .step {
+    gap: 1rem;
+  }
+  
+  .step-number {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    font-size: 1rem;
+  }
+  
+  .step:not(:last-child)::after {
+    left: 17px;
+    top: 40px;
+  }
+}
+
+/* Social proof line */
+.social-proof {
+  text-align: center;
+  color: #888;
+  font-size: 0.95rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+/* Static page styling (About, Privacy, Terms) */
+section > hgroup {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+section > hgroup h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+section > hgroup p {
+  color: #666;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+section > article {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+section > article:last-of-type {
+  border-bottom: none;
+}
+
+section > article h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+section > article p {
+  color: #555;
+  line-height: 1.7;
+}
+
+section > article ul {
+  color: #555;
+  padding-left: 1.25rem;
+}
+
+section > article li {
+  margin-bottom: 0.5rem;
+}
+
 body > header nav {
   padding-left: 0;
   padding-right: 0;

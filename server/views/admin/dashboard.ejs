@@ -5,45 +5,82 @@
   
   <article>
     <header>User Management</header>
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Username</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% if (pageData && pageData.users) { %>
-          <% pageData.users.forEach(u => { %>
-            <tr id="user-<%= u.id %>">
-              <td><%= u.id %></td>
-              <td><%= u.username %></td>
-              <td><%= u.email %></td>
-              <td><%= u.role %></td>
-              <td><%= u.status %></td>
-              <td>
-                <% if (u.status === 'active') { %>
-                  <button hx-patch="/admin/users/<%= u.id %>/status" 
-                          hx-vals='{"status":"paused"}' 
-                          hx-target="#user-<%= u.id %>"
-                          hx-swap="outerHTML"
-                          class="outline secondary">Pause</button>
-                <% } else { %>
-                  <button hx-patch="/admin/users/<%= u.id %>/status" 
-                          hx-vals='{"status":"active"}' 
-                          hx-target="#user-<%= u.id %>"
-                          hx-swap="outerHTML"
-                          class="outline">Activate</button>
-                <% } %>
-              </td>
-            </tr>
-          <% }); %>
-        <% } %>
-      </tbody>
-    </table>
+    
+    <!-- Desktop table -->
+    <div class="admin-table-desktop">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (pageData && pageData.users) { %>
+            <% pageData.users.forEach(u => { %>
+              <tr id="user-<%= u.id %>">
+                <td><%= u.id %></td>
+                <td><%= u.username %></td>
+                <td><%= u.email %></td>
+                <td><%= u.role %></td>
+                <td><%= u.status %></td>
+                <td>
+                  <% if (u.status === 'active') { %>
+                    <button hx-patch="/admin/users/<%= u.id %>/status" 
+                            hx-vals='{"status":"paused"}' 
+                            hx-target="#user-<%= u.id %>"
+                            hx-swap="outerHTML"
+                            class="outline secondary">Pause</button>
+                  <% } else { %>
+                    <button hx-patch="/admin/users/<%= u.id %>/status" 
+                            hx-vals='{"status":"active"}' 
+                            hx-target="#user-<%= u.id %>"
+                            hx-swap="outerHTML"
+                            class="outline">Activate</button>
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Mobile cards -->
+    <div class="admin-cards-mobile">
+      <% if (pageData && pageData.users) { %>
+        <% pageData.users.forEach(u => { %>
+          <div class="user-card" id="user-card-<%= u.id %>">
+            <div class="user-card-header">
+              <strong><%= u.username %></strong>
+              <span class="user-badge <%= u.status %>"><%= u.status %></span>
+            </div>
+            <div class="user-card-details">
+              <small><%= u.email %></small>
+              <small>Role: <%= u.role %> • ID: <%= u.id %></small>
+            </div>
+            <div class="user-card-actions">
+              <% if (u.status === 'active') { %>
+                <button hx-patch="/admin/users/<%= u.id %>/status" 
+                        hx-vals='{"status":"paused"}' 
+                        hx-target="#user-card-<%= u.id %>"
+                        hx-swap="outerHTML"
+                        class="outline secondary">Pause</button>
+              <% } else { %>
+                <button hx-patch="/admin/users/<%= u.id %>/status" 
+                        hx-vals='{"status":"active"}' 
+                        hx-target="#user-card-<%= u.id %>"
+                        hx-swap="outerHTML"
+                        class="outline">Activate</button>
+              <% } %>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
   </article>
 </section>
