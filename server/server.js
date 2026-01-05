@@ -4,7 +4,7 @@ const path = require('path');
 const cors = require('cors');
 
 // Asset version for cache busting - increment on CSS/JS changes
-const ASSET_VERSION = '1.0.3';
+const ASSET_VERSION = '1.0.5';
 
 async function startServer() {
   const app = express();

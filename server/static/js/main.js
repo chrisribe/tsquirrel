@@ -11,4 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   
+  // Gallery page: show delete buttons for user's uploaded photos
+  const galleryView = document.querySelector('.gallery-view[data-gallery-uuid]');
+  if (galleryView && typeof Gallery !== 'undefined') {
+    Gallery.showMyDeleteButtons(galleryView.dataset.galleryUuid);
+  }
+  
 });

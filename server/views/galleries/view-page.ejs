@@ -1,4 +1,4 @@
-<div class="gallery-view">
+<div class="gallery-view" data-gallery-uuid="<%= pageData.gallery.uuid %>">
   <!-- Header -->
   <header class="gallery-header">
     <% if (pageData.isOwner) { %>
@@ -145,8 +145,3 @@
     <button class="close-btn" onclick="Gallery.closeLightbox()">×</button>
   </div>
 </div>
-
-<script>
-  // Show delete buttons for photos this user uploaded (persisted in localStorage)
-  Gallery.showMyDeleteButtons('<%= pageData.gallery.uuid %>');
-</script>

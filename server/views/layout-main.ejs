@@ -90,7 +90,7 @@
   </script>
   <% if (typeof pageAssets !== 'undefined' && pageAssets && pageAssets.js) { %>
     <% pageAssets.js.forEach(jsFile => { %>
-      <script src="/static/js/<%= jsFile %>"></script>
+      <script src="/static/js/<%= jsFile %>?v=<%= assetVersion %>"></script>
     <% }); %>
   <% } %>
 </head>
