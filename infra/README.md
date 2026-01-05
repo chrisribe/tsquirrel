@@ -19,7 +19,7 @@ Both use same S3 bucket (`eventglimpse`) and Lambda function.
 eventglimpse/
 ├── uploads/     # Triggers Lambda
 ├── originals/   # Full-size processed
-├── display/     # 800px web versions
+├── display/     # 1600px gallery versions
 └── thumbs/      # 200px thumbnails
 ```
 
