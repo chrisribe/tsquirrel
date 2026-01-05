@@ -3,6 +3,9 @@ const { Pool } = require('pg');
 const path = require('path');
 const cors = require('cors');
 
+// Asset version for cache busting - increment on CSS/JS changes
+const ASSET_VERSION = '1.0.0';
+
 async function startServer() {
   const app = express();
   
@@ -71,7 +74,13 @@ async function startServer() {
   
   // Apply middleware
   app.use(require('./middleware/responseHandler'));
-  app.use(require('./middleware/sessionMiddleware'));  
+  app.use(require('./middleware/sessionMiddleware'));
+  
+  // Make asset version available to all views
+  app.use((req, res, next) => {
+    res.locals.assetVersion = ASSET_VERSION;
+    next();
+  });  
   
   // Health check (before auth routes)
   app.get('/health', (req, res) => {
