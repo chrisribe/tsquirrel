@@ -100,7 +100,7 @@ const Gallery = {
   activeUploads: 0,
   maxParallel: 2,  // Upload 2 at a time
 
-  startUploadQueue(files) {
+  async startUploadQueue(files) {
     // Filter to only image files (for folder upload)
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
     
@@ -109,27 +109,83 @@ const Gallery = {
       return;
     }
     
-    this.uploadQueue = imageFiles;
-    this.uploadInProgress = true;
-    this.uploadCancelled = false;
-    this.uploadStats = { added: 0, skipped: 0, failed: 0 };
-    this.activeUploads = 0;
-    this.totalToUpload = imageFiles.length;
-    this.uploadedCount = 0;
+    const galleryUuid = document.getElementById('uploadForm').dataset.galleryUuid;
     
-    // Show queue UI
+    // Show queue UI immediately
     document.getElementById('uploadLabel').style.display = 'none';
     document.getElementById('uploadQueue').style.display = 'block';
     document.getElementById('queueTotal').textContent = imageFiles.length;
-    document.getElementById('queueCurrent').textContent = '0';
+    document.getElementById('queueCurrent').textContent = 'Checking...';
     document.getElementById('queueAdded').textContent = '0';
     document.getElementById('queueSkipped').textContent = '0';
     document.getElementById('queueProgress').value = 0;
+    
+    // Step 1: Hash all files
+    const fileHashes = [];
+    for (const file of imageFiles) {
+      const hash = await this.computeFileHash(file);
+      fileHashes.push({ file, hash });
+    }
+    
+    // Step 2: Pre-check which hashes exist
+    let existingHashes = [];
+    try {
+      const response = await fetch(`/g/${galleryUuid}/check-hashes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashes: fileHashes.map(f => f.hash) })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        existingHashes = data.existing || [];
+      }
+    } catch (e) {
+      console.warn('Hash pre-check failed, uploading all:', e);
+    }
+    
+    // Step 3: Filter out duplicates
+    const toUpload = fileHashes.filter(f => !existingHashes.includes(f.hash));
+    const skippedCount = fileHashes.length - toUpload.length;
+    
+    // Update UI with pre-check results
+    this.uploadStats = { added: 0, skipped: skippedCount, failed: 0 };
+    document.getElementById('queueSkipped').textContent = skippedCount;
+    
+    if (toUpload.length === 0) {
+      // All duplicates!
+      this.showToast(`${skippedCount} duplicate${skippedCount > 1 ? 's' : ''} skipped`, 'warning');
+      document.getElementById('uploadQueue').style.display = 'none';
+      document.getElementById('uploadLabel').style.display = 'flex';
+      return;
+    }
+    
+    // Step 4: Upload only new files
+    this.uploadQueue = toUpload.map(f => f.file);
+    this.uploadInProgress = true;
+    this.uploadCancelled = false;
+    this.activeUploads = 0;
+    this.totalToUpload = toUpload.length;
+    this.uploadedCount = 0;
+    
+    document.getElementById('queueTotal').textContent = toUpload.length;
+    document.getElementById('queueCurrent').textContent = '0';
     
     // Start parallel uploads
     for (let i = 0; i < this.maxParallel; i++) {
       this.processNextUpload();
     }
+  },
+  
+  async computeFileHash(file) {
+    // Web Crypto API - SHA-256, matches server-side hash
+    if (crypto.subtle) {
+      const buffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    // Fallback: file metadata (won't match server, but server re-checks)
+    return `${file.name}-${file.size}-${file.lastModified}`;
   },
 
   async processNextUpload() {

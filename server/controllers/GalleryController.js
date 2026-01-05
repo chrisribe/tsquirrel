@@ -391,6 +391,33 @@ class GalleryController {
       res.status(500).json({ error: 'Download failed' });
     }
   }
+
+  // ============================================
+  // HASH PRE-CHECK (for duplicate detection before upload)
+  // ============================================
+
+  async checkHashes(req, res, next) {
+    try {
+      const { uuid } = req.params;
+      const { hashes } = req.body;
+
+      if (!hashes || !Array.isArray(hashes)) {
+        return res.status(400).json({ error: 'hashes array required' });
+      }
+
+      const gallery = await this.galleryDAO.getGalleryByUuid(uuid);
+      if (!gallery) {
+        return res.status(404).json({ error: 'Gallery not found' });
+      }
+
+      const existingHashes = await this.galleryDAO.checkHashes(uuid, hashes);
+      
+      res.json({ existing: existingHashes });
+    } catch (error) {
+      console.error('Hash check error:', error);
+      res.status(500).json({ error: 'Hash check failed' });
+    }
+  }
 }
 
 module.exports = GalleryController;

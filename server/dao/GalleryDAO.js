@@ -94,6 +94,16 @@ class GalleryDAO {
     return result.rows.length > 0;
   }
 
+  async checkHashes(galleryUuid, hashes) {
+    if (!hashes || hashes.length === 0) return [];
+    
+    const result = await this.pool.query(
+      'SELECT file_hash FROM photos WHERE gallery_uuid = $1 AND file_hash = ANY($2)',
+      [galleryUuid, hashes]
+    );
+    return result.rows.map(r => r.file_hash);
+  }
+
   async getPhotos(galleryUuid) {
     const result = await this.pool.query(
       `SELECT photo_id, s3_key, width, height, uploaded_at, taken_at 

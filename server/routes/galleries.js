@@ -49,6 +49,11 @@ router.get('/:uuid', (req, res, next) =>
   controller.viewGallery(req, res, next)
 );
 
+// Check which hashes already exist (for pre-upload duplicate detection)
+router.post('/:uuid/check-hashes', express.json(), (req, res, next) => 
+  controller.checkHashes(req, res, next)
+);
+
 // Upload photos (public!)
 router.post('/:uuid/photos', extractDimensions, (req, res, next) => 
   controller.uploadPhotos(req, res, next)

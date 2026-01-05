@@ -89,7 +89,7 @@ function extractDimensions(req, res, next) {
         const photoId = crypto.randomUUID();
         const extension = path.extname(file.originalname);
         const dims = getImageDimensions(file.buffer, file.originalname);
-        const fileHash = crypto.createHash('md5').update(file.buffer).digest('hex');
+        const fileHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
         const takenAt = getExifDate(file.buffer, file.originalname);
         
         req.photoMetadata.push({
