@@ -300,12 +300,8 @@
     flex-wrap: wrap;
   }
   
-  .share-text {
-    display: none;
-  }
-  
   .share-btn {
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.85rem;
   }
 }
 
@@ -347,17 +343,18 @@
     justify-content: space-between;
   }
   
-  .share-btn .share-text {
-    display: none; /* Icon only on mobile */
-  }
-  
   .share-btn {
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.85rem;
   }
 }
 
 @media (max-width: 480px) {
   .photo-counter {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.75rem;
+  }
+  
+  .share-btn {
     font-size: 0.85rem;
     padding: 0.4rem 0.75rem;
   }

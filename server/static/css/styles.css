@@ -1,5 +1,16 @@
 /* Base styles - customize for your project */
 
+/* Use Inter font */
+:root {
+  --pico-font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* Override Pico's default blue with warm coral */
 [data-theme="light"],
 :root:not([data-theme="dark"]) {
@@ -35,13 +46,191 @@
 
 .logo {
   text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 1.1rem;
+}
+
+.logo strong {
+  color: var(--pico-primary);
+}
+
+.logo-icon {
+  font-size: 1.1rem;
+  color: var(--pico-primary);
+}
+
+/* Hero Section */
+.hero {
+  background: linear-gradient(135deg, #e17055 0%, #d63031 50%, #e84393 100%);
+  padding: 4rem 2rem;
+  text-align: center;
+  margin: -1rem -1rem 2rem -1rem;
+}
+
+@media (min-width: 768px) {
+  .hero {
+    padding: 6rem 2rem;
+    margin: -2rem -2rem 2rem -2rem;
+  }
+}
+
+.hero-content {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.hero h1 {
+  color: white;
+  font-size: 2.5rem;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 768px) {
+  .hero h1 {
+    font-size: 3.5rem;
+  }
+}
+
+.hero-highlight {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.hero-subtitle {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hero-cta {
+  background: white;
+  color: #e17055 !important;
+  border: none;
+  font-weight: bold;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.hero-cta:hover {
+  background: #f8f8f8;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.hero-cta-secondary {
+  background: transparent;
+  color: white !important;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.hero-cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+}
+
+/* Trust Section */
+.trust-section {
+  background: var(--card-background-color);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
 }
 
 /* Minimal Header Enhancement */
 body > header {
-  border-bottom: 1px solid rgba(225, 112, 85, 0.15);
+  background: white;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* No sticky header on gallery view - maximize photo space */
+body.gallery-page > header {
+  position: relative;
+  box-shadow: none;
+}
+
+body > header nav {
+  padding-left: 0;
+  padding-right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+body > header nav ul {
+  margin: 0;
+  padding: 0;
+}
+
+body > header nav ul li {
+  margin: 0;
+}
+
+body > header nav a {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* App-like nav buttons */
+.nav-right {
+  gap: 0.5rem;
+}
+
+.nav-link-subtle {
+  font-weight: 500;
+  color: #666 !important;
+  font-size: 0.9rem;
+}
+
+.nav-link-subtle:hover {
+  color: #e17055 !important;
+}
+
+.nav-btn {
+  background: #f5f5f5;
+  padding: 0.5rem 1rem !important;
+  border-radius: 2rem;
+  font-weight: 600;
+  color: #333 !important;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  background: #eee;
+  color: #e17055 !important;
+}
+
+.nav-btn-primary {
+  background: #e17055;
+  padding: 0.5rem 1.25rem !important;
+  border-radius: 2rem;
+  font-weight: 600;
+  color: white !important;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.nav-btn-primary:hover {
+  background: #d63031;
+  color: white !important;
 }
 
 body > header nav {

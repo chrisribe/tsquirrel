@@ -1,9 +1,20 @@
-<section>
-  <hgroup>
-    <h1>📷 EventGlimpse</h1>
-    <p>Simple photo sharing for events</p>
-  </hgroup>
-  
+<section class="hero">
+  <div class="hero-content">
+    <h1>Share Event Photos<br><span class="hero-highlight">Instantly</span></h1>
+    <p class="hero-subtitle">One link. No apps. Everyone uploads.</p>
+    
+    <% if (user) { %>
+      <a href="/galleries" role="button" class="hero-cta">Go to My Galleries</a>
+    <% } else { %>
+      <div class="hero-buttons">
+        <a href="/register" role="button" class="hero-cta">Create Free Gallery</a>
+        <a href="/auth/login" role="button" class="outline hero-cta-secondary">Sign In</a>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<section class="container">
   <article>
     <h3>How it works</h3>
     <ol>
@@ -14,7 +25,7 @@
     </ol>
   </article>
 
-  <article style="background: var(--card-background-color); padding: 1.5rem; border-radius: 0.5rem;">
+  <article class="trust-section">
     <h3>Trusted & Secure</h3>
     <div class="grid">
       <div style="text-align: center;">
@@ -34,13 +45,4 @@
       <small>Used at weddings, birthday parties, and family reunions. <a href="/about">Learn more →</a></small>
     </p>
   </article>
-  
-  <% if (user) { %>
-    <a href="/galleries" role="button">Go to My Galleries</a>
-  <% } else { %>
-    <div class="grid">
-      <a href="/register" role="button">Create Your First Gallery</a>
-      <a href="/auth/login" role="button" class="outline">Sign In</a>
-    </div>
-  <% } %>
 </section>
