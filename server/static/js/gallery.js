@@ -129,6 +129,7 @@ const Gallery = {
     const lightbox = document.getElementById('lightbox');
     const img = document.getElementById('lightboxImg');
     const download = document.getElementById('lightboxDownload');
+    const loading = document.getElementById('lightboxLoading');
     
     // Build photo URLs array for navigation
     this.photoUrls = Array.from(document.querySelectorAll('.photo-item img')).map(img => {
@@ -141,10 +142,10 @@ const Gallery = {
     // Find current index
     this.currentPhotoIndex = this.photoUrls.findIndex(p => p.original === originalUrl);
     
-    // Try original first in background, show display only on error
-    this.loadOriginalImage(img, originalUrl, displayUrl);
+    // Show display image directly (1600px is good for viewing)
+    this.loadDisplayImage(img, loading, displayUrl);
     
-    // Use download proxy to force download instead of opening in browser
+    // Download button uses original via proxy
     const photoId = originalUrl.split('/').pop().split('.')[0];
     download.href = `/galleries/download/${photoId}`;
     lightbox.style.display = 'flex';
@@ -155,35 +156,32 @@ const Gallery = {
     document.body.style.overflow = 'hidden';
   },
 
-  loadOriginalImage(img, originalUrl, displayUrl, retries = 5) {
-    const loading = document.getElementById('lightboxLoading');
-    
+  loadDisplayImage(img, loading, displayUrl, retries = 5) {
     // Show loading, hide image
     loading.style.display = 'block';
     img.style.display = 'none';
     img.src = '';
     
-    // Try loading original
+    // Load display image (1600px - good for viewing)
     const testImg = new Image();
-    testImg.src = originalUrl;
+    testImg.src = displayUrl;
     
     testImg.onload = () => {
-      // Success - hide loading, show original
       loading.style.display = 'none';
-      img.src = originalUrl;
+      img.src = displayUrl;
       img.style.display = 'block';
     };
     
     testImg.onerror = () => {
       if (retries > 0) {
-        // Retry original after delay
+        // Retry after delay (Lambda processing)
         setTimeout(() => {
-          this.loadOriginalImage(img, originalUrl + '?retry=' + Date.now(), displayUrl, retries - 1);
+          this.loadDisplayImage(img, loading, displayUrl.split('?')[0] + '?retry=' + Date.now(), retries - 1);
         }, 2000);
       } else {
-        // All retries failed - fallback to display version
+        // All retries failed
         loading.style.display = 'none';
-        img.src = displayUrl;
+        img.alt = '⚠️ Failed to load';
         img.style.display = 'block';
       }
     };
@@ -216,11 +214,12 @@ const Gallery = {
     const photo = this.photoUrls[this.currentPhotoIndex];
     const img = document.getElementById('lightboxImg');
     const download = document.getElementById('lightboxDownload');
+    const loading = document.getElementById('lightboxLoading');
     
-    // Try original first, fallback to display on error
-    this.loadOriginalImage(img, photo.original, photo.display);
+    // Show display image (1600px - good for viewing)
+    this.loadDisplayImage(img, loading, photo.display);
     
-    // Use download proxy
+    // Download uses original via proxy
     const photoId = photo.original.split('/').pop().split('.')[0];
     download.href = `/galleries/download/${photoId}`;
     this.updateNavArrows();
