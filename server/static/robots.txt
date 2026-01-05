@@ -1,5 +1,18 @@
 # EventGlimpse robots.txt
 
+# Facebook crawler - explicit allow for social sharing
+User-agent: facebookexternalhit
+Allow: /
+
+# Twitter crawler
+User-agent: Twitterbot
+Allow: /
+
+# LinkedIn crawler
+User-agent: LinkedInBot
+Allow: /
+
+# All other bots
 User-agent: *
 
 # Allow public pages and galleries (for social sharing)
