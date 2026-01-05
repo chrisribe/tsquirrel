@@ -9,7 +9,7 @@ const path = require('path');
 // ============================================================================
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_FILES = 8; // Limit to prevent Lambda memory issues
+const MAX_FILES = 20; // Per-request limit (queue sends 1 at a time)
 const ALLOWED_TYPES = /jpeg|jpg|png/;
 
 // ============================================================================

@@ -3,6 +3,61 @@
  */
 const Gallery = {
   
+  // ============================================
+  // Session-based photo tracking (for anonymous delete)
+  // ============================================
+  
+  getMyPhotos(galleryUuid) {
+    try {
+      const key = `eventglimpse_uploads_${galleryUuid}`;
+      return JSON.parse(localStorage.getItem(key) || '[]');
+    } catch {
+      return [];
+    }
+  },
+  
+  addMyPhoto(galleryUuid, photoId) {
+    try {
+      const key = `eventglimpse_uploads_${galleryUuid}`;
+      const photos = this.getMyPhotos(galleryUuid);
+      if (!photos.includes(photoId)) {
+        photos.push(photoId);
+        localStorage.setItem(key, JSON.stringify(photos));
+      }
+    } catch {
+      // localStorage might be disabled
+    }
+  },
+  
+  removeMyPhoto(galleryUuid, photoId) {
+    try {
+      const key = `eventglimpse_uploads_${galleryUuid}`;
+      const photos = this.getMyPhotos(galleryUuid).filter(id => id !== photoId);
+      localStorage.setItem(key, JSON.stringify(photos));
+    } catch {
+      // localStorage might be disabled
+    }
+  },
+  
+  canDeletePhoto(galleryUuid, photoId) {
+    return this.getMyPhotos(galleryUuid).includes(photoId);
+  },
+  
+  // Show delete buttons for photos this user uploaded
+  showMyDeleteButtons(galleryUuid) {
+    const myPhotos = this.getMyPhotos(galleryUuid);
+    myPhotos.forEach(photoId => {
+      const photoItem = document.querySelector(`[data-photo-id="${photoId}"]`);
+      if (photoItem && !photoItem.querySelector('.delete-btn')) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn delete-btn-mine';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.onclick = () => Gallery.deletePhoto(galleryUuid, photoId, deleteBtn);
+        photoItem.appendChild(deleteBtn);
+      }
+    });
+  },
+
   // Retry loading images that fail (Lambda processing delay)
   // Replace the img element entirely to clear browser's broken state
   retryImage(img, retries = 5) {
@@ -29,31 +84,183 @@ const Gallery = {
     }, 2000); // Wait 2 seconds between retries
   },
 
-  // File selection handler - auto-submit form
+  // File selection handler - start queue upload
   onFilesSelected(input) {
     if (input.files.length > 0) {
-      document.getElementById('uploadStatus').style.display = 'block';
-      document.getElementById('uploadForm').requestSubmit();
+      this.startUploadQueue(Array.from(input.files));
+      input.value = ''; // Reset input for next selection
     }
   },
 
-  // After upload completes - hide status and handle errors
-  onUploadComplete(event) {
-    document.getElementById('uploadStatus').style.display = 'none';
+  // Upload queue state
+  uploadQueue: [],
+  uploadInProgress: false,
+  uploadCancelled: false,
+  uploadStats: { added: 0, skipped: 0, failed: 0 },
+  activeUploads: 0,
+  maxParallel: 2,  // Upload 2 at a time
+
+  startUploadQueue(files) {
+    // Filter to only image files (for folder upload)
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
     
-    // Check for error response
-    if (!event.detail.successful) {
-      try {
-        const response = JSON.parse(event.detail.xhr.responseText);
-        if (response.error) {
-          this.showToast(response.error, 'warning');
-        } else {
-          this.showToast('Upload failed. Please try again.', 'warning');
-        }
-      } catch {
-        this.showToast('Upload failed. Please try again.', 'warning');
-      }
+    if (imageFiles.length === 0) {
+      this.showToast('No images found', 'warning');
+      return;
     }
+    
+    this.uploadQueue = imageFiles;
+    this.uploadInProgress = true;
+    this.uploadCancelled = false;
+    this.uploadStats = { added: 0, skipped: 0, failed: 0 };
+    this.activeUploads = 0;
+    this.totalToUpload = imageFiles.length;
+    this.uploadedCount = 0;
+    
+    // Show queue UI
+    document.getElementById('uploadLabel').style.display = 'none';
+    document.getElementById('uploadQueue').style.display = 'block';
+    document.getElementById('queueTotal').textContent = imageFiles.length;
+    document.getElementById('queueCurrent').textContent = '0';
+    document.getElementById('queueAdded').textContent = '0';
+    document.getElementById('queueSkipped').textContent = '0';
+    document.getElementById('queueProgress').value = 0;
+    
+    // Start parallel uploads
+    for (let i = 0; i < this.maxParallel; i++) {
+      this.processNextUpload();
+    }
+  },
+
+  async processNextUpload() {
+    if (this.uploadCancelled || this.uploadQueue.length === 0) {
+      // Check if all uploads finished
+      if (this.activeUploads === 0) {
+        this.finishUploadQueue();
+      }
+      return;
+    }
+    
+    const file = this.uploadQueue.shift();
+    this.activeUploads++;
+    
+    try {
+      const result = await this.uploadSingleFile(file);
+      
+      this.uploadedCount++;
+      document.getElementById('queueCurrent').textContent = this.uploadedCount;
+      document.getElementById('queueProgress').value = (this.uploadedCount / this.totalToUpload) * 100;
+      
+      if (result.added > 0) {
+        this.uploadStats.added += result.added;
+        document.getElementById('queueAdded').textContent = this.uploadStats.added;
+        
+        // Add photo to grid (strip script tags from response)
+        if (result.html) {
+          const cleanHtml = result.html.replace(/<script[\s\S]*?<\/script>/gi, '').trim();
+          if (cleanHtml) {
+            document.getElementById('photoGrid').insertAdjacentHTML('afterbegin', cleanHtml);
+            
+            // Track uploaded photo ID for session-based delete
+            const galleryUuid = document.getElementById('uploadForm').dataset.galleryUuid;
+            const match = cleanHtml.match(/data-photo-id="([^"]+)"/);
+            if (match && match[1]) {
+              this.addMyPhoto(galleryUuid, match[1]);
+              // Show delete button on the new photo
+              this.showMyDeleteButtons(galleryUuid);
+            }
+          }
+        }
+        
+        // Update photo count
+        const counter = document.getElementById('photoCount');
+        if (counter) {
+          counter.textContent = parseInt(counter.textContent) + result.added;
+        }
+      }
+      
+      if (result.skipped > 0) {
+        this.uploadStats.skipped += result.skipped;
+        document.getElementById('queueSkipped').textContent = this.uploadStats.skipped;
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      this.uploadStats.failed++;
+      this.uploadedCount++;
+      document.getElementById('queueCurrent').textContent = this.uploadedCount;
+      document.getElementById('queueProgress').value = (this.uploadedCount / this.totalToUpload) * 100;
+    }
+    
+    this.activeUploads--;
+    
+    // Process next file
+    this.processNextUpload();
+  },
+
+  async uploadSingleFile(file) {
+    const galleryUuid = document.getElementById('uploadForm').dataset.galleryUuid;
+    const formData = new FormData();
+    formData.append('photoFile', file);
+    
+    const response = await fetch(`/g/${galleryUuid}/photos`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'HX-Request': 'true'  // Get partial HTML response
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Upload failed');
+    }
+    
+    // Parse response - server returns HTML + stats in headers
+    const html = await response.text();
+    const added = parseInt(response.headers.get('X-Photos-Added') || '1');
+    const skipped = parseInt(response.headers.get('X-Photos-Skipped') || '0');
+    
+    return { html, added, skipped };
+  },
+
+  cancelQueue() {
+    this.uploadCancelled = true;
+    this.showToast('Upload cancelled', 'warning');
+  },
+
+  finishUploadQueue() {
+    this.uploadInProgress = false;
+    
+    // Hide queue UI, show upload buttons
+    document.getElementById('uploadQueue').style.display = 'none';
+    document.getElementById('uploadLabel').style.display = 'flex';
+    
+    // Show summary toast
+    const { added, skipped, failed } = this.uploadStats;
+    if (this.uploadCancelled) {
+      if (added > 0) {
+        this.showToast(`Cancelled. ${added} photo${added > 1 ? 's' : ''} uploaded.`);
+      }
+    } else if (added > 0 && skipped > 0) {
+      this.showToast(`${added} added, ${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`);
+    } else if (added > 0) {
+      this.showToast(`${added} photo${added > 1 ? 's' : ''} uploaded! ✓`);
+    } else if (skipped > 0) {
+      this.showToast(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`, 'warning');
+    }
+    
+    if (failed > 0) {
+      this.showToast(`${failed} failed to upload`, 'warning');
+    }
+    
+    // Track in analytics
+    if (added > 0) {
+      this.trackUploadSuccess(added, skipped);
+    }
+  },
+
+  // After upload completes - hide status and handle errors (legacy, kept for compatibility)
+  onUploadComplete(event) {
+    // Now handled by queue system
   },
 
   // Handle upload result via HX-Trigger event
@@ -248,9 +455,15 @@ const Gallery = {
         // Update count
         const counter = document.getElementById('photoCount');
         counter.textContent = parseInt(counter.textContent) - 1;
+        
+        // Remove from localStorage tracking
+        this.removeMyPhoto(galleryUuid, photoId);
+      } else {
+        const data = await response.json();
+        this.showToast(data.error || 'Failed to delete', 'warning');
       }
     } catch (error) {
-      alert('Failed to delete photo');
+      this.showToast('Failed to delete photo', 'warning');
     }
   },
 

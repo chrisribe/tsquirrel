@@ -27,20 +27,12 @@
     </div>
   </header>
 
-  <!-- Big Upload Button -->
+  <!-- Compact Upload Buttons -->
   <div class="upload-zone">
-    <form 
-      id="uploadForm"
-      hx-post="/g/<%= pageData.gallery.uuid %>/photos"
-      hx-encoding="multipart/form-data"
-      hx-target="#photoGrid"
-      hx-swap="afterbegin"
-      hx-on::after-request="Gallery.onUploadComplete(event)">
-      
+    <div class="upload-buttons" id="uploadLabel">
       <label for="photoInput" class="upload-btn-big">
         <span class="upload-icon">📷</span>
-        <span class="upload-text">Add Photos</span>
-        <span class="upload-hint">Up to 8 at a time</span>
+        <span class="upload-label">Add Photos</span>
         <input 
           type="file" 
           id="photoInput" 
@@ -50,12 +42,36 @@
           hidden
           onchange="Gallery.onFilesSelected(this)">
       </label>
-      
-      <div id="uploadStatus" class="upload-status" style="display: none;">
-        <progress id="uploadProgress"></progress>
-        <span>Uploading...</span>
+      <label for="folderInput" class="upload-btn-folder">
+        <span class="upload-icon">📁</span>
+        <span class="upload-label">Upload Folder</span>
+        <input 
+          type="file" 
+          id="folderInput" 
+          name="photoFile" 
+          accept="image/*" 
+          webkitdirectory 
+          directory
+          multiple 
+          hidden
+          onchange="Gallery.onFilesSelected(this)">
+      </label>
+    </div>
+    
+    <!-- Upload Queue Progress -->
+    <div id="uploadQueue" class="upload-queue" style="display: none;">
+      <div class="queue-header">
+        <span class="queue-status">Uploading <span id="queueCurrent">0</span> of <span id="queueTotal">0</span></span>
+        <button type="button" class="queue-cancel" onclick="Gallery.cancelQueue()">Cancel</button>
       </div>
-    </form>
+      <progress id="queueProgress" value="0" max="100"></progress>
+      <div class="queue-info">
+        <span id="queueAdded">0</span> added, <span id="queueSkipped">0</span> skipped
+      </div>
+    </div>
+    
+    <!-- Hidden form for individual uploads -->
+    <form id="uploadForm" style="display:none;" data-gallery-uuid="<%= pageData.gallery.uuid %>"></form>
   </div>
 
   <!-- Photo Grid -->
@@ -129,3 +145,8 @@
     <button class="close-btn" onclick="Gallery.closeLightbox()">×</button>
   </div>
 </div>
+
+<script>
+  // Show delete buttons for photos this user uploaded (persisted in localStorage)
+  Gallery.showMyDeleteButtons('<%= pageData.gallery.uuid %>');
+</script>

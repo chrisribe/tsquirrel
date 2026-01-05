@@ -8,7 +8,7 @@
       onerror="Gallery.retryImage(this)"
       onclick="Gallery.openLightbox('<%= photo.display_url %>', '<%= photo.original_url %>')">
     
-    <% if (pageData.isOwner) { %>
+    <% if (pageData.isOwner || pageData.isUploader) { %>
       <button 
         class="delete-btn"
         onclick="Gallery.deletePhoto('<%= pageData.gallery.uuid %>', '<%= photo.photo_id %>', this)">

@@ -23,7 +23,7 @@
     <!-- Mobile hamburger -->
     <div class="nav-mobile">
       <div class="hamburger-menu">
-        <button class="hamburger-btn" aria-label="Menu">☰</button>
+        <button class="hamburger-btn" aria-label="Menu" onclick="this.parentElement.classList.toggle('open')">☰</button>
         <div class="hamburger-dropdown">
           <% if (user) { %>
             <a href="/galleries">📸 My Galleries</a>

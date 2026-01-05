@@ -54,8 +54,8 @@ router.post('/:uuid/photos', extractDimensions, (req, res, next) =>
   controller.uploadPhotos(req, res, next)
 );
 
-// Delete photo (owner only, auth checked in controller)
-router.delete('/:uuid/photos/:photoId', requireAuth, (req, res, next) => 
+// Delete photo (owner OR uploader - auth checked in controller)
+router.delete('/:uuid/photos/:photoId', (req, res, next) => 
   controller.deletePhoto(req, res, next)
 );
 

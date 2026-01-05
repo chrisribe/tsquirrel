@@ -229,18 +229,16 @@ class GalleryController {
         res.setHeader('HX-Trigger', JSON.stringify({
           uploadComplete: { added: 0, skipped: skippedCount }
         }));
-        return res.status(200).respondWithTemplateOrJson({
-          gallery,
-          photos: [],
-          photoCount,
-          isOwner: req.session?.user?.id === gallery.user_id
-        }, 'galleries/photo-items');
+        res.setHeader('X-Photos-Added', '0');
+        res.setHeader('X-Photos-Skipped', String(skippedCount));
+        // Return empty partial
+        return res.status(200).send('');
       }
 
       // Upload only new photos to S3
       await uploadFilesToS3(newPhotos);
 
-      // Save to database
+      // Save to database and track in session
       const uploadedPhotos = [];
       for (const photo of newPhotos) {
         await this.galleryDAO.addPhoto(
@@ -262,6 +260,11 @@ class GalleryController {
           width: photo.width,
           height: photo.height
         });
+        
+        // Track this upload in session for delete permission
+        if (!req.session.uploads) req.session.uploads = {};
+        if (!req.session.uploads[uuid]) req.session.uploads[uuid] = [];
+        req.session.uploads[uuid].push(photo.photoId);
       }
 
       // Get new count for live update
@@ -271,13 +274,19 @@ class GalleryController {
       res.setHeader('HX-Trigger', JSON.stringify({
         uploadComplete: { added: newPhotos.length, skipped: skippedCount }
       }));
+      res.setHeader('X-Photos-Added', String(newPhotos.length));
+      res.setHeader('X-Photos-Skipped', String(skippedCount));
 
-      res.status(201).respondWithTemplateOrJson({
-        gallery,
-        photos: uploadedPhotos,
-        photoCount,
-        isOwner
-      }, 'galleries/photo-items');
+      // For fetch/queue uploads, always return partial HTML
+      res.status(201).render('galleries/photo-items', {
+        pageData: {
+          gallery,
+          photos: uploadedPhotos,
+          photoCount,
+          isOwner,
+          isUploader: true  // User just uploaded these, show delete buttons
+        }
+      });
     } catch (error) {
       console.error('Upload error:', error);
       res.status(500).json({ error: 'Upload failed' });
@@ -285,17 +294,27 @@ class GalleryController {
   }
 
   // ============================================
-  // PHOTO DELETE (Owner Only)
+  // PHOTO DELETE (Owner or Uploader)
   // ============================================
 
   async deletePhoto(req, res, next) {
     try {
       const { uuid, photoId } = req.params;
       
-      // Verify ownership
       const gallery = await this.galleryDAO.getGalleryByUuid(uuid);
-      if (!gallery || gallery.user_id !== req.session?.user?.id) {
-        return res.status(403).json({ error: 'Not authorized' });
+      if (!gallery) {
+        return res.status(404).json({ error: 'Gallery not found' });
+      }
+      
+      // Check if user is gallery owner
+      const isOwner = gallery.user_id === req.session?.user?.id;
+      
+      // Check if user uploaded this photo (stored in session)
+      const sessionUploads = req.session?.uploads?.[uuid] || [];
+      const isUploader = sessionUploads.includes(photoId);
+      
+      if (!isOwner && !isUploader) {
+        return res.status(403).json({ error: 'You can only delete photos you uploaded' });
       }
 
       // Get photo for extension
@@ -311,6 +330,11 @@ class GalleryController {
       // Delete from DB and S3
       await this.galleryDAO.deletePhoto(uuid, photoId);
       await deletePhotoFromS3(uuid, photoId, ext);
+      
+      // Remove from session tracking
+      if (req.session?.uploads?.[uuid]) {
+        req.session.uploads[uuid] = req.session.uploads[uuid].filter(id => id !== photoId);
+      }
 
       res.status(200).json({ success: true });
     } catch (error) {
