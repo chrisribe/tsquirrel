@@ -26,6 +26,14 @@ class GalleryDAO {
     return result.rows[0];
   }
 
+  async getUserGalleryCount(userId) {
+    const result = await this.pool.query(
+      'SELECT COUNT(*) as count FROM galleries WHERE user_id = $1',
+      [userId]
+    );
+    return parseInt(result.rows[0].count);
+  }
+
   async getUserGalleries(userId) {
     const result = await this.pool.query(
       `SELECT g.*, 

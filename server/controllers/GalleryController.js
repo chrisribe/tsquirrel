@@ -1,6 +1,10 @@
 const { getPhotoUrls, uploadFilesToS3, deletePhotoFromS3, uploadQRCodeToS3 } = require('../services/s3Service');
 const QRCode = require('qrcode');
 
+// Simple limits for free tier
+const MAX_GALLERIES_PER_USER = 5;
+const MAX_PHOTOS_PER_GALLERY = 100;
+
 class GalleryController {
   constructor(galleryDAO) {
     this.galleryDAO = galleryDAO;
@@ -44,6 +48,15 @@ class GalleryController {
           { error: 'Title is required' },
           'galleries/create-form'
         );
+      }
+
+      // Check gallery limit
+      const galleryCount = await this.galleryDAO.getUserGalleryCount(req.session.user.id);
+      if (galleryCount >= MAX_GALLERIES_PER_USER) {
+        return res.status(403).json({ 
+          error: `Gallery limit reached (max ${MAX_GALLERIES_PER_USER}). Delete an existing gallery to create a new one.`,
+          hint: 'Need more galleries? Let us know if a paid tier would interest you — support@event-glimpse.com'
+        });
       }
 
       const gallery = await this.galleryDAO.createGallery(
@@ -211,10 +224,26 @@ class GalleryController {
         return res.status(404).json({ error: 'Gallery not found' });
       }
 
+      // Check photo limit
+      const currentCount = await this.galleryDAO.getPhotoCount(uuid);
+      if (currentCount >= MAX_PHOTOS_PER_GALLERY) {
+        return res.status(403).json({ 
+          error: `Photo limit reached (max ${MAX_PHOTOS_PER_GALLERY} per gallery).`,
+          hint: 'Need more space? Let us know if a paid tier would interest you — support@event-glimpse.com'
+        });
+      }
+
+      // Limit uploads to stay within max
+      const remainingSlots = MAX_PHOTOS_PER_GALLERY - currentCount;
+
       // Filter out duplicates by hash
       const newPhotos = [];
       let skippedCount = 0;
       for (const photo of photoMetadata) {
+        if (newPhotos.length >= remainingSlots) {
+          skippedCount++;
+          continue;
+        }
         const isDupe = await this.galleryDAO.hashExists(uuid, photo.fileHash);
         if (!isDupe) {
           newPhotos.push(photo);
