@@ -14,6 +14,11 @@
   <meta name="description" content="Create event galleries and share photos effortlessly. No accounts needed for guests to upload. Perfect for weddings, parties, and family gatherings.">
   <% } %>
   
+  <!-- Robots -->
+  <% if (typeof noIndex !== 'undefined' && noIndex) { %>
+  <meta name="robots" content="noindex, nofollow">
+  <% } %>
+  
   <!-- Open Graph Tags -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="<%= typeof pageTitle !== 'undefined' ? pageTitle : 'EventGlimpse - Simple Photo Sharing for Events' %>">

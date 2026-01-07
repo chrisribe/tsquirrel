@@ -5,7 +5,12 @@ const { validate } = require('../middleware/validateInput');
 const { loginLimiter, registerLimiter } = require('../middleware/rateLimiter');
 
 router.get('/login', (req, res) => {
-  res.respondWithTemplateOrJson({}, 'auth/login');
+  res.render('layout-main', {
+    template: 'auth/login',
+    pageData: {},
+    pageTitle: 'Login - EventGlimpse',
+    noIndex: true
+  });
 });
 
 router.post('/login', 
