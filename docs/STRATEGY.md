@@ -112,7 +112,31 @@ These ideas came from research but are **future features**, not MVP:
 
 ## Competitive Position
 
-### Direct Competitors
+### Primary Competitor: GuestPix
+
+GuestPix ($1K → $5M revenue, 150K+ events, 100 countries) is the polished market leader.
+
+| Feature | GuestPix | EventGlimpse | Status |
+|---------|----------|--------------|--------|
+| QR Code + Private Link | ✅ | ✅ | Parity |
+| No app/registration for guests | ✅ | ✅ | Parity |
+| Photo upload | ✅ | ✅ | Parity |
+| Full resolution download | ✅ | ✅ | Parity |
+| Auto-resize for display | ✅ | ✅ | Parity |
+| **Duplicate detection** | ❌ | ✅ | **Advantage** |
+| **Bulk ZIP download** | ✅ | ❌ | **Gap - Priority** |
+| Video upload | ✅ | ❌ | Gap |
+| Video guestbook | ✅ | ❌ | Gap |
+| Written guestbook | ✅ | ❌ | Gap |
+| Live slideshow | ✅ | ❌ | Gap |
+| Guest name capture | ✅ | ❌ | Gap |
+| Custom welcome screen | ✅ | ❌ | Gap |
+| Design themes | ✅ | ❌ | Gap |
+| Albums (multiple per event) | ✅ | ❌ | Gap |
+| Canva templates (180+) | ✅ | ❌ | Defer |
+| Multi-language | ✅ | ❌ | Defer |
+
+### Other Competitors
 | Product | Price | Weakness |
 |---------|-------|----------|
 | Google Photos shared album | Free | No QR, requires Google account |
@@ -122,8 +146,9 @@ These ideas came from research but are **future features**, not MVP:
 ### EventGlimpse Advantage
 - **No app required** - works in browser
 - **No account for guests** - just scan and view
-- **Simple pricing** - not per-GB confusion
+- **Simple pricing** - not per-GB confusion (GuestPix has complex tiers)
 - **Fast** - CDN delivery, optimized images
+- **Duplicate detection** - GuestPix doesn't have this
 
 ---
 
@@ -133,18 +158,21 @@ These ideas came from research but are **future features**, not MVP:
 1. ✅ Download actually downloads
 2. ✅ Pre-upload hash check (duplicate detection)
 3. ✅ Gallery/photo limits for free tier
-4. ⬜ Gallery expiration/cleanup for free tier
-5. ⬜ Stripe integration
+4. ⬜ **Bulk ZIP download** - #1 feature gap vs GuestPix
+5. ⬜ Gallery expiration/cleanup for free tier
+6. ⬜ Stripe integration
 
-### Nice to Have (After First Revenue)
-- Bulk download as zip
+### Phase 2 (Close Feature Gap)
+- Guest name capture on upload
+- Video upload support
+- Live slideshow mode
+- Written guestbook
+
+### Phase 3 (Polish)
+- Design themes/customization
+- Albums/sub-galleries
 - Analytics (views per gallery)
 - Email notifications
-
-### Future (After $500 MRR)
-- Embed widget
-- Custom branding
-- API access
 
 ---
 
@@ -164,6 +192,7 @@ These ideas came from research but are **future features**, not MVP:
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-01-07 | ZIP download is #1 priority | GuestPix analysis - biggest feature gap blocking revenue |
 | 2026-01-06 | Implement gallery/photo limits | Free tier: 1 gallery, 100 photos - enforces upgrade path |
 | 2026-01-05 | Pre-upload hash check | Skip duplicate uploads entirely, saves bandwidth/storage |
 | 2026-01-05 | Homepage redesign | Hero + "How it works" section, coral brand color, Inter font |
