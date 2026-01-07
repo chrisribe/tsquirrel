@@ -42,8 +42,8 @@ Internet → NPM (SSL) → EventGlimpse App → PostgreSQL
 **S3 Structure:**
 - `uploads/` → triggers Lambda
 - `originals/` → full-size processed
-- `display/` → 800px versions
-- `thumbs/` → 200px thumbnails
+- `display/` → 1600px versions (gallery/lightbox)
+- `thumbs/` → 200px thumbnails (grid view)
 
 **Lambda Code:** https://github.com/chrisribe/EventglimpseORG/tree/main/infra/lambda-image-processor
 
