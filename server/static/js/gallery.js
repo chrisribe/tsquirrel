@@ -62,7 +62,14 @@ const Gallery = {
   // Replace the img element entirely to clear browser's broken state
   retryImage(img, retries = 5) {
     if (retries <= 0) {
-      img.alt = '⚠️';
+      // Show hourglass placeholder for failed images
+      img.src = '';
+      img.alt = '⏳';
+      img.style.background = 'rgba(255,255,255,0.1)';
+      img.style.display = 'flex';
+      img.style.alignItems = 'center';
+      img.style.justifyContent = 'center';
+      img.classList.add('loading-placeholder');
       return;
     }
     
@@ -73,11 +80,16 @@ const Gallery = {
       newImg.src = baseUrl + '?retry=' + Date.now();
       newImg.alt = img.alt;
       newImg.loading = 'lazy';
-      newImg.onerror = () => this.retryImage(newImg, retries - 1);
-      newImg.onload = () => newImg.classList.add('loaded');
+      newImg.onerror = () => Gallery.retryImage(newImg, retries - 1);
+      newImg.onload = () => {
+        newImg.classList.add('loaded');
+        // Re-layout after image loads
+        if (window.galleryFlex) window.galleryFlex.layout();
+      };
       
-      // Copy click handler if present
-      if (img.onclick) newImg.onclick = img.onclick;
+      // Copy onclick attribute (inline handler)
+      const onclickAttr = img.getAttribute('onclick');
+      if (onclickAttr) newImg.setAttribute('onclick', onclickAttr);
       
       // Replace old img with new one
       img.parentNode.replaceChild(newImg, img);
@@ -112,7 +124,6 @@ const Gallery = {
     const galleryUuid = document.getElementById('uploadForm').dataset.galleryUuid;
     
     // Show queue UI immediately
-    document.getElementById('uploadLabel').style.display = 'none';
     document.getElementById('uploadQueue').style.display = 'block';
     document.getElementById('queueTotal').textContent = imageFiles.length;
     document.getElementById('queueCurrent').textContent = 'Checking...';
@@ -155,7 +166,6 @@ const Gallery = {
       // All duplicates!
       this.showToast(`${skippedCount} duplicate${skippedCount > 1 ? 's' : ''} skipped`, 'warning');
       document.getElementById('uploadQueue').style.display = 'none';
-      document.getElementById('uploadLabel').style.display = 'flex';
       return;
     }
     
@@ -216,6 +226,9 @@ const Gallery = {
           const cleanHtml = result.html.replace(/<script[\s\S]*?<\/script>/gi, '').trim();
           if (cleanHtml) {
             document.getElementById('photoGrid').insertAdjacentHTML('afterbegin', cleanHtml);
+            
+            // Re-layout flex images grid
+            if (window.galleryFlex) window.galleryFlex.layout();
             
             // Track uploaded photo ID for session-based delete
             const galleryUuid = document.getElementById('uploadForm').dataset.galleryUuid;
@@ -286,9 +299,8 @@ const Gallery = {
   finishUploadQueue() {
     this.uploadInProgress = false;
     
-    // Hide queue UI, show upload buttons
+    // Hide queue UI
     document.getElementById('uploadQueue').style.display = 'none';
-    document.getElementById('uploadLabel').style.display = 'flex';
     
     // Show summary toast
     const { added, skipped, failed } = this.uploadStats;
@@ -395,7 +407,7 @@ const Gallery = {
     const loading = document.getElementById('lightboxLoading');
     
     // Build photo URLs array for navigation
-    this.photoUrls = Array.from(document.querySelectorAll('.photo-item img')).map(img => {
+    this.photoUrls = Array.from(document.querySelectorAll('#photoGrid .item img')).map(img => {
       const onclick = img.getAttribute('onclick');
       if (!onclick) return null;
       const match = onclick.match(/Gallery\.openLightbox\('([^']+)',\s*'([^']+)'\)/);
@@ -504,9 +516,13 @@ const Gallery = {
       });
       
       if (response.ok) {
-        const item = button.closest('.photo-item');
+        const item = button.closest('.item');
         item.style.transform = 'scale(0)';
-        setTimeout(() => item.remove(), 200);
+        setTimeout(() => {
+          item.remove();
+          // Re-layout grid after removal
+          if (window.galleryFlex) window.galleryFlex.layout();
+        }, 200);
         
         // Update count
         const counter = document.getElementById('photoCount');
@@ -628,6 +644,119 @@ const Gallery = {
     } else {
       this.showToast('Failed to update title', 'warning');
     }
+  },
+
+  // ============================================
+  // Slideshow
+  // ============================================
+  slideshowIndex: 0,
+  slideshowInterval: null,
+  slideshowPaused: false,
+  slideshowHideTimeout: null,
+
+  startSlideshow() {
+    // Build photo URLs if not already done
+    if (this.photoUrls.length === 0) {
+      this.photoUrls = Array.from(document.querySelectorAll('#photoGrid .item img')).map(img => {
+        const onclick = img.getAttribute('onclick');
+        if (!onclick) return null;
+        const match = onclick.match(/Gallery\.openLightbox\('([^']+)',\s*'([^']+)'\)/);
+        return match ? { display: match[1], original: match[2] } : null;
+      }).filter(Boolean);
+    }
+
+    if (this.photoUrls.length === 0) return;
+
+    this.slideshowIndex = 0;
+    this.slideshowPaused = false;
+    
+    const slideshow = document.getElementById('slideshow');
+    slideshow.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    this.showSlideshowPhoto();
+    this.resumeSlideshow();
+    this.updateSlideshowButton();
+    
+    // Mouse move listener for controls
+    slideshow.addEventListener('mousemove', this.onSlideshowMouseMove.bind(this));
+  },
+
+  showSlideshowPhoto() {
+    const img = document.getElementById('slideshowImg');
+    const photo = this.photoUrls[this.slideshowIndex];
+    if (photo) {
+      img.src = photo.display;
+    }
+  },
+
+  nextSlideshowPhoto() {
+    this.slideshowIndex++;
+    if (this.slideshowIndex >= this.photoUrls.length) {
+      this.slideshowIndex = 0; // Loop
+    }
+    this.showSlideshowPhoto();
+  },
+
+  resumeSlideshow() {
+    if (this.slideshowInterval) clearInterval(this.slideshowInterval);
+    this.slideshowInterval = setInterval(() => {
+      this.nextSlideshowPhoto();
+    }, 5000);
+  },
+
+  toggleSlideshow() {
+    this.slideshowPaused = !this.slideshowPaused;
+    
+    if (this.slideshowPaused) {
+      clearInterval(this.slideshowInterval);
+      this.slideshowInterval = null;
+    } else {
+      this.resumeSlideshow();
+    }
+    
+    this.updateSlideshowButton();
+  },
+
+  updateSlideshowButton() {
+    const icon = document.getElementById('slideshowIcon');
+    const label = document.getElementById('slideshowLabel');
+    
+    if (this.slideshowPaused) {
+      icon.textContent = '▶';
+      label.textContent = 'Play';
+    } else {
+      icon.textContent = '❚❚';
+      label.textContent = 'Pause';
+    }
+  },
+
+  onSlideshowMouseMove() {
+    const slideshow = document.getElementById('slideshow');
+    slideshow.classList.add('show-controls');
+    
+    if (this.slideshowHideTimeout) clearTimeout(this.slideshowHideTimeout);
+    this.slideshowHideTimeout = setTimeout(() => {
+      slideshow.classList.remove('show-controls');
+    }, 2000);
+  },
+
+  stopSlideshow() {
+    const slideshow = document.getElementById('slideshow');
+    slideshow.style.display = 'none';
+    slideshow.classList.remove('show-controls');
+    document.body.style.overflow = '';
+    
+    if (this.slideshowInterval) {
+      clearInterval(this.slideshowInterval);
+      this.slideshowInterval = null;
+    }
+    if (this.slideshowHideTimeout) {
+      clearTimeout(this.slideshowHideTimeout);
+      this.slideshowHideTimeout = null;
+    }
+    
+    this.slideshowPaused = false;
   }
 };
 
@@ -636,10 +765,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     const lightbox = document.getElementById('lightbox');
+    const slideshow = document.getElementById('slideshow');
     const shareModal = document.getElementById('shareModal');
     const titleForm = document.getElementById('titleEditForm');
     
-    if (lightbox && lightbox.style.display === 'flex') {
+    // Slideshow takes priority
+    if (slideshow && slideshow.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        Gallery.stopSlideshow();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        Gallery.toggleSlideshow();
+      }
+    } else if (lightbox && lightbox.style.display === 'flex') {
       if (e.key === 'Escape') {
         Gallery.closeLightbox();
       } else if (e.key === 'ArrowLeft') {

@@ -49,9 +49,9 @@
 - Problem/solution section on homepage
 
 ### ⏳ Not Yet Built
-- Payment/billing (Stripe integration)
-- Bulk download (zip)
-- Gallery expiration/cleanup for free tier
+- Payment/billing (Stripe Checkout - simple payment links)
+- Bulk download (ZIP)
+- Gallery expiration (7 days free, 90 days paid)
 
 ---
 
@@ -73,20 +73,26 @@
 **Goal:** First paying customer
 
 **Build:**
-1. Usage limits (free tier: 5 gallery, 100 photos)
-2. Stripe integration
-3. Simple pricing page
+1. Usage limits (free tier enforced)
+2. Stripe Checkout (simple payment link, no subscriptions)
+3. ZIP download unlock after payment
 
-**Pricing (simple):**
-| Tier | Price | Galleries | Photos/Gallery |
-|------|-------|-----------|----------------|
-| Free | $0 | 5 | 100 |
-| Event | $29 one-time | 1 | 1,000 |
-| Pro | $19/month | Unlimited | 2,000 each |
+**Pricing (impulse-buy model):**
+| Tier | Price | Galleries | Photos | Duration | ZIP Download |
+|------|-------|-----------|--------|----------|--------------|
+| Free | $0 | 1 | 50 | 7 days | ❌ |
+| Event | $5 | 1 | 500 | 90 days | ✅ |
+| Party Pack | $12 | 3 | 500 each | 90 days | ✅ |
+
+**Why $5:**
+- Impulse buy territory - no decision friction
+- Below "ask permission" threshold
+- Storage costs stay low with 90-day expiry
+- Big fish (Pixieset, GuestPix) can't serve this market profitably
 
 ### Phase 3: Growth (Month 2-3)
 
-**Goal:** $500 MRR (25 Pro subscribers or ~17 Event purchases/month)
+**Goal:** $500/month (100 Event purchases or ~42 Party Packs)
 
 **Actions:**
 - SEO: "free event photo sharing", "party photo QR code"
@@ -158,9 +164,9 @@ GuestPix ($1K → $5M revenue, 150K+ events, 100 countries) is the polished mark
 1. ✅ Download actually downloads
 2. ✅ Pre-upload hash check (duplicate detection)
 3. ✅ Gallery/photo limits for free tier
-4. ⬜ **Bulk ZIP download** - #1 feature gap vs GuestPix
-5. ⬜ Gallery expiration/cleanup for free tier
-6. ⬜ Stripe integration
+4. ⬜ **Bulk ZIP download** - unlocks with $5 payment
+5. ⬜ **Stripe Checkout** - simple payment link, webhook to unlock
+6. ⬜ Gallery expiration (7 days free / 90 days paid)
 
 ### Phase 2 (Close Feature Gap)
 - Guest name capture on upload
@@ -182,9 +188,9 @@ GuestPix ($1K → $5M revenue, 150K+ events, 100 countries) is the polished mark
 |-----------|--------|----------|
 | Real event usage | 5 events | 2 weeks |
 | "Would pay" validation | 3 people | 2 weeks |
-| First payment | $29 | 4 weeks |
-| $100 MRR | ~5 customers | 6 weeks |
-| $500 MRR | ~25 customers | 3 months |
+| First payment | $5 | 3 weeks |
+| $50/month | ~10 purchases | 6 weeks |
+| $500/month | ~100 purchases | 3 months |
 
 ---
 
@@ -192,6 +198,9 @@ GuestPix ($1K → $5M revenue, 150K+ events, 100 countries) is the polished mark
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-01-09 | Pivot to $5 impulse pricing | Bottom-of-market strategy - serve casual hosts big fish ignore |
+| 2026-01-09 | 90-day gallery expiry | Keeps storage costs low, creates urgency |
+| 2026-01-09 | No subscriptions | One-time payments = no churn, simpler billing |
 | 2026-01-07 | ZIP download is #1 priority | GuestPix analysis - biggest feature gap blocking revenue |
 | 2026-01-06 | Implement gallery/photo limits | Free tier: 1 gallery, 100 photos - enforces upgrade path |
 | 2026-01-05 | Pre-upload hash check | Skip duplicate uploads entirely, saves bandwidth/storage |

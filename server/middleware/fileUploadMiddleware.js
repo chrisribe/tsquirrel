@@ -19,7 +19,28 @@ const ALLOWED_TYPES = /jpeg|jpg|png/;
 function getImageDimensions(buffer, filename) {
   try {
     const dims = imageSize(buffer);
-    return { width: dims.width || 400, height: dims.height || 300 };
+    let width = dims.width || 400;
+    let height = dims.height || 300;
+    
+    // Check EXIF orientation for JPEG - phones often store portrait photos
+    // with swapped dimensions and an orientation flag
+    if (dims.type === 'jpg' || dims.type === 'jpeg') {
+      try {
+        const parser = ExifParser.create(buffer);
+        const result = parser.parse();
+        const orientation = result.tags.Orientation;
+        
+        // Orientations 5-8 mean the image is rotated 90° or 270°
+        // so we need to swap width and height
+        if (orientation >= 5 && orientation <= 8) {
+          [width, height] = [height, width];
+        }
+      } catch {
+        // No EXIF data - use dimensions as-is
+      }
+    }
+    
+    return { width, height };
   } catch {
     console.warn(`Could not get dimensions for ${filename}`);
     return { width: 400, height: 300 };

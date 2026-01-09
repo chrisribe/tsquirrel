@@ -196,8 +196,8 @@ class GalleryController {
         pageImage,
         pageUrl: shareUrl,
         pageAssets: {
-          css: ['gallery.css'],
-          js: ['gallery.js']
+          css: ['gallery-showcase.css'],
+          js: ['flex-images.js', 'gallery.js?v=6']
         }
       }, 'galleries/view-page');
     } catch (error) {
