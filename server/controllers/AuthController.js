@@ -1,4 +1,4 @@
-const authService = require('./../services/authService');
+const authService = require('../services/authService');
 
 class AuthController {
   async login(req, res) {
@@ -6,10 +6,12 @@ class AuthController {
     
     try {
       const user = await authService.authenticateUser(email, password);
-      //console.log("User found:", user);
       
       if (!user) {
-        //console.log("Invalid credentials");
+        // For HTMX, return just the error message
+        if (req.headers['hx-request']) {
+          return res.send('<p class="error">Invalid credentials</p>');
+        }
         return res.respondWithTemplateOrJson({
           error: 'Invalid credentials'
         }, 'auth/login');
@@ -22,12 +24,17 @@ class AuthController {
         role: user.role
       };
       
-      return res.respondWithTemplateOrJson({
-        success: true,
-        user: req.session.user,
-        redirect: '/events'
-      }, 'events');
+      // For HTMX, redirect via header
+      if (req.headers['hx-request']) {
+        res.setHeader('HX-Redirect', '/dashboard');
+        return res.send('');
+      }
+      
+      return res.redirect('/dashboard');
     } catch (error) {
+      if (req.headers['hx-request']) {
+        return res.send(`<p class="error">${error.message}</p>`);
+      }
       return res.respondWithTemplateOrJson({
         error: error.message
       }, 'auth/login');
@@ -54,8 +61,6 @@ class AuthController {
     
     try {
       const result = await authService.registerUser(username, password, email);
-      
-      // Auto-login the user after successful registration
       const user = await authService.authenticateUser(email, password);
       
       if (user) {
@@ -66,42 +71,27 @@ class AuthController {
           role: user.role
         };
         
-        // For HTMX requests, return success message and let the redirect handle navigation
         if (req.headers['hx-request']) {
           return res.respondWithTemplateOrJson({
             success: true,
-            message: 'Registration successful! Redirecting to your events...',
-            redirect: '/events'
+            message: 'Registration successful!',
+            redirect: '/dashboard'
           });
         }
         
-        // For regular requests, redirect directly
-        return res.redirect('/events');
-      } else {
-        // Fallback: redirect to login if auto-login fails
-        if (req.headers['hx-request']) {
-          return res.respondWithTemplateOrJson({
-            success: true,
-            message: result.message + ' Please log in to continue.',
-            redirect: '/auth/login'
-          });
-        }
-        
-        return res.respondWithTemplateOrJson({
-          success: true,
-          message: result.message,
-          redirect: '/auth/login'
-        }, 'auth/login');
-      }
-    } catch (error) {
-      // For HTMX requests, return JSON error
-      if (req.headers['hx-request']) {
-        return res.respondWithTemplateOrJson({
-          error: error.message
-        });
+        return res.redirect('/dashboard');
       }
       
-      // For regular requests, render the register page with error
+      return res.respondWithTemplateOrJson({
+        success: true,
+        message: result.message,
+        redirect: '/auth/login'
+      }, 'auth/login');
+    } catch (error) {
+      if (req.headers['hx-request']) {
+        return res.respondWithTemplateOrJson({ error: error.message });
+      }
+      
       return res.respondWithTemplateOrJson({
         error: error.message
       }, 'auth/register');

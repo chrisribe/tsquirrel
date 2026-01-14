@@ -5,18 +5,19 @@ class SecretService {
   constructor(pool) {
     this.secretsDAO = new SessionSecretsDAO(pool);
     this.rotationTimer = null;
-    this.initialize();
+    this.initialized = false;
   }
 
   async initialize() {
+    if (this.initialized) return;
     await this.getSecrets();
-    await this.startRotation();
+    this.startRotation();
+    this.initialized = true;
   }
 
   async getSecrets() {
     let secrets = await this.secretsDAO.getActiveSecrets();
     
-    // Create initial secret if none exist
     if (secrets.length === 0) {
       const newSecret = this.generateSecret();
       await this.secretsDAO.addSecret(newSecret);
@@ -37,13 +38,10 @@ class SecretService {
     return crypto.randomBytes(64).toString('hex');
   }
 
-  //Rotate secrets every 24 hours to enhance security
-  //https://expressjs.com/en/resources/middleware/session.html
-  async startRotation(intervalMs = 24 * 60 * 60 * 1000) {
-    // Clear existing timer if any
+  // Rotate secrets every 24 hours for enhanced security
+  startRotation(intervalMs = 24 * 60 * 60 * 1000) {
     if (this.rotationTimer) clearInterval(this.rotationTimer);
     
-    // Schedule rotation
     this.rotationTimer = setInterval(async () => {
       await this.rotateSecrets();
       await this.secretsDAO.cleanupExpiredSecrets();

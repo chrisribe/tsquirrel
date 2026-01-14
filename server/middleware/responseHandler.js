@@ -1,16 +1,14 @@
 // Response Handler Middleware
-
-// Adds a new responseHandler method to response objects.
-// Allows the response to render JSON or a htmx template based on the request headers.
+// Allows responses to render JSON or EJS templates based on request type
 
 module.exports = (req, res, next) => {
   res.respondWithTemplateOrJson = (pageData, templatePath) => {
-    // Default to JSON when no template is provided
+    // Default to JSON when no template provided
     if (!templatePath) {
       return res.json(pageData);
     }
         
-    // Handle redirects first
+    // Handle redirects
     if (pageData.redirect) {
       if (req.headers['hx-request']) {
         res.header('HX-Redirect', pageData.redirect);
@@ -21,7 +19,7 @@ module.exports = (req, res, next) => {
     
     // HTMX request - return partial HTML
     if (req.headers['hx-request']) {
-      return res.render(templatePath, { pageData: pageData });
+      return res.render(templatePath, { pageData });
     }
     
     // API request - return JSON
@@ -29,10 +27,15 @@ module.exports = (req, res, next) => {
       return res.json(pageData);
     }
     
-    // For regular browser requests
+    // Browser request - render full page with layout
     return res.render('layout-main', { 
       template: templatePath,
-      pageData: pageData
+      pageData,
+      pageAssets: pageData.pageAssets || {},  // Make pageAssets available at layout level
+      pageTitle: pageData.pageTitle,
+      pageDescription: pageData.pageDescription,
+      pageImage: pageData.pageImage,
+      pageUrl: pageData.pageUrl
     });
   };
   

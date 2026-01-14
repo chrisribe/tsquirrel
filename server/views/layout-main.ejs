@@ -1,9 +1,109 @@
-<!-- Dynamically load pages using template and pageData -->
-
-<!-- Use include to ensure the conditional is evaluated -->
-<%- include('./base-page.ejs', {
-  header: include('./header.ejs'),
-  body: include(template, pageData),
-  footer: include('./footer.ejs'),
-  pageAssets: pageData.pageAssets
-}) %>
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Page Title -->
+  <title><%= typeof pageTitle !== 'undefined' ? pageTitle : 'EventGlimpse - Simple Photo Sharing for Events' %></title>
+  
+  <!-- Meta Description -->
+  <% if (typeof pageDescription !== 'undefined' && pageDescription) { %>
+  <meta name="description" content="<%= pageDescription %>">
+  <% } else { %>
+  <meta name="description" content="Create event galleries and share photos effortlessly. No accounts needed for guests to upload. Perfect for weddings, parties, and family gatherings.">
+  <% } %>
+  
+  <!-- Robots -->
+  <% if (typeof noIndex !== 'undefined' && noIndex) { %>
+  <meta name="robots" content="noindex, nofollow">
+  <% } %>
+  
+  <!-- Open Graph Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="<%= typeof pageTitle !== 'undefined' ? pageTitle : 'EventGlimpse - Simple Photo Sharing for Events' %>">
+  <meta property="og:description" content="<%= typeof pageDescription !== 'undefined' ? pageDescription : 'Create event galleries and share photos effortlessly. No accounts needed for guests to upload.' %>">
+  <% if (typeof pageImage !== 'undefined' && pageImage) { %>
+  <meta property="og:image" content="<%= pageImage %>">
+  <% } else { %>
+  <meta property="og:image" content="https://www.event-glimpse.com/static/images/og-default.jpg">
+  <% } %>
+  <meta property="og:url" content="<%= typeof pageUrl !== 'undefined' ? pageUrl : 'https://www.event-glimpse.com' %>">
+  <meta property="og:site_name" content="EventGlimpse">
+  
+  <!-- Twitter Card Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= typeof pageTitle !== 'undefined' ? pageTitle : 'EventGlimpse - Simple Photo Sharing for Events' %>">
+  <meta name="twitter:description" content="<%= typeof pageDescription !== 'undefined' ? pageDescription : 'Create event galleries and share photos effortlessly. No accounts needed for guests to upload.' %>">
+  <% if (typeof pageImage !== 'undefined' && pageImage) { %>
+  <meta name="twitter:image" content="<%= pageImage %>">
+  <% } else { %>
+  <meta name="twitter:image" content="https://www.event-glimpse.com/static/images/og-default.jpg">
+  <% } %>
+  
+  <!-- Canonical URL -->
+  <link rel="canonical" href="<%= typeof pageUrl !== 'undefined' ? pageUrl : 'https://www.event-glimpse.com' %>">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📷</text></svg>">
+  <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📷</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📷</text></svg>">
+  
+  <!-- Google Fonts - Inter + Playfair Display -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-7FEMFZ957N"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-7FEMFZ957N');
+  </script>
+  
+  <link rel="stylesheet" href="/static/css/pico.min.css?v=<%= assetVersion %>">
+  <link rel="stylesheet" href="/static/css/styles.css?v=<%= assetVersion %>">
+  <% if (typeof pageAssets !== 'undefined' && pageAssets && pageAssets.css) { %>
+    <% pageAssets.css.forEach(cssFile => { %>
+      <link rel="stylesheet" href="/static/css/<%= cssFile %>?v=<%= assetVersion %>">
+    <% }); %>
+  <% } %>
+  <script src="/static/js/htmx.min.js?v=<%= assetVersion %>"></script>
+  <script src="/static/js/main.js?v=<%= assetVersion %>"></script>
+  <script>
+    // Handle HTMX errors - swap into error containers
+    document.addEventListener('DOMContentLoaded', function() {
+      document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (evt.detail.xhr.status >= 400 && evt.detail.xhr.status < 500) {
+          // Don't swap error responses for photo uploads - let JS handle via toast
+          if (evt.detail.requestConfig.path && evt.detail.requestConfig.path.includes('/photos')) {
+            evt.detail.shouldSwap = false;
+            return;
+          }
+          evt.detail.shouldSwap = true;
+          evt.detail.isError = false;
+          // Retarget to error message container if it exists
+          var errorTarget = document.getElementById('admin-messages') || document.getElementById('form-messages');
+          if (errorTarget) {
+            evt.detail.target = errorTarget;
+          }
+        }
+      });
+    });
+  </script>
+  <% if (typeof pageAssets !== 'undefined' && pageAssets && pageAssets.js) { %>
+    <% pageAssets.js.forEach(jsFile => { %>
+      <script src="/static/js/<%= jsFile %>?v=<%= assetVersion %>"></script>
+    <% }); %>
+  <% } %>
+</head>
+<body class="<%= template.includes('galleries/view') ? 'gallery-page' : '' %>">
+  <%- include('./header.ejs') %>
+  <main class="container">
+    <%- include(template, { pageData }) %>
+  </main>
+  <%- include('./footer.ejs') %>
+</body>
+</html>

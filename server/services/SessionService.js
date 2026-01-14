@@ -1,7 +1,6 @@
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const SecretService = require('./SecretService');
-const crypto = require('crypto');
 
 class SessionService {
   constructor(pool) {
@@ -10,30 +9,35 @@ class SessionService {
   }
 
   async initialize(app) {
-    // Get secrets for session encryption
+    // Initialize secret service (ensures secrets exist, starts rotation)
+    await this.secretService.initialize();
     const secrets = await this.secretService.getSecrets();
+    
+    // Trust proxy for production (NPM terminates SSL)
+    if (process.env.NODE_ENV === 'production') {
+      app.set('trust proxy', 1);
+    }
     
     app.use(session({ 
       store: new pgSession({
         pool: this.pool,
         tableName: 'user_session',
         createTableIfMissing: true,
-        ttl: 7 * 24 * 60 * 60,
-        pruneSessionInterval: 24 * 60 * 60
+        ttl: 7 * 24 * 60 * 60,          // 7 days
+        pruneSessionInterval: 24 * 60 * 60  // Cleanup every 24h
       }),
       secret: secrets,
       resave: false,
-      saveUninitialized: true,
+      saveUninitialized: false,
       rolling: true,
       cookie: { 
-        secure: false,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        httpOnly: true
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days
+        httpOnly: true,
+        sameSite: 'lax'  // CSRF protection
       }
     }));
-
   }
-  
 }
 
 module.exports = SessionService;

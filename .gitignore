@@ -1,7 +1,22 @@
-.db_password
+# Dependencies
+node_modules/
+
+# Environment
 .env
-node_modules
+.env.local
+.env.*.local
+
+# Logs
 *.log
-dist/
-lambda-package.zip
-sharp-layer.zip
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker volumes
+app_db_data/

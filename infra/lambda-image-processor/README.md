@@ -19,8 +19,8 @@ AWS Lambda function for processing uploaded images from EventGlimpse events. Aut
 - **Trigger**: S3 ObjectCreated events on `uploads/` folder
 - **Processing**: Sharp library for image resizing and optimization
 - **Output**: Creates 3 versions in separate S3 folders:
-  - `thumbs/` - Small thumbnails (150x150)
-  - `display/` - Medium display size (800px max)
+  - `thumbs/` - Small thumbnails (200px wide)
+  - `display/` - Gallery display size (1600px wide)
   - `originals/` - Optimized originals (quality 90%)
 
 ## Files
@@ -134,8 +134,8 @@ aws lambda invoke \
 
 Input: `uploads/{event-uuid}/{photo-id}.{ext}`
 Output:
-- `thumbs/{event-uuid}/{photo-id}.{ext}` (150x150)
-- `display/{event-uuid}/{photo-id}.{ext}` (800px max)
+- `thumbs/{event-uuid}/{photo-id}.{ext}` (200px wide)
+- `display/{event-uuid}/{photo-id}.{ext}` (1600px wide)
 - `originals/{event-uuid}/{photo-id}.{ext}` (optimized)
 
 ## Dependencies

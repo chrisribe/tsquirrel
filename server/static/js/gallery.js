@@ -1,856 +1,803 @@
 /**
- * Gallery Module - Centralized gallery functionality
- * Handles flexImages layout, lightbox, uploads, and image polling
+ * Gallery JS - Minimal functionality for friction-free photo sharing
  */
-const Gallery = (function() {
-  'use strict';
+const Gallery = {
   
-  // ========================================================================
-  // Configuration & State
-  // ========================================================================
+  // ============================================
+  // Session-based photo tracking (for anonymous delete)
+  // ============================================
   
-  const config = {
-    flexImages: {
-      rowHeight: 300,
-      maxRows: 0,
-      truncate: 0,
-      container: '.item',
-      object: 'img'
-    },
-    polling: {
-      maxAttempts: 30,
-      startDelay: 2000,
-      retryInterval: 1000
-    },
-    ui: {
-      resizeDebounce: 250,
-      notificationDuration: 3000,
-      successFeedbackDuration: 2000
+  getMyPhotos(galleryUuid) {
+    try {
+      const key = `eventglimpse_uploads_${galleryUuid}`;
+      return JSON.parse(localStorage.getItem(key) || '[]');
+    } catch {
+      return [];
     }
-  };
+  },
   
-  let state = {
-    isInitialized: false,
-    isUploading: false,
-    lightbox: {
-      element: null,
-      img: null,
-      currentIndex: 0,
-      images: []
+  addMyPhoto(galleryUuid, photoId) {
+    try {
+      const key = `eventglimpse_uploads_${galleryUuid}`;
+      const photos = this.getMyPhotos(galleryUuid);
+      if (!photos.includes(photoId)) {
+        photos.push(photoId);
+        localStorage.setItem(key, JSON.stringify(photos));
+      }
+    } catch {
+      // localStorage might be disabled
     }
-  };
+  },
   
-  // ========================================================================
-  // Layout Management
-  // ========================================================================
+  removeMyPhoto(galleryUuid, photoId) {
+    try {
+      const key = `eventglimpse_uploads_${galleryUuid}`;
+      const photos = this.getMyPhotos(galleryUuid).filter(id => id !== photoId);
+      localStorage.setItem(key, JSON.stringify(photos));
+    } catch {
+      // localStorage might be disabled
+    }
+  },
   
-  const Layout = {
-    init() {
-      if (typeof $ !== 'undefined') {
-        this.initFlexImages();
-        this.setupResizeHandler();
+  canDeletePhoto(galleryUuid, photoId) {
+    return this.getMyPhotos(galleryUuid).includes(photoId);
+  },
+  
+  // Show delete buttons for photos this user uploaded
+  showMyDeleteButtons(galleryUuid) {
+    const myPhotos = this.getMyPhotos(galleryUuid);
+    myPhotos.forEach(photoId => {
+      const photoItem = document.querySelector(`[data-photo-id="${photoId}"]`);
+      if (photoItem && !photoItem.querySelector('.delete-btn')) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn delete-btn-mine';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.onclick = () => Gallery.deletePhoto(galleryUuid, photoId, deleteBtn);
+        photoItem.appendChild(deleteBtn);
       }
-    },
+    });
+  },
+
+  // Retry loading images that fail (Lambda processing delay)
+  // Replace the img element entirely to clear browser's broken state
+  retryImage(img, retries = 5) {
+    if (retries <= 0) {
+      // Show hourglass placeholder for failed images
+      img.src = '';
+      img.alt = '⏳';
+      img.style.background = 'rgba(255,255,255,0.1)';
+      img.style.display = 'flex';
+      img.style.alignItems = 'center';
+      img.style.justifyContent = 'center';
+      img.classList.add('loading-placeholder');
+      return;
+    }
     
-    initFlexImages() {
-      const gallery = $('#flexGallery');
-      if (gallery.length && gallery.find('.item').length > 0) {
-        gallery.flexImages(config.flexImages);
-      }
-    },
-    
-    addPhoto(photoHtml) {
-      const gallery = document.getElementById('flexGallery');
-      if (!gallery) return;
-      
-      gallery.insertAdjacentHTML('beforeend', photoHtml);
-      this.hideEmptyState();
-      
-      // Re-initialize layout and components after DOM update
-      setTimeout(() => {
-        this.initFlexImages();
-        Lightbox.refreshListeners();
-      }, 100);
-    },
-    
-    hideEmptyState() {
-      const emptyState = document.querySelector('.empty-state');
-      if (emptyState) {
-        emptyState.style.display = 'none';
-      }
-    },
-    
-    setupResizeHandler() {
-      if (typeof $ === 'undefined') return;
-      
-      let resizeTimeout;
-      const debouncedResize = () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-          this.initFlexImages();
-        }, config.ui.resizeDebounce);
+    setTimeout(() => {
+      // Create fresh img element to clear broken state
+      const newImg = document.createElement('img');
+      const baseUrl = img.src.split('?')[0]; // Remove any existing retry params
+      newImg.src = baseUrl + '?retry=' + Date.now();
+      newImg.alt = img.alt;
+      newImg.loading = 'lazy';
+      newImg.onerror = () => Gallery.retryImage(newImg, retries - 1);
+      newImg.onload = () => {
+        newImg.classList.add('loaded');
+        // Re-layout after image loads
+        if (window.galleryFlex) window.galleryFlex.layout();
       };
       
-      $(window).off('resize.gallery').on('resize.gallery', debouncedResize);
+      // Copy onclick attribute (inline handler)
+      const onclickAttr = img.getAttribute('onclick');
+      if (onclickAttr) newImg.setAttribute('onclick', onclickAttr);
+      
+      // Replace old img with new one
+      img.parentNode.replaceChild(newImg, img);
+    }, 2000); // Wait 2 seconds between retries
+  },
+
+  // File selection handler - start queue upload
+  onFilesSelected(input) {
+    if (input.files.length > 0) {
+      this.startUploadQueue(Array.from(input.files));
+      input.value = ''; // Reset input for next selection
     }
-  };
+  },
 
-  
-  // ========================================================================
-  // Image Polling Management
-  // ========================================================================
-  
-  const ImagePoller = {
-    pollForImage(imgElement, loadingElement, maxAttempts = config.polling.maxAttempts, startDelay = config.polling.startDelay) {
-      if (!imgElement || !loadingElement) {
-        console.warn('ImagePoller: Missing required img or loading element');
-        return;
-      }
-      
-      const baseUrl = imgElement.src.split('?')[0];
-      let attempts = 0;
-      
-      const checkImage = () => {
-        attempts++;
-        const testImg = new Image();
-        
-        testImg.onload = () => {
-          imgElement.src = `${baseUrl}?t=${Date.now()}`;
-          imgElement.style.display = 'block';
-          loadingElement.style.display = 'none';
-          
-          setTimeout(() => {
-            Layout.initFlexImages();
-            Lightbox.refreshListeners();
-          }, 100);
-        };
-        
-        testImg.onerror = () => {
-          if (attempts < maxAttempts) {
-            setTimeout(checkImage, config.polling.retryInterval);
-          } else {
-            loadingElement.innerHTML = '<div class="error-placeholder"><p>⚠️ Processing failed</p></div>';
-          }
-        };
-        
-        testImg.src = `${baseUrl}?t=${Date.now()}`;
-      };
-      
-      setTimeout(checkImage, startDelay);
-    },
+  // Upload queue state
+  uploadQueue: [],
+  uploadInProgress: false,
+  uploadCancelled: false,
+  uploadStats: { added: 0, skipped: 0, failed: 0 },
+  activeUploads: 0,
+  maxParallel: 2,  // Upload 2 at a time
+
+  async startUploadQueue(files) {
+    // Filter to only image files (for folder upload)
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
     
-    initNewPhotos() {
-      const newItems = document.querySelectorAll('.item .photo-loading');
-      console.log(`ImagePoller: Initializing polling for ${newItems.length} new photos`);
-      
-      newItems.forEach(loadingDiv => {
-        const itemDiv = loadingDiv.closest('.item');
-        if (itemDiv) {
-          const img = itemDiv.querySelector('img');
-          if (img && loadingDiv) {
-            this.pollForImage(img, loadingDiv);
-          }
-        }
-      });
+    if (imageFiles.length === 0) {
+      this.showToast('No images found', 'warning');
+      return;
     }
-  };
-
-  
-  // ========================================================================
-  // Lightbox Management
-  // ========================================================================
-  
-  const Lightbox = {
-    init() {
-      if (state.lightbox.element) return; // Already initialized
-      
-      this.createLightboxHTML();
-      this.setupEventListeners();
-      this.refreshListeners();
-    },
     
-    createLightboxHTML() {
-      const lightboxHtml = `
-        <div class="lightbox" id="lightbox">
-          <span class="lightbox-close">&times;</span>
-          <div class="lightbox-content">
-            <img id="lightbox-img" src="" alt="">
-            <div class="lightbox-controls">
-              <button class="lightbox-download" title="Download Original">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7,10 12,15 17,10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Download
-              </button>
-              <button class="lightbox-zoom" title="View Original Size">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="m21 21-4.35-4.35"/>
-                  <line x1="15" y1="9" x2="9" y2="15"/>
-                  <line x1="9" y1="9" x2="15" y2="15"/>
-                </svg>
-                Original
-              </button>
-            </div>
-          </div>
-          <span class="lightbox-prev">&#10094;</span>
-          <span class="lightbox-next">&#10095;</span>
-        </div>
-      `;
-      
-      document.body.insertAdjacentHTML('beforeend', lightboxHtml);
-      
-      state.lightbox.element = document.getElementById('lightbox');
-      state.lightbox.img = document.getElementById('lightbox-img');
-    },
+    const galleryUuid = document.getElementById('uploadForm').dataset.galleryUuid;
     
-    setupEventListeners() {
-      const closeBtn = document.querySelector('.lightbox-close');
-      const prevBtn = document.querySelector('.lightbox-prev');
-      const nextBtn = document.querySelector('.lightbox-next');
-      const downloadBtn = document.querySelector('.lightbox-download');
-      const zoomBtn = document.querySelector('.lightbox-zoom');
-      
-      // Close lightbox
-      closeBtn.addEventListener('click', () => this.close());
-      state.lightbox.element.addEventListener('click', (e) => {
-        if (e.target === state.lightbox.element) this.close();
-      });
-      
-      // Navigation
-      prevBtn.addEventListener('click', () => this.prev());
-      nextBtn.addEventListener('click', () => this.next());
-      
-      // Controls
-      downloadBtn.addEventListener('click', () => this.downloadOriginal());
-      zoomBtn.addEventListener('click', () => this.toggleOriginal());
-      
-      // Keyboard navigation
-      document.addEventListener('keydown', (e) => {
-        if (!state.lightbox.element.classList.contains('active')) return;
-        
-        switch(e.key) {
-          case 'Escape': this.close(); break;
-          case 'ArrowLeft': this.prev(); break;
-          case 'ArrowRight': this.next(); break;
-          case 'd': case 'D': this.downloadOriginal(); break;
-          case 'o': case 'O': this.toggleOriginal(); break;
-        }
-      });
-    },
+    // Show queue UI immediately
+    document.getElementById('uploadQueue').style.display = 'block';
+    document.getElementById('queueTotal').textContent = imageFiles.length;
+    document.getElementById('queueCurrent').textContent = 'Checking...';
+    document.getElementById('queueAdded').textContent = '0';
+    document.getElementById('queueSkipped').textContent = '0';
+    document.getElementById('queueProgress').value = 0;
     
-    refreshListeners() {
-      state.lightbox.images = Array.from(document.querySelectorAll('.flex-images .item img'));
-      
-      state.lightbox.images.forEach((img, index) => {
-        // Remove existing listener to avoid duplicates
-        img.removeEventListener('click', img._lightboxHandler);
-        
-        // Create new handler
-        img._lightboxHandler = () => this.open(index);
-        img.addEventListener('click', img._lightboxHandler);
-      });
-    },
-    
-    open(index) {
-      state.lightbox.currentIndex = index;
-      const img = state.lightbox.images[index];
-      
-      // Progressive loading: Start with current src, then display, then original
-      const thumbUrl = img.src;
-      const displayUrl = img.dataset.display || img.src;
-      const originalUrl = img.dataset.original || displayUrl;
-      
-      // Show lightbox immediately with thumbnail
-      state.lightbox.img.src = thumbUrl;
-      state.lightbox.element.classList.add('active');
-      
-      // Progressively enhance to display quality
-      if (displayUrl !== thumbUrl) {
-        const displayImg = new Image();
-        displayImg.onload = () => {
-          state.lightbox.img.src = displayUrl;
-          
-          // Then load original for zooming/downloading
-          if (originalUrl !== displayUrl) {
-            const originalImg = new Image();
-            originalImg.onload = () => {
-              state.lightbox.img.dataset.originalSrc = originalUrl;
-            };
-            originalImg.src = originalUrl;
-          }
-        };
-        displayImg.src = displayUrl;
-      } else if (originalUrl !== displayUrl) {
-        const originalImg = new Image();
-        originalImg.onload = () => {
-          state.lightbox.img.src = originalUrl;
-        };
-        originalImg.src = originalUrl;
-      }
-    },
-    
-    close() {
-      state.lightbox.element.classList.remove('active');
-    },
-    
-    prev() {
-      state.lightbox.currentIndex = (state.lightbox.currentIndex - 1 + state.lightbox.images.length) % state.lightbox.images.length;
-      const originalUrl = state.lightbox.images[state.lightbox.currentIndex].dataset.original || state.lightbox.images[state.lightbox.currentIndex].src;
-      state.lightbox.img.src = originalUrl;
-    },
-    
-    next() {
-      state.lightbox.currentIndex = (state.lightbox.currentIndex + 1) % state.lightbox.images.length;
-      const originalUrl = state.lightbox.images[state.lightbox.currentIndex].dataset.original || state.lightbox.images[state.lightbox.currentIndex].src;
-      state.lightbox.img.src = originalUrl;
-    },
-    
-    downloadOriginal() {
-      const img = state.lightbox.images[state.lightbox.currentIndex];
-      const originalUrl = img.dataset.original || img.dataset.display || img.src;
-      const originalName = img.alt || `photo-${state.lightbox.currentIndex + 1}`;
-      
-      // Create download link
-      const link = document.createElement('a');
-      link.href = originalUrl;
-      link.download = originalName;
-      link.target = '_blank';
-      
-      // Trigger download
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Show feedback
-      const downloadBtn = document.querySelector('.lightbox-download');
-      const originalText = downloadBtn.innerHTML;
-      downloadBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="20,6 9,17 4,12"/>
-        </svg>
-        Downloaded!
-      `;
-      
-      setTimeout(() => {
-        downloadBtn.innerHTML = originalText;
-      }, config.ui.successFeedbackDuration);
-    },
-    
-    toggleOriginal() {
-      const img = state.lightbox.images[state.lightbox.currentIndex];
-      const displayUrl = img.dataset.display || img.src;
-      const originalUrl = img.dataset.original || displayUrl;
-      const zoomBtn = document.querySelector('.lightbox-zoom');
-      
-      // Toggle between display and original
-      if (state.lightbox.img.src === originalUrl) {
-        // Currently showing original, switch to display
-        state.lightbox.img.src = displayUrl;
-        zoomBtn.innerHTML = `
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-            <line x1="15" y1="9" x2="9" y2="15"/>
-            <line x1="9" y1="9" x2="15" y2="15"/>
-          </svg>
-          Original
-        `;
-        zoomBtn.title = "View Original Size";
-      } else {
-        // Currently showing display, switch to original
-        state.lightbox.img.src = originalUrl;
-        zoomBtn.innerHTML = `
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-            <line x1="11" y1="11" x2="11" y2="11"/>
-          </svg>
-          Display
-        `;
-        zoomBtn.title = "View Display Size";
-      }
+    // Step 1: Hash all files
+    const fileHashes = [];
+    for (const file of imageFiles) {
+      const hash = await this.computeFileHash(file);
+      fileHashes.push({ file, hash });
     }
-  };
-
-  
-  // ========================================================================
-  // Upload Management
-  // ========================================================================
-  
-  const Upload = {
-    init() {
-      const fileInput = document.getElementById('photo');
-      const uploadForm = document.getElementById('uploadForm');
-      const uploadLabel = document.getElementById('uploadLabel');
-      const uploadStatus = document.getElementById('uploadStatus');
-
-      // Only initialize if elements exist (gallery page)
-      if (!fileInput || !uploadForm || !uploadLabel || !uploadStatus) {
-        console.log('Upload handler: Missing elements');
-        return;
+    
+    // Step 2: Pre-check which hashes exist
+    let existingHashes = [];
+    try {
+      const response = await fetch(`/g/${galleryUuid}/check-hashes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashes: fileHashes.map(f => f.hash) })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        existingHashes = data.existing || [];
       }
-
-      // Check if already initialized to prevent duplicate listeners
-      if (fileInput._uploadListenerBound) {
-        console.log('Upload handler already bound, skipping');
-        return;
-      }
-
-      console.log('Upload handler initialized successfully');
-      
-      this.setupFileInputHandler(fileInput, uploadForm, uploadLabel, uploadStatus);
-      this.setupHTMXHandlers(uploadForm, fileInput, uploadLabel, uploadStatus);
-      this.setupGlobalEventHandlers();
-      
-      fileInput._uploadListenerBound = true;
-    },
-    
-    setupFileInputHandler(fileInput, uploadForm, uploadLabel, uploadStatus) {
-      fileInput.addEventListener('change', (e) => {
-        console.log('File input change event triggered', e.target.files.length);
-        if (e.target.files.length > 0 && !state.isUploading) {
-          const files = Array.from(e.target.files);
-          console.log('Starting upload for:', files.map(f => f.name).join(', '));
-          state.isUploading = true;
-          
-          // Show upload status with file count
-          uploadLabel.style.display = 'none';
-          uploadStatus.style.display = 'block';
-          uploadStatus.innerHTML = `<div class="uploading">📤 Uploading ${files.length} photo${files.length > 1 ? 's' : ''}...</div>`;
-          
-          uploadForm.dispatchEvent(new Event('submit'));
-        }
-      });
-    },
-    
-    setupHTMXHandlers(uploadForm, fileInput, uploadLabel, uploadStatus) {
-      uploadForm.addEventListener('htmx:afterRequest', (e) => {
-        console.log('HTMX afterRequest event', { successful: e.detail.successful });
-        state.isUploading = false;
-        
-        if (e.detail.successful) {
-          this.handleUploadSuccess(uploadForm, fileInput, uploadLabel, uploadStatus, e);
-        } else {
-          this.handleUploadError(fileInput, uploadLabel, uploadStatus);
-        }
-      });
-    },
-    
-    handleUploadSuccess(uploadForm, fileInput, uploadLabel, uploadStatus, event) {
-      console.log('Upload successful, resetting form');
-      uploadForm.reset();
-      
-      // Remove any lingering dimension inputs
-      const existingInputs = uploadForm.querySelectorAll('input[name="width"], input[name="height"]');
-      console.log('Removing dimension inputs:', existingInputs.length);
-      existingInputs.forEach(input => input.remove());
-      
-      fileInput.value = '';
-      
-      // Reset UI state
-      uploadLabel.style.display = 'block';
-      uploadStatus.style.display = 'none';
-      uploadLabel.firstChild.textContent = '📷 Upload Photos';
-      uploadLabel.style.background = '#007bff';
-      
-      // Show success notification
-      const fileCount = event.detail.xhr.responseText ? (event.detail.xhr.responseText.match(/class="item"/g) || []).length : 1;
-      UI.showNotification(`${fileCount} photo${fileCount > 1 ? 's' : ''} uploaded successfully! 🎉`, 'success');
-    },
-    
-    handleUploadError(fileInput, uploadLabel, uploadStatus) {
-      uploadLabel.style.display = 'block';
-      uploadStatus.style.display = 'none';
-      uploadLabel.firstChild.textContent = '❌ Upload failed - Try again';
-      uploadLabel.style.background = '#dc3545';
-      
-      fileInput.value = '';
-      
-      // Remove any lingering dimension inputs
-      const existingInputs = document.querySelectorAll('input[name="width"], input[name="height"]');
-      existingInputs.forEach(input => input.remove());
-      
-      setTimeout(() => {
-        uploadLabel.firstChild.textContent = '📷 Upload Photos';
-        uploadLabel.style.background = '#007bff';
-      }, config.ui.notificationDuration);
-    },
-    
-    setupGlobalEventHandlers() {
-      document.addEventListener('htmx:afterSwap', () => {
-        setTimeout(() => {
-          Lightbox.refreshListeners();
-          Layout.initFlexImages();
-          Layout.hideEmptyState();
-          ImagePoller.initNewPhotos();
-        }, 100);
-      });
+    } catch (e) {
+      console.warn('Hash pre-check failed, uploading all:', e);
     }
-  };
-  
-  // ========================================================================
-  // Cover Photo Management
-  // ========================================================================
-  
-  const CoverPhoto = {
-    init() {
-      // Scope the listener to the gallery container instead of entire document
-      const galleryContainer = document.getElementById('flexGallery');
-      if (!galleryContainer) {
-        console.log('CoverPhoto: Gallery container not found, skipping initialization');
-        return;
-      }
-      
-      galleryContainer.addEventListener('click', (e) => {
-        if (e.target.classList.contains('set-cover-btn')) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          this.handleSetCover(e.target);
-        }
-      });
-    },
     
-    handleSetCover(button) {
-      const photoId = button.dataset.photoId;
-      const eventUuid = button.dataset.eventUuid;
-      
-      if (!photoId || !eventUuid) {
-        console.error('Missing photo ID or event UUID');
-        return;
-      }
-      
-      // Show loading state
-      const originalText = button.textContent;
-      button.textContent = '⏳ Setting...';
-      button.disabled = true;
-      
-      // Make PATCH request to set cover photo
-      fetch(`/events/${eventUuid}/photos/${photoId}/cover`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          this.handleSetCoverSuccess(button, originalText);
-        } else {
-          throw new Error(data.error || 'Failed to set cover photo');
-        }
-      })
-      .catch(error => {
-        this.handleSetCoverError(button, originalText, error);
-      });
-    },
+    // Step 3: Filter out duplicates
+    const toUpload = fileHashes.filter(f => !existingHashes.includes(f.hash));
+    const skippedCount = fileHashes.length - toUpload.length;
     
-    handleSetCoverSuccess(button, originalText) {
-      button.textContent = '✅ Cover Set!';
-      button.style.background = '#28a745';
-      
-      // Reset all other buttons
-      document.querySelectorAll('.set-cover-btn').forEach(btn => {
-        if (btn !== button) {
-          btn.textContent = '🖼️ Set as Cover';
-          btn.style.background = '';
-          btn.disabled = false;
-        }
-      });
-      
-      // Reset this button after a delay
-      setTimeout(() => {
-        button.textContent = originalText;
-        button.disabled = false;
-      }, config.ui.successFeedbackDuration);
-      
-      UI.showNotification('Cover photo updated successfully! 🎉', 'success');
-    },
+    // Update UI with pre-check results
+    this.uploadStats = { added: 0, skipped: skippedCount, failed: 0 };
+    document.getElementById('queueSkipped').textContent = skippedCount;
     
-    handleSetCoverError(button, originalText, error) {
-      console.error('Error setting cover photo:', error);
-      
-      button.textContent = originalText;
-      button.disabled = false;
-      
-      UI.showNotification(error.message || 'Failed to set cover photo', 'error');
+    if (toUpload.length === 0) {
+      // All duplicates!
+      this.showToast(`${skippedCount} duplicate${skippedCount > 1 ? 's' : ''} skipped`, 'warning');
+      document.getElementById('uploadQueue').style.display = 'none';
+      return;
     }
-  };
-  
-  // ========================================================================
-  // Photo Delete Management
-  // ========================================================================
-  
-  const PhotoDelete = {
-    init() {
-      // Scope the listener to the gallery container
-      const galleryContainer = document.getElementById('flexGallery');
-      if (!galleryContainer) {
-        console.log('PhotoDelete: Gallery container not found, skipping initialization');
-        return;
-      }
-      
-      galleryContainer.addEventListener('click', (e) => {
-        if (e.target.classList.contains('delete-photo-btn')) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          this.handleDeletePhoto(e.target);
-        }
-      });
-    },
     
-    handleDeletePhoto(button) {
-      const photoId = button.dataset.photoId;
-      const eventUuid = button.dataset.eventUuid;
-      
-      if (!photoId || !eventUuid) {
-        console.error('Missing photo ID or event UUID');
-        return;
-      }
-      
-      // Show confirmation dialog
-      if (!confirm('Are you sure you want to delete this photo? This action cannot be undone.')) {
-        return;
-      }
-      
-      // Show loading state
-      const originalText = button.textContent;
-      button.textContent = '⏳ Deleting...';
-      button.disabled = true;
-      
-      // Make DELETE request
-      fetch(`/events/${eventUuid}/photos/${photoId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          this.handleDeleteSuccess(button, photoId);
-        } else {
-          throw new Error(data.error || 'Failed to delete photo');
-        }
-      })
-      .catch(error => {
-        this.handleDeleteError(button, originalText, error);
-      });
-    },
+    // Step 4: Upload only new files
+    this.uploadQueue = toUpload.map(f => f.file);
+    this.uploadInProgress = true;
+    this.uploadCancelled = false;
+    this.activeUploads = 0;
+    this.totalToUpload = toUpload.length;
+    this.uploadedCount = 0;
     
-    handleDeleteSuccess(button, photoId) {
-      // Find and remove the photo item from DOM
-      const photoItem = button.closest('.item');
-      if (photoItem) {
-        // Animate removal
-        photoItem.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        photoItem.style.opacity = '0';
-        photoItem.style.transform = 'scale(0.8)';
+    document.getElementById('queueTotal').textContent = toUpload.length;
+    document.getElementById('queueCurrent').textContent = '0';
+    
+    // Start parallel uploads
+    for (let i = 0; i < this.maxParallel; i++) {
+      this.processNextUpload();
+    }
+  },
+  
+  async computeFileHash(file) {
+    // Web Crypto API - SHA-256, matches server-side hash
+    if (crypto.subtle) {
+      const buffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    // Fallback: file metadata (won't match server, but server re-checks)
+    return `${file.name}-${file.size}-${file.lastModified}`;
+  },
+
+  async processNextUpload() {
+    if (this.uploadCancelled || this.uploadQueue.length === 0) {
+      // Check if all uploads finished
+      if (this.activeUploads === 0) {
+        this.finishUploadQueue();
+      }
+      return;
+    }
+    
+    const file = this.uploadQueue.shift();
+    this.activeUploads++;
+    
+    try {
+      const result = await this.uploadSingleFile(file);
+      
+      this.uploadedCount++;
+      document.getElementById('queueCurrent').textContent = this.uploadedCount;
+      document.getElementById('queueProgress').value = (this.uploadedCount / this.totalToUpload) * 100;
+      
+      if (result.added > 0) {
+        this.uploadStats.added += result.added;
+        document.getElementById('queueAdded').textContent = this.uploadStats.added;
         
-        setTimeout(() => {
-          photoItem.remove();
-          
-          // Refresh layout and lightbox
-          Layout.initFlexImages();
-          Lightbox.refreshListeners();
-          
-          // Check if gallery is now empty
-          const galleryItems = document.querySelectorAll('#flexGallery .item');
-          if (galleryItems.length === 0) {
-            const emptyState = document.querySelector('.empty-state');
-            if (emptyState) {
-              emptyState.style.display = 'block';
+        // Add photo to grid (strip script tags from response)
+        if (result.html) {
+          const cleanHtml = result.html.replace(/<script[\s\S]*?<\/script>/gi, '').trim();
+          if (cleanHtml) {
+            document.getElementById('photoGrid').insertAdjacentHTML('afterbegin', cleanHtml);
+            
+            // Re-layout flex images grid
+            if (window.galleryFlex) window.galleryFlex.layout();
+            
+            // Track uploaded photo ID for session-based delete
+            const galleryUuid = document.getElementById('uploadForm').dataset.galleryUuid;
+            const match = cleanHtml.match(/data-photo-id="([^"]+)"/);
+            if (match && match[1]) {
+              this.addMyPhoto(galleryUuid, match[1]);
+              // Show delete button on the new photo
+              this.showMyDeleteButtons(galleryUuid);
             }
           }
-        }, 300);
+        }
+        
+        // Update photo count
+        const counter = document.getElementById('photoCount');
+        if (counter) {
+          counter.textContent = parseInt(counter.textContent) + result.added;
+        }
       }
       
-      UI.showNotification('Photo deleted successfully! 🗑️', 'success');
-    },
-    
-    handleDeleteError(button, originalText, error) {
-      console.error('Error deleting photo:', error);
-      
-      button.textContent = originalText;
-      button.disabled = false;
-      
-      UI.showNotification(error.message || 'Failed to delete photo', 'error');
+      if (result.skipped > 0) {
+        this.uploadStats.skipped += result.skipped;
+        document.getElementById('queueSkipped').textContent = this.uploadStats.skipped;
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      this.uploadStats.failed++;
+      this.uploadedCount++;
+      document.getElementById('queueCurrent').textContent = this.uploadedCount;
+      document.getElementById('queueProgress').value = (this.uploadedCount / this.totalToUpload) * 100;
     }
-  };
-  
-  // ========================================================================
-  // UI Utilities
-  // ========================================================================
-  
-  const UI = {
-    showNotification(message, type = 'info') {
-      const notification = document.createElement('div');
-      notification.className = `notification notification-${type}`;
-      notification.textContent = message;
-      
-      // Style the notification
-      Object.assign(notification.style, {
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        padding: '12px 20px',
-        borderRadius: '4px',
-        color: 'white',
-        fontWeight: 'bold',
-        zIndex: '10000',
-        transform: 'translateX(100%)',
-        transition: 'transform 0.3s ease'
+    
+    this.activeUploads--;
+    
+    // Process next file
+    this.processNextUpload();
+  },
+
+  async uploadSingleFile(file) {
+    const galleryUuid = document.getElementById('uploadForm').dataset.galleryUuid;
+    const formData = new FormData();
+    formData.append('photoFile', file);
+    
+    const response = await fetch(`/g/${galleryUuid}/photos`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'HX-Request': 'true'  // Get partial HTML response
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Upload failed');
+    }
+    
+    // Parse response - server returns HTML + stats in headers
+    const html = await response.text();
+    const added = parseInt(response.headers.get('X-Photos-Added') || '1');
+    const skipped = parseInt(response.headers.get('X-Photos-Skipped') || '0');
+    
+    return { html, added, skipped };
+  },
+
+  cancelQueue() {
+    this.uploadCancelled = true;
+    this.showToast('Upload cancelled', 'warning');
+  },
+
+  finishUploadQueue() {
+    this.uploadInProgress = false;
+    
+    // Hide queue UI
+    document.getElementById('uploadQueue').style.display = 'none';
+    
+    // Show summary toast
+    const { added, skipped, failed } = this.uploadStats;
+    if (this.uploadCancelled) {
+      if (added > 0) {
+        this.showToast(`Cancelled. ${added} photo${added > 1 ? 's' : ''} uploaded.`);
+      }
+    } else if (added > 0 && skipped > 0) {
+      this.showToast(`${added} added, ${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`);
+    } else if (added > 0) {
+      this.showToast(`${added} photo${added > 1 ? 's' : ''} uploaded! ✓`);
+    } else if (skipped > 0) {
+      this.showToast(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`, 'warning');
+    }
+    
+    if (failed > 0) {
+      this.showToast(`${failed} failed to upload`, 'warning');
+    }
+    
+    // Track in analytics
+    if (added > 0) {
+      this.trackUploadSuccess(added, skipped);
+    }
+  },
+
+  // After upload completes - hide status and handle errors (legacy, kept for compatibility)
+  onUploadComplete(event) {
+    // Now handled by queue system
+  },
+
+  // Handle upload result via HX-Trigger event
+  onUploadResult(event) {
+    const { added, skipped } = event.detail;
+    
+    // Track upload success in Google Analytics
+    if (added > 0) {
+      this.trackUploadSuccess(added, skipped);
+    }
+    
+    if (added > 0 && skipped > 0) {
+      this.showToast(`${added} added, ${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`);
+    } else if (added > 0) {
+      this.showToast('Photos uploaded! ✓');
+    } else if (skipped > 0) {
+      this.showToast(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`, 'warning');
+    }
+  },
+
+  // Track photo upload success in Google Analytics
+  trackUploadSuccess(photosAdded, photosSkipped) {
+    if (typeof gtag === 'function') {
+      gtag('event', 'photo_upload', {
+        event_category: 'Gallery',
+        event_label: 'Upload Success',
+        photos_added: photosAdded,
+        photos_skipped: photosSkipped,
+        total_photos: photosAdded + photosSkipped
+      });
+    }
+  },
+
+  // Simple toast notification
+  showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    const bgColor = type === 'warning' ? '#b45309' : '#333';
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 2rem;
+      left: 0;
+      right: 0;
+      margin: 0 auto;
+      width: fit-content;
+      background: ${bgColor};
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 0.5rem;
+      z-index: 1001;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+    
+    // Trigger fade in after append
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+    });
+    
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  },
+
+  // Lightbox state
+  currentPhotoIndex: -1,
+  photoUrls: [],
+
+  // Lightbox
+  openLightbox(displayUrl, originalUrl) {
+    const lightbox = document.getElementById('lightbox');
+    const img = document.getElementById('lightboxImg');
+    const download = document.getElementById('lightboxDownload');
+    const loading = document.getElementById('lightboxLoading');
+    
+    // Build photo URLs array for navigation
+    this.photoUrls = Array.from(document.querySelectorAll('#photoGrid .item img')).map(img => {
+      const onclick = img.getAttribute('onclick');
+      if (!onclick) return null;
+      const match = onclick.match(/Gallery\.openLightbox\('([^']+)',\s*'([^']+)'\)/);
+      return match ? { display: match[1], original: match[2] } : null;
+    }).filter(Boolean);
+    
+    // Find current index
+    this.currentPhotoIndex = this.photoUrls.findIndex(p => p.original === originalUrl);
+    
+    // Show display image directly (1600px is good for viewing)
+    this.loadDisplayImage(img, loading, displayUrl);
+    
+    // Download button uses original via proxy
+    const photoId = originalUrl.split('/').pop().split('.')[0];
+    download.href = `/galleries/download/${photoId}`;
+    lightbox.style.display = 'flex';
+    
+    // Show/hide nav arrows
+    this.updateNavArrows();
+    
+    document.body.style.overflow = 'hidden';
+  },
+
+  loadDisplayImage(img, loading, displayUrl, retries = 5) {
+    // Show loading, hide image
+    loading.style.display = 'block';
+    img.style.display = 'none';
+    img.src = '';
+    
+    // Load display image (1600px - good for viewing)
+    const testImg = new Image();
+    testImg.src = displayUrl;
+    
+    testImg.onload = () => {
+      loading.style.display = 'none';
+      img.src = displayUrl;
+      img.style.display = 'block';
+    };
+    
+    testImg.onerror = () => {
+      if (retries > 0) {
+        // Retry after delay (Lambda processing)
+        setTimeout(() => {
+          this.loadDisplayImage(img, loading, displayUrl.split('?')[0] + '?retry=' + Date.now(), retries - 1);
+        }, 2000);
+      } else {
+        // All retries failed
+        loading.style.display = 'none';
+        img.alt = '⚠️ Failed to load';
+        img.style.display = 'block';
+      }
+    };
+  },
+
+
+
+  updateNavArrows() {
+    const prevBtn = document.getElementById('lightboxPrev');
+    const nextBtn = document.getElementById('lightboxNext');
+    if (prevBtn) prevBtn.style.display = this.currentPhotoIndex > 0 ? 'flex' : 'none';
+    if (nextBtn) nextBtn.style.display = this.currentPhotoIndex < this.photoUrls.length - 1 ? 'flex' : 'none';
+  },
+
+  prevPhoto() {
+    if (this.currentPhotoIndex > 0) {
+      this.currentPhotoIndex--;
+      this.showCurrentPhoto();
+    }
+  },
+
+  nextPhoto() {
+    if (this.currentPhotoIndex < this.photoUrls.length - 1) {
+      this.currentPhotoIndex++;
+      this.showCurrentPhoto();
+    }
+  },
+
+  showCurrentPhoto() {
+    const photo = this.photoUrls[this.currentPhotoIndex];
+    const img = document.getElementById('lightboxImg');
+    const download = document.getElementById('lightboxDownload');
+    const loading = document.getElementById('lightboxLoading');
+    
+    // Show display image (1600px - good for viewing)
+    this.loadDisplayImage(img, loading, photo.display);
+    
+    // Download uses original via proxy
+    const photoId = photo.original.split('/').pop().split('.')[0];
+    download.href = `/galleries/download/${photoId}`;
+    this.updateNavArrows();
+  },
+
+  closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+    document.body.style.overflow = '';
+    this.currentPhotoIndex = -1;
+  },
+
+  // Delete photo
+  async deletePhoto(galleryUuid, photoId, button) {
+    if (!confirm('Delete this photo?')) return;
+    
+    try {
+      const response = await fetch(`/g/${galleryUuid}/photos/${photoId}`, {
+        method: 'DELETE'
       });
       
-      // Set background color based on type
-      switch(type) {
-        case 'success':
-          notification.style.background = '#28a745';
-          break;
-        case 'error':
-          notification.style.background = '#dc3545';
-          break;
-        default:
-          notification.style.background = '#007bff';
-      }
-      
-      // Add to page and animate
-      document.body.appendChild(notification);
-      
-      setTimeout(() => {
-        notification.style.transform = 'translateX(0)';
-      }, 10);
-      
-      // Remove after delay
-      setTimeout(() => {
-        notification.style.transform = 'translateX(100%)';
+      if (response.ok) {
+        const item = button.closest('.item');
+        item.style.transform = 'scale(0)';
         setTimeout(() => {
-          if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-          }
-        }, 300);
-      }, config.ui.notificationDuration);
-    }
-  };
-  
-  // ========================================================================
-  // Share Management
-  // ========================================================================
-  
-  const Share = {
-    toggleShare() {
-      const shareContent = document.getElementById('shareContent');
-      const shareBtn = document.getElementById('shareBtn');
-      const shareArrow = shareBtn?.querySelector('.share-arrow');
-      
-      if (!shareContent || !shareArrow) return;
-      
-      if (shareContent.style.display === 'none') {
-        // Show share content
-        shareContent.style.display = 'grid';
-        shareArrow.textContent = '▲';
-        shareBtn.classList.add('active');
+          item.remove();
+          // Re-layout grid after removal
+          if (window.galleryFlex) window.galleryFlex.layout();
+        }, 200);
+        
+        // Update count
+        const counter = document.getElementById('photoCount');
+        counter.textContent = parseInt(counter.textContent) - 1;
+        
+        // Remove from localStorage tracking
+        this.removeMyPhoto(galleryUuid, photoId);
       } else {
-        // Hide share content
-        shareContent.style.display = 'none';
-        shareArrow.textContent = '▼';
-        shareBtn.classList.remove('active');
+        const data = await response.json();
+        this.showToast(data.error || 'Failed to delete', 'warning');
       }
-    },
-    
-    copyCurrentUrl() {
-      const copyBtn = document.querySelector('.copy-btn');
-      const copyText = copyBtn?.querySelector('.copy-text');
-      const copyCheck = copyBtn?.querySelector('.copy-check');
-      
-      if (!copyBtn) return;
-      
-      const currentUrl = window.location.href;
-      
-      try {
-        navigator.clipboard.writeText(currentUrl).then(() => {
-          this.showCopyFeedback(copyText, copyCheck, copyBtn);
-        }).catch(() => {
-          this.fallbackCopy(currentUrl, copyText, copyCheck, copyBtn);
-        });
-      } catch (err) {
-        this.fallbackCopy(currentUrl, copyText, copyCheck, copyBtn);
-      }
-    },
-    
-    showCopyFeedback(copyText, copyCheck, copyBtn) {
-      copyText.style.display = 'none';
-      copyCheck.style.display = 'inline';
-      copyBtn.style.background = '#28a745';
-      
-      setTimeout(() => {
-        copyText.style.display = 'inline';
-        copyCheck.style.display = 'none';
-        copyBtn.style.background = '';
-      }, 2000);
-    },
-    
-    fallbackCopy(currentUrl, copyText, copyCheck, copyBtn) {
-      // Create temporary input element for fallback
-      const tempInput = document.createElement('input');
-      tempInput.value = currentUrl;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      tempInput.setSelectionRange(0, 99999);
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
-      
-      this.showCopyFeedback(copyText, copyCheck, copyBtn);
+    } catch (error) {
+      this.showToast('Failed to delete photo', 'warning');
     }
-  };
+  },
+
+  // Share modal
+  toggleShare() {
+    const modal = document.getElementById('shareModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+  },
+
+  closeShare() {
+    const modal = document.getElementById('shareModal');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  },
+
+  copyLink() {
+    const input = document.getElementById('shareUrl');
+    const url = input.value;
+    
+    // Use modern Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        this.showToast('Link copied! ✓');
+      }).catch(() => {
+        // Fallback to old method
+        this.fallbackCopy(input);
+      });
+    } else {
+      // Fallback for older browsers
+      this.fallbackCopy(input);
+    }
+  },
+
+  copyMobileLink() {
+    const input = document.getElementById('mobileShareUrl');
+    const url = input.value;
+    
+    // Use modern Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        this.showToast('Link copied! ✓');
+      }).catch(() => {
+        // Fallback to old method
+        this.fallbackCopy(input);
+      });
+    } else {
+      // Fallback for older browsers
+      this.fallbackCopy(input);
+    }
+  },
+
+  fallbackCopy(input) {
+    input.select();
+    try {
+      document.execCommand('copy');
+      this.showToast('Link copied! ✓');
+    } catch (err) {
+      this.showToast('Failed to copy', 'warning');
+    }
+  },
+
+  // Title editing - cached elements
+  _titleElements: null,
   
-  // ========================================================================
-  // Public API
-  // ========================================================================
-  
-  return {
-    // Initialization
-    init() {
-      if (state.isInitialized) {
-        console.log('Gallery already initialized');
-        return;
+  getTitleElements() {
+    if (!this._titleElements) {
+      this._titleElements = {
+        title: document.getElementById('galleryTitle'),
+        form: document.getElementById('titleEditForm'),
+        input: document.getElementById('titleInput')
+      };
+    }
+    return this._titleElements;
+  },
+
+  editTitle() {
+    const { title, form, input } = this.getTitleElements();
+    if (title && form) {
+      title.style.display = 'none';
+      form.style.display = 'flex';
+      input.focus();
+      input.select();
+    }
+  },
+
+  cancelEditTitle() {
+    const { title, form, input } = this.getTitleElements();
+    if (title && form) {
+      form.style.display = 'none';
+      title.style.display = 'block';
+      input.value = title.textContent;
+    }
+  },
+
+  onTitleSaved(event) {
+    const { title, form } = this.getTitleElements();
+    if (event.detail.successful) {
+      form.style.display = 'none';
+      title.style.display = 'block';
+      this.showToast('Title updated ✓');
+    } else {
+      this.showToast('Failed to update title', 'warning');
+    }
+  },
+
+  // ============================================
+  // Slideshow
+  // ============================================
+  slideshowIndex: 0,
+  slideshowInterval: null,
+  slideshowPaused: false,
+  slideshowHideTimeout: null,
+
+  startSlideshow() {
+    // Build photo URLs if not already done
+    if (this.photoUrls.length === 0) {
+      this.photoUrls = Array.from(document.querySelectorAll('#photoGrid .item img')).map(img => {
+        const onclick = img.getAttribute('onclick');
+        if (!onclick) return null;
+        const match = onclick.match(/Gallery\.openLightbox\('([^']+)',\s*'([^']+)'\)/);
+        return match ? { display: match[1], original: match[2] } : null;
+      }).filter(Boolean);
+    }
+
+    if (this.photoUrls.length === 0) return;
+
+    this.slideshowIndex = 0;
+    this.slideshowPaused = false;
+    
+    const slideshow = document.getElementById('slideshow');
+    slideshow.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    this.showSlideshowPhoto();
+    this.resumeSlideshow();
+    this.updateSlideshowButton();
+    
+    // Mouse move listener for controls
+    slideshow.addEventListener('mousemove', this.onSlideshowMouseMove.bind(this));
+  },
+
+  showSlideshowPhoto() {
+    const img = document.getElementById('slideshowImg');
+    const photo = this.photoUrls[this.slideshowIndex];
+    if (photo) {
+      img.src = photo.display;
+    }
+  },
+
+  nextSlideshowPhoto() {
+    this.slideshowIndex++;
+    if (this.slideshowIndex >= this.photoUrls.length) {
+      this.slideshowIndex = 0; // Loop
+    }
+    this.showSlideshowPhoto();
+  },
+
+  resumeSlideshow() {
+    if (this.slideshowInterval) clearInterval(this.slideshowInterval);
+    this.slideshowInterval = setInterval(() => {
+      this.nextSlideshowPhoto();
+    }, 5000);
+  },
+
+  toggleSlideshow() {
+    this.slideshowPaused = !this.slideshowPaused;
+    
+    if (this.slideshowPaused) {
+      clearInterval(this.slideshowInterval);
+      this.slideshowInterval = null;
+    } else {
+      this.resumeSlideshow();
+    }
+    
+    this.updateSlideshowButton();
+  },
+
+  updateSlideshowButton() {
+    const icon = document.getElementById('slideshowIcon');
+    const label = document.getElementById('slideshowLabel');
+    
+    if (this.slideshowPaused) {
+      icon.textContent = '▶';
+      label.textContent = 'Play';
+    } else {
+      icon.textContent = '❚❚';
+      label.textContent = 'Pause';
+    }
+  },
+
+  onSlideshowMouseMove() {
+    const slideshow = document.getElementById('slideshow');
+    slideshow.classList.add('show-controls');
+    
+    if (this.slideshowHideTimeout) clearTimeout(this.slideshowHideTimeout);
+    this.slideshowHideTimeout = setTimeout(() => {
+      slideshow.classList.remove('show-controls');
+    }, 2000);
+  },
+
+  stopSlideshow() {
+    const slideshow = document.getElementById('slideshow');
+    slideshow.style.display = 'none';
+    slideshow.classList.remove('show-controls');
+    document.body.style.overflow = '';
+    
+    if (this.slideshowInterval) {
+      clearInterval(this.slideshowInterval);
+      this.slideshowInterval = null;
+    }
+    if (this.slideshowHideTimeout) {
+      clearTimeout(this.slideshowHideTimeout);
+      this.slideshowHideTimeout = null;
+    }
+    
+    this.slideshowPaused = false;
+  }
+};
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    const lightbox = document.getElementById('lightbox');
+    const slideshow = document.getElementById('slideshow');
+    const shareModal = document.getElementById('shareModal');
+    const titleForm = document.getElementById('titleEditForm');
+    
+    // Slideshow takes priority
+    if (slideshow && slideshow.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        Gallery.stopSlideshow();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        Gallery.toggleSlideshow();
       }
-      
-      Layout.init();
-      Lightbox.init();
-      Upload.init();
-      CoverPhoto.init();
-      PhotoDelete.init();
-      
-      state.isInitialized = true;
-      console.log('Gallery module initialized');
-    },
-    
-    // Public methods for external use
-    addPhoto: (photoHtml) => Layout.addPhoto(photoHtml),
-    refreshLayout: () => Layout.initFlexImages(),
-    refreshLightbox: () => Lightbox.refreshListeners(),
-    initNewPhotos: () => ImagePoller.initNewPhotos(),
-    showNotification: (message, type) => UI.showNotification(message, type),
-    
-    // Share functionality
-    toggleShare: () => Share.toggleShare(),
-    copyCurrentUrl: () => Share.copyCurrentUrl()
-  };
-  
-})();
+    } else if (lightbox && lightbox.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        Gallery.closeLightbox();
+      } else if (e.key === 'ArrowLeft') {
+        Gallery.prevPhoto();
+      } else if (e.key === 'ArrowRight') {
+        Gallery.nextPhoto();
+      }
+    } else if (shareModal && shareModal.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        Gallery.closeShare();
+      }
+    } else if (titleForm && titleForm.style.display === 'flex') {
+      if (e.key === 'Escape') {
+        Gallery.cancelEditTitle();
+      }
+    }
+  });
 
-// ========================================================================
-// Auto-initialization
-// ========================================================================
-
-document.addEventListener('DOMContentLoaded', function() {
-  Gallery.init();
+  // Listen for HX-Trigger uploadComplete event
+  document.body.addEventListener('uploadComplete', (e) => {
+    Gallery.onUploadResult(e);
+  });
 });
-
-// Make Gallery available globally
-window.Gallery = Gallery;

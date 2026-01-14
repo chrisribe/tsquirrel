@@ -1,156 +1,37 @@
-<div class="hero-section">
+<section class="hero">
   <div class="hero-content">
-    <h1>Welcome to EventGlimpse</h1>
-    <p class="hero-subtitle">Create memorable events and capture precious moments with friends and family</p>
+    <h1>Collect Everyone's Photos<br><span class="hero-highlight">Without the Chaos</span></h1>
+    <p class="hero-subtitle">One link. No apps. No accounts for guests.</p>
     
     <% if (user) { %>
-      <div class="user-welcome">
-        <h2>Welcome back, <%= user.username %>! 🎉</h2>
-        <div class="action-buttons">
-          <a href="/events" class="button primary">View My Events</a>
-          <a href="/events" class="button secondary">Create New Event</a>
-        </div>
-      </div>
+      <a href="/galleries" role="button" class="hero-cta">Go to My Galleries</a>
     <% } else { %>
-      <div class="guest-welcome">
-        <div class="action-buttons">
-          <a href="/register" class="button primary">Get Started Free</a>
-          <a href="/auth/login" class="button secondary">Sign In</a>
-        </div>
+      <div class="hero-buttons">
+        <a href="/register" role="button" class="hero-cta">Start Your Gallery</a>
+        <a href="/auth/login" role="button" class="outline hero-cta-secondary">Sign In</a>
       </div>
     <% } %>
   </div>
-</div>
-
-<section class="features-section">
-  <h2>Why Choose EventGlimpse?</h2>
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon">📅</div>
-      <h3>Easy Planning</h3>
-      <p>Create and organize events effortlessly with our intuitive interface</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📸</div>
-      <h3>Photo Galleries</h3>
-      <p>Share and collect memories from your events in beautiful galleries</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔗</div>
-      <h3>Easy Sharing</h3>
-      <p>Share events with unique links that friends can access instantly</p>
-    </div>
-  </div>
 </section>
 
-<style>
-.hero-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 4rem 2rem;
-  text-align: center;
-  margin: -1rem -1rem 3rem -1rem;
-}
-
-.hero-content h1 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  font-weight: 700;
-}
-
-.hero-subtitle {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
-  opacity: 0.9;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.action-buttons .button {
-  padding: 1rem 2rem;
-  text-decoration: none;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: transform 0.2s ease;
-}
-
-.action-buttons .button:hover {
-  transform: translateY(-2px);
-}
-
-.action-buttons .primary {
-  background: white;
-  color: #667eea;
-}
-
-.action-buttons .secondary {
-  background: transparent;
-  color: white;
-  border: 2px solid white;
-}
-
-.features-section {
-  padding: 3rem 1rem;
-  text-align: center;
-}
-
-.features-section h2 {
-  margin-bottom: 3rem;
-  color: #333;
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.feature-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-4px);
-}
-
-.feature-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.feature-card h3 {
-  margin-bottom: 1rem;
-  color: #333;
-}
-
-.feature-card p {
-  color: #666;
-  line-height: 1.6;
-}
-
-@media (max-width: 768px) {
-  .hero-content h1 {
-    font-size: 2rem;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .action-buttons .button {
-    width: 200px;
-  }
-}
-</style>
+<!-- Problem/Solution Story -->
+<section class="container">
+  <div class="problem-section">
+    <h2 class="section-title">Sound familiar?</h2>
+    <div class="pain-points">
+      <div class="pain-item">📱 "Send me your photos!" → crickets</div>
+      <div class="pain-item">🤷 Uncle Bob: "What's AirDrop?"</div>
+      <div class="pain-item">😤 Karen: "I can't access the Google Drive"</div>
+      <div class="pain-item">⏰ WeTransfer: "Your link expired"</div>
+    </div>
+    
+    <p class="solution-line">With EventGlimpse, they just click and drop.</p>
+    
+    <% if (!user) { %>
+    <div class="solution-cta">
+      <a href="/register" role="button" class="hero-cta">Start Your Gallery</a>
+      <p class="cta-subtext">Quick setup. No commitment.</p>
+    </div>
+    <% } %>
+  </div>
+</section>

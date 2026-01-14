@@ -1,10 +1,20 @@
+# Development overrides
 services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: devpassword123
+
   server:
+    ports:
+      - "3000:3000"
     volumes:
       - ./server:/app
       - /app/node_modules
     environment:
-      NODE_ENV: dev
+      DATABASE_URL: postgres://dockeruser:devpassword123@db:5432/appdb
+      NODE_ENV: development
+      PUBLIC_URL: ${PUBLIC_URL:-}
+    command: npm run dev
 
 # Don't use external proxy network in dev mode
 networks:

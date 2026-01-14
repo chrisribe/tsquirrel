@@ -1,0 +1,247 @@
+<% 
+  // Format date for display
+  const formatDate = (date) => {
+    const d = new Date(date);
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return d.toLocaleDateString('en-US', options).toUpperCase();
+  };
+  
+  // Get first photo for hero background
+  const heroPhoto = pageData.photos && pageData.photos.length > 0 ? pageData.photos[0] : null;
+%>
+
+<div class="gallery-showcase" data-gallery-uuid="<%= pageData.gallery.uuid %>">
+  
+  <!-- Floating Menu -->
+  <div class="gallery-floating-menu">
+    <button class="floating-menu-btn" onclick="this.parentElement.classList.toggle('open')" aria-label="Menu">☰</button>
+    <div class="floating-menu-dropdown">
+      <a href="/">⚡ EventGlimpse</a>
+      <% if (user) { %>
+        <a href="/galleries">📸 My Galleries</a>
+        <% if (user.role === 'admin') { %>
+          <a href="/admin">⚙️ Admin</a>
+        <% } %>
+        <a href="#" hx-post="/auth/logout" hx-swap="none">🚪 Logout</a>
+      <% } else { %>
+        <a href="/auth/login">Log in</a>
+        <a href="/register">Sign up free</a>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Hero Section -->
+  <section class="gallery-hero">
+    <% if (heroPhoto) { %>
+      <div class="hero-background" style="background-image: url('<%= heroPhoto.display_url %>');"></div>
+    <% } else { %>
+      <div class="hero-background" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+    <% } %>
+    <div class="hero-overlay"></div>
+    
+    <div class="hero-content">
+      <div class="hero-photographer">EventGlimpse</div>
+      <div class="hero-photographer-sub">GALLERY</div>
+      
+      <div class="hero-date"><%= formatDate(pageData.gallery.created_at) %></div>
+      
+      <h1 class="hero-title"><%= pageData.gallery.title %></h1>
+      
+      <a class="hero-cta" onclick="document.getElementById('galleryContent').scrollIntoView({ behavior: 'smooth' })">
+        View Gallery
+      </a>
+    </div>
+    
+    <div class="hero-scroll">▼</div>
+  </section>
+
+  <!-- Minimal Toolbar -->
+  <nav class="gallery-toolbar" id="galleryContent">
+    <div class="toolbar-left">
+      <% if (pageData.isOwner) { %>
+        <span class="toolbar-title editable-title" id="galleryTitle" onclick="Gallery.editTitle()"><%= pageData.gallery.title %></span>
+        <form id="titleEditForm" class="title-edit-form" style="display: none;"
+          hx-patch="/galleries/<%= pageData.gallery.uuid %>/title"
+          hx-target="#galleryTitle"
+          hx-swap="innerHTML"
+          hx-on::after-request="Gallery.onTitleSaved(event)">
+          <input type="text" name="title" id="titleInput" value="<%= pageData.gallery.title %>" maxlength="100" required>
+          <button type="submit" class="save-btn">✓</button>
+          <button type="button" class="cancel-btn" onclick="Gallery.cancelEditTitle()">✕</button>
+        </form>
+      <% } else { %>
+        <span class="toolbar-title"><%= pageData.gallery.title %></span>
+      <% } %>
+      <span class="toolbar-count"><span id="photoCount"><%= pageData.photoCount %></span> photos</span>
+    </div>
+    
+    <div class="toolbar-right">
+      <!-- Slideshow -->
+      <button class="toolbar-btn" title="Slideshow" onclick="Gallery.startSlideshow()">
+        ▷
+      </button>
+      
+      <!-- Placeholder buttons (no function yet) -->
+      <button class="toolbar-btn" title="Download all" disabled style="opacity: 0.4;">
+        ⬇
+      </button>
+      
+      <div class="toolbar-separator"></div>
+      
+      <!-- Share button with accent -->
+      <% if (pageData.gallery.qr_code_url) { %>
+        <button class="toolbar-share" onclick="Gallery.toggleShare()" title="Share this gallery">
+          Share
+        </button>
+      <% } %>
+      
+      <div class="toolbar-separator"></div>
+      
+      <!-- Upload dropdown -->
+      <div class="upload-dropdown">
+        <button class="toolbar-upload" onclick="this.parentElement.classList.toggle('open')">
+          <span>📷</span>
+          <span>Add</span>
+          <span class="dropdown-arrow">▾</span>
+        </button>
+        <div class="upload-dropdown-menu">
+          <label>
+            <span>📷</span> Photos
+            <input 
+              type="file" 
+              id="photoInput" 
+              name="photoFile" 
+              accept="image/*" 
+              multiple 
+              onchange="Gallery.onFilesSelected(this); this.closest('.upload-dropdown').classList.remove('open');">
+          </label>
+          <label>
+            <span>📁</span> Folder
+            <input 
+              type="file" 
+              id="folderInput" 
+              name="photoFile" 
+              accept="image/*" 
+              webkitdirectory 
+              directory
+              multiple 
+              onchange="Gallery.onFilesSelected(this); this.closest('.upload-dropdown').classList.remove('open');">
+          </label>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Gallery Content -->
+  <div class="gallery-content">
+    <!-- Upload Queue (floating) -->
+    <div id="uploadQueue" class="upload-queue-showcase" style="display: none;">
+      <div class="queue-header">
+        <span class="queue-status">Uploading <span id="queueCurrent">0</span> of <span id="queueTotal">0</span></span>
+        <button type="button" class="queue-cancel" onclick="Gallery.cancelQueue()">Cancel</button>
+      </div>
+      <progress id="queueProgress" value="0" max="100"></progress>
+      <div class="queue-info">
+        <span id="queueAdded">0</span> added, <span id="queueSkipped">0</span> skipped
+      </div>
+    </div>
+    
+    <!-- Hidden form for uploads -->
+    <form id="uploadForm" style="display:none;" data-gallery-uuid="<%= pageData.gallery.uuid %>"></form>
+
+    <!-- Flex Images Grid -->
+    <div class="flex-images" id="photoGrid">
+      <% if (pageData.photos && pageData.photos.length > 0) { %>
+        <% pageData.photos.forEach((photo, index) => { %>
+          <div class="item" 
+               data-photo-id="<%= photo.photo_id %>" 
+               data-w="<%= photo.width || 300 %>" 
+               data-h="<%= photo.height || 200 %>">
+            <img 
+              src="<%= photo.display_url %>" 
+              alt="Photo"
+              loading="lazy"
+              onload="this.classList.add('loaded')"
+              onerror="Gallery.retryImage(this)"
+              onclick="Gallery.openLightbox('<%= photo.display_url %>', '<%= photo.original_url %>')">
+            
+            <% if (pageData.isOwner) { %>
+              <button 
+                class="delete-btn"
+                onclick="event.stopPropagation(); Gallery.deletePhoto('<%= pageData.gallery.uuid %>', '<%= photo.photo_id %>', this)">
+                ×
+              </button>
+            <% } %>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+
+    <% if (!pageData.photos || pageData.photos.length === 0) { %>
+      <div class="empty-state-showcase" id="emptyState">
+        <p>No photos yet</p>
+        <p class="hint">Be the first to share a memory!</p>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Share Modal -->
+  <% if (pageData.gallery.qr_code_url) { %>
+  <div id="shareModal" class="share-modal" onclick="Gallery.closeShare()" style="display: none;">
+    <div class="share-content" onclick="event.stopPropagation()">
+      <button class="close-btn" onclick="Gallery.closeShare()">×</button>
+      <h2>Share Gallery</h2>
+      <div class="qr-display">
+        <img src="<%= pageData.gallery.qr_code_url %>" alt="QR Code" class="qr-code-large">
+        <p class="qr-hint">Scan with phone camera</p>
+      </div>
+      <div class="share-buttons">
+        <a href="https://www.facebook.com/sharer/sharer.php?u=<%- encodeURIComponent(pageData.shareUrl) %>" 
+           target="_blank" 
+           rel="noopener noreferrer" 
+           class="share-btn-facebook">
+          <span>Facebook</span>
+        </a>
+        <button onclick="Gallery.copyLink()" class="share-btn-copy">
+          <span>🔗</span>
+          <span>Copy Link</span>
+        </button>
+      </div>
+      <div class="share-link">
+        <input type="text" id="shareUrl" value="<%= pageData.shareUrl %>" readonly onclick="this.select()">
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox-showcase" onclick="Gallery.closeLightbox()" style="display: none;">
+    <button id="lightboxPrev" class="nav-btn prev-btn" onclick="event.stopPropagation(); Gallery.prevPhoto()">‹</button>
+    <div id="lightboxLoading" class="lightbox-loading">Loading...</div>
+    <img id="lightboxImg" src="" alt="Full size photo" onclick="event.stopPropagation()" style="display: none;">
+    <button id="lightboxNext" class="nav-btn next-btn" onclick="event.stopPropagation(); Gallery.nextPhoto()">›</button>
+    <a id="lightboxDownload" href="" download class="download-btn" onclick="event.stopPropagation()">⬇ Download</a>
+    <button class="close-btn" onclick="Gallery.closeLightbox()">×</button>
+  </div>
+
+  <!-- Slideshow -->
+  <div id="slideshow" class="slideshow-overlay" style="display: none;">
+    <img id="slideshowImg" src="" alt="Slideshow photo">
+    <div id="slideshowControls" class="slideshow-controls">
+      <button id="slideshowPause" class="slideshow-btn" onclick="Gallery.toggleSlideshow()">
+        <span id="slideshowIcon">❚❚</span>
+        <span id="slideshowLabel">Pause</span>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Initialize flex-images after DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof FlexImages !== 'undefined') {
+    window.galleryFlex = new FlexImages('#photoGrid', { rowHeight: 280 });
+  }
+});
+</script>

@@ -1,0 +1,39 @@
+<section class="gallery-list container">
+  <header class="list-header">
+    <h1>My Galleries</h1>
+  </header>
+
+  <!-- Create Form -->
+  <div class="create-gallery-form">
+    <form hx-post="/galleries" hx-swap="none">
+      <fieldset role="group">
+        <input type="text" name="title" placeholder="New gallery name..." required>
+        <button type="submit">Create</button>
+      </fieldset>
+    </form>
+  </div>
+
+  <!-- Gallery List -->
+  <div id="galleryList" class="gallery-cards">
+    <% if (pageData.galleries && pageData.galleries.length > 0) { %>
+      <% pageData.galleries.forEach(gallery => { %>
+        <article class="gallery-card">
+          <a href="/g/<%= gallery.uuid %>" class="gallery-link">
+            <strong><%= gallery.title %></strong>
+            <span class="photo-count"><%= gallery.photo_count || 0 %> photos</span>
+          </a>
+          <button 
+            class="delete-btn"
+            hx-delete="/galleries/<%= gallery.id %>"
+            hx-confirm="Delete '<%= gallery.title %>' and all its photos?"
+            hx-target="closest article"
+            hx-swap="outerHTML">
+            ×
+          </button>
+        </article>
+      <% }); %>
+    <% } else { %>
+      <p class="empty-state">No galleries yet. Create your first one above!</p>
+    <% } %>
+  </div>
+</section>

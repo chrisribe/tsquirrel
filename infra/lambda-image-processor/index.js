@@ -11,7 +11,7 @@
  * 3. Lambda downloads original image
  * 4. Creates 3 optimized versions in public folders with auto-rotation:
  *    - thumbs/: 200px wide thumbnails (respects EXIF orientation)
- *    - display/: 800px wide gallery images (respects EXIF orientation)
+ *    - display/: 1600px wide gallery images (respects EXIF orientation)
  *    - originals/: full-size optimized copies (respects EXIF orientation)
  * 5. Deletes the private upload to save storage
  * 
@@ -40,9 +40,9 @@ const BUCKET = process.env.BUCKET_NAME || "eventglimpse"; // Fallback for local 
  * - original: Full-size but optimized (same dimensions, better compression)
  */
 const SIZES = {
-  thumb: { width: 200, prefix: "thumbs/" },    // Grid thumbnails
-  display: { width: 800, prefix: "display/" }, // Gallery display images
-  original: { prefix: "originals/" }           // Full-size optimized copies
+  thumb: { width: 200, prefix: "thumbs/" },     // Grid thumbnails
+  display: { width: 1600, prefix: "display/" }, // Gallery display images (1600px for modern screens)
+  original: { prefix: "originals/" }            // Full-size optimized copies
 };
 
 /**

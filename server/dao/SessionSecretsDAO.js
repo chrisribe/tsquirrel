@@ -30,11 +30,12 @@ class SessionSecretsDAO {
   }
 
   async cleanupExpiredSecrets(maxAgeDays = 14) {
-    await this.pool.query(`
-      DELETE FROM session_secrets 
-      WHERE active = false 
-        AND created_at < NOW() - INTERVAL '${maxAgeDays} days'
-    `);
+    await this.pool.query(
+      `DELETE FROM session_secrets 
+       WHERE active = false 
+         AND created_at < NOW() - INTERVAL '1 day' * $1`,
+      [maxAgeDays]
+    );
   }
 }
 
