@@ -32,6 +32,10 @@ async function startServer() {
       }
     }
   }
+
+  // Run database migrations
+  const { runMigrations } = require('./services/MigrationService');
+  await runMigrations(pool);
   
   // Middleware
   app.use(express.json());
