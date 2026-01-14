@@ -556,6 +556,43 @@ const Gallery = {
     }
   },
 
+  // Upgrade modal
+  showUpgrade() {
+    const modal = document.getElementById('upgradeModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+  },
+
+  closeUpgrade() {
+    const modal = document.getElementById('upgradeModal');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  },
+
+  startCheckout() {
+    // Get gallery UUID from page
+    const container = document.querySelector('[data-gallery-uuid]');
+    const uuid = container ? container.dataset.galleryUuid : null;
+    
+    if (!uuid) {
+      this.showToast('Error: Gallery not found');
+      return;
+    }
+    
+    // TODO: Call Stripe checkout endpoint
+    // For now, show placeholder
+    this.showToast('Stripe checkout coming soon!');
+    
+    // Future implementation:
+    // fetch(`/galleries/${uuid}/checkout`, { method: 'POST' })
+    //   .then(res => res.json())
+    //   .then(data => window.location.href = data.checkoutUrl);
+  },
+
   copyLink() {
     const input = document.getElementById('shareUrl');
     const url = input.value;
