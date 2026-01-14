@@ -123,6 +123,14 @@ class GalleryDAO {
     return result.rows;
   }
 
+  async getPhotoById(photoId) {
+    const result = await this.pool.query(
+      'SELECT photo_id, s3_key, gallery_uuid FROM photos WHERE photo_id = $1',
+      [photoId]
+    );
+    return result.rows[0];
+  }
+
   async getPhotoCount(galleryUuid) {
     const result = await this.pool.query(
       'SELECT COUNT(*) as count FROM photos WHERE gallery_uuid = $1',

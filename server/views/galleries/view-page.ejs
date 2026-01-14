@@ -81,10 +81,16 @@
         ▷
       </button>
       
-      <!-- Placeholder buttons (no function yet) -->
-      <button class="toolbar-btn" title="Download all" disabled style="opacity: 0.4;">
+      <!-- Download all as ZIP -->
+      <% if (pageData.photoCount > 0) { %>
+      <a href="/galleries/<%= pageData.gallery.uuid %>/download-all" class="toolbar-btn" title="Download all photos as ZIP">
+        ⬇
+      </a>
+      <% } else { %>
+      <button class="toolbar-btn" title="No photos to download" disabled style="opacity: 0.4;">
         ⬇
       </button>
+      <% } %>
       
       <div class="toolbar-separator"></div>
       

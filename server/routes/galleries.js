@@ -69,4 +69,9 @@ router.get('/download/:photoId', (req, res, next) =>
   controller.downloadPhoto(req, res, next)
 );
 
+// Download all photos as ZIP
+router.get('/:uuid/download-all', (req, res, next) => 
+  controller.downloadAllPhotos(req, res, next)
+);
+
 module.exports = router;

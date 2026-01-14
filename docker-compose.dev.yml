@@ -14,7 +14,7 @@ services:
       DATABASE_URL: postgres://dockeruser:devpassword123@db:5432/appdb
       NODE_ENV: development
       PUBLIC_URL: ${PUBLIC_URL:-}
-    command: npm run dev
+    command: sh -c "npm install && npm run dev"
 
 # Don't use external proxy network in dev mode
 networks:
