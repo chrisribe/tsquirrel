@@ -1,0 +1,87 @@
+<%# Upgrade Modal Partial - pass type ('gallery-limit' or 'zip-download') and limits from GalleryService.getAllLimits() %>
+<% 
+  const freeLimits = limits?.free || { maxGalleries: 1, maxPhotosPerGallery: 50, retentionDays: 7 };
+  const upgradeLimits = limits?.event || { maxGalleries: 1, maxPhotosPerGallery: 500, retentionDays: 90, price: 5 };
+  const galleryText = upgradeLimits.maxGalleries === -1 ? 'unlimited galleries' : (upgradeLimits.maxGalleries === 1 ? '1 gallery' : `up to ${upgradeLimits.maxGalleries} galleries`);
+%>
+<div id="upgradeModal" class="upgrade-modal" onclick="Upgrade.close()" style="display: none;">
+  <div class="upgrade-content" onclick="event.stopPropagation()">
+    <button class="close-btn" onclick="Upgrade.close()">×</button>
+    
+    <% if (type === 'gallery-limit') { %>
+      <!-- Gallery Limit Upgrade -->
+      <div class="upgrade-header">
+        <span class="upgrade-icon">🎉</span>
+        <h2>Need More Galleries?</h2>
+        <p class="upgrade-subtitle">You've reached the free tier limit of <%= freeLimits.maxGalleries %> galleries</p>
+      </div>
+      
+      <div class="upgrade-features">
+        <div class="feature">
+          <span class="feature-icon">✓</span>
+          <span>Create <strong><%= galleryText %></strong></span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon">✓</span>
+          <span>Up to <strong><%= upgradeLimits.maxPhotosPerGallery.toLocaleString() %> photos</strong> per gallery</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon">✓</span>
+          <span>Galleries extended to <strong><%= upgradeLimits.retentionDays %> days</strong></span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon">✓</span>
+          <span>Download all photos as <strong>ZIP</strong></span>
+        </div>
+      </div>
+      
+      <div class="upgrade-price">
+        <span class="price-amount">$<%= upgradeLimits.price %></span>
+        <span class="price-label">per gallery</span>
+      </div>
+      
+      <button class="upgrade-btn" onclick="Upgrade.startCheckout('gallery-limit')">
+        Upgrade Now
+      </button>
+      
+    <% } else if (type === 'zip-download') { %>
+      <!-- ZIP Download Upgrade -->
+      <div class="upgrade-header">
+        <span class="upgrade-icon">📦</span>
+        <h2>Download All Photos</h2>
+        <p class="upgrade-subtitle">Get every photo from this gallery in one ZIP file</p>
+      </div>
+      
+      <div class="upgrade-features">
+        <div class="feature">
+          <span class="feature-icon">✓</span>
+          <span>Download all <strong><%= photoCount || 0 %> photos</strong> as ZIP</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon">✓</span>
+          <span>Full resolution originals</span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon">✓</span>
+          <span>Gallery extended to <strong><%= upgradeLimits.retentionDays %> days</strong></span>
+        </div>
+        <div class="feature">
+          <span class="feature-icon">✓</span>
+          <span>Upload up to <strong><%= upgradeLimits.maxPhotosPerGallery.toLocaleString() %> photos</strong></span>
+        </div>
+      </div>
+      
+      <div class="upgrade-price">
+        <span class="price-amount">$<%= upgradeLimits.price %></span>
+        <span class="price-label">one-time</span>
+      </div>
+      
+      <button class="upgrade-btn" onclick="Upgrade.startCheckout('zip-download', '<%= galleryUuid %>')">
+        Upgrade Now
+      </button>
+      
+    <% } %>
+    
+    <p class="upgrade-guarantee">Instant access • Secure payment via Stripe</p>
+  </div>
+</div>

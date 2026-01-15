@@ -2,14 +2,12 @@ const { getPhotoUrls, deletePhotoFromS3 } = require('../services/s3Service');
 const downloadService = require('../services/DownloadService');
 const PhotoService = require('../services/PhotoService');
 const QRService = require('../services/QRService');
-
-// Simple limits for free tier
-const MAX_GALLERIES_PER_USER = 5;
-const MAX_PHOTOS_PER_GALLERY = 100;
+const GalleryService = require('../services/GalleryService');
 
 class GalleryController {
-  constructor(galleryDAO) {
+  constructor(galleryDAO, userDAO) {
     this.galleryDAO = galleryDAO;
+    this.userDAO = userDAO;
   }
 
   // ============================================
@@ -32,9 +30,10 @@ class GalleryController {
       
       res.respondWithTemplateOrJson({
         galleries: galleriesWithThumbs,
+        limits: GalleryService.getAllLimits(),
         pageTitle: 'My Galleries - EventGlimpse',
         pageDescription: 'Manage your event photo galleries. Create new galleries and view uploaded photos.',
-        pageAssets: { css: ['gallery.css'] }
+        pageAssets: { css: ['gallery.css', 'upgrade-modal.css'], js: ['upgrade.js'] }
       }, 'galleries/list-page');
     } catch (error) {
       next(error);
@@ -53,12 +52,10 @@ class GalleryController {
       }
 
       // Check gallery limit
-      const galleryCount = await this.galleryDAO.getUserGalleryCount(req.session.user.id);
-      if (galleryCount >= MAX_GALLERIES_PER_USER) {
-        return res.status(403).json({ 
-          error: `Gallery limit reached (max ${MAX_GALLERIES_PER_USER}). Delete an existing gallery to create a new one.`,
-          hint: 'Need more galleries? Let us know if a paid tier would interest you — support@event-glimpse.com'
-        });
+      const userTier = req.session.user.tier || 'free';
+      const limitCheck = await GalleryService.checkGalleryLimit(this.galleryDAO, req.session.user.id, userTier);
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ error: limitCheck.error, hint: limitCheck.hint });
       }
 
       const gallery = await this.galleryDAO.createGallery(
@@ -141,6 +138,11 @@ class GalleryController {
       
       const isOwner = req.session?.user?.id === gallery.user_id;
       const shareUrl = `${baseUrl}/g/${gallery.uuid}`;
+      
+      // Get gallery owner's tier for paid features
+      const owner = await this.userDAO.getUserById(gallery.user_id);
+      const ownerTier = owner?.tier || 'free';
+      const isPaid = ownerTier !== 'free';
 
       // SEO metadata
       const photoCountText = photos.length === 1 ? '1 photo' : `${photos.length} photos`;
@@ -151,14 +153,16 @@ class GalleryController {
         photoCount: photos.length,
         shareUrl,
         isOwner,
-        isPaid: gallery.tier && gallery.tier !== 'free',
+        isPaid,
+        ownerTier,
+        limits: GalleryService.getAllLimits(),
         pageTitle: `${gallery.title} - EventGlimpse Gallery`,
         pageDescription: `View and share photos from ${gallery.title}. ${photoCountText} shared. Add your own photos - no account required!`,
         pageImage: photosWithUrls.length > 0 ? photosWithUrls[0].display_url : null,
         pageUrl: shareUrl,
         pageAssets: {
-          css: ['gallery-showcase.css'],
-          js: ['flex-images.js', 'gallery.js?v=6']
+          css: ['gallery-showcase.css', 'upgrade-modal.css'],
+          js: ['flex-images.js', 'gallery.js?v=6', 'upgrade.js']
         }
       }, 'galleries/view-page');
     } catch (error) {
@@ -184,19 +188,19 @@ class GalleryController {
         return res.status(404).json({ error: 'Gallery not found' });
       }
 
+      // Get gallery owner's tier for photo limit
+      const owner = await this.userDAO.getUserById(gallery.user_id);
+      const ownerTier = owner?.tier || 'free';
+
       // Check photo limit
-      const currentCount = await this.galleryDAO.getPhotoCount(uuid);
-      if (currentCount >= MAX_PHOTOS_PER_GALLERY) {
-        return res.status(403).json({ 
-          error: `Photo limit reached (max ${MAX_PHOTOS_PER_GALLERY} per gallery).`,
-          hint: 'Need more space? Let us know if a paid tier would interest you — support@event-glimpse.com'
-        });
+      const limitCheck = await GalleryService.checkPhotoLimit(this.galleryDAO, uuid, ownerTier);
+      if (!limitCheck.allowed) {
+        return res.status(402).json({ error: limitCheck.error, hint: limitCheck.hint });
       }
 
       // Filter duplicates
-      const remainingSlots = MAX_PHOTOS_PER_GALLERY - currentCount;
       const { newPhotos, skippedCount } = await PhotoService.filterDuplicates(
-        this.galleryDAO, uuid, photoMetadata, remainingSlots
+        this.galleryDAO, uuid, photoMetadata, limitCheck.remainingSlots
       );
 
       // Set HTMX headers
@@ -321,8 +325,11 @@ class GalleryController {
         return res.status(404).json({ error: 'Gallery not found' });
       }
 
-      // Check tier - ZIP download requires paid tier
-      if (gallery.tier === 'free' || !gallery.tier) {
+      // Get gallery owner's tier - ZIP download requires paid tier
+      const owner = await this.userDAO.getUserById(gallery.user_id);
+      const ownerTier = owner?.tier || 'free';
+      
+      if (ownerTier === 'free') {
         return res.status(402).json({ 
           error: 'ZIP download requires upgrade',
           upgradeUrl: `/g/${uuid}/upgrade`

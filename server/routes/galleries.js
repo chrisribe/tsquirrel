@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const GalleryDAO = require('../dao/GalleryDAO');
+const UserDAO = require('../dao/UserDAO');
 const GalleryController = require('../controllers/GalleryController');
 const { extractDimensions } = require('../middleware/fileUploadMiddleware');
 const requireAuth = require('../middleware/authMiddleware');
@@ -11,7 +12,7 @@ let controller;
 router.use((req, res, next) => {
   if (!controller) {
     const pool = req.app.get('pool');
-    controller = new GalleryController(new GalleryDAO(pool));
+    controller = new GalleryController(new GalleryDAO(pool), new UserDAO(pool));
   }
   next();
 });

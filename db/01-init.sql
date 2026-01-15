@@ -5,7 +5,10 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   email VARCHAR(254) UNIQUE NOT NULL,
   role VARCHAR(20) DEFAULT 'user',
-  status VARCHAR(20) DEFAULT 'active'
+  status VARCHAR(20) DEFAULT 'active',
+  tier VARCHAR(20) DEFAULT 'free',
+  paid_at TIMESTAMP,
+  expires_at TIMESTAMP
 );
 
 -- No default admin - run 'npm run create-admin' after first deploy

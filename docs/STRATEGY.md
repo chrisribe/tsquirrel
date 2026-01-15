@@ -38,8 +38,16 @@
 - **Pre-upload hash check** - Skip duplicate uploads entirely (saves bandwidth)
 - **Gallery/photo limits** - Free tier enforced with user feedback
 - **EXIF date sorting** - Photos sorted by taken_at from EXIF data
+- **ZIP download** - Bulk download all photos (gated behind paid tier)
 
-### 🔧 Just Fixed (Jan 4-6 Session)
+### 🔧 Just Fixed (Jan 15 Session)
+- **ZIP download** - Bulk download all gallery photos, unlocks with paid tier
+- Tier system refactored: Moved from galleries to users table (one payment covers all galleries)
+- Admin tier management: Dropdown to change user tier directly
+- Admin abuse review: View all galleries for any user with photo counts
+- Admin dashboard: Shows gallery/photo counts per user
+
+### 🔧 Previously Fixed (Jan 4-6 Session)
 - Homepage redesign: Hero section with coral gradient, Inter font, sticky header
 - App-like nav: Pill-shaped CTA buttons, "How it works" section
 - Share modal UX: Larger QR code (280x280), full-width copy button, keyboard support
@@ -50,8 +58,7 @@
 
 ### ⏳ Not Yet Built
 - Payment/billing (Stripe Checkout - simple payment links)
-- Bulk download (ZIP)
-- Gallery expiration (7 days free, 90 days paid)
+- Gallery expiration enforcement (7 days free, 90 days paid)
 
 ---
 
@@ -81,8 +88,8 @@
 | Tier | Price | Galleries | Photos | Duration | ZIP Download |
 |------|-------|-----------|--------|----------|--------------|
 | Free | $0 | 1 | 50 | 7 days | ❌ |
-| Event | $5 | 1 | 500 | 90 days | ✅ |
-| Party Pack | $12 | 3 | 500 each | 90 days | ✅ |
+| Event | $5 | 2 | 500 | 90 days | ✅ |
+| Party Pack | $12 | 5 | 500 each | 90 days | ✅ |
 
 **Why $5:**
 - Impulse buy territory - no decision friction
@@ -164,7 +171,7 @@ GuestPix ($1K → $5M revenue, 150K+ events, 100 countries) is the polished mark
 1. ✅ Download actually downloads
 2. ✅ Pre-upload hash check (duplicate detection)
 3. ✅ Gallery/photo limits for free tier
-4. ⬜ **Bulk ZIP download** - unlocks with $5 payment
+4. ✅ **Bulk ZIP download** - unlocks with paid tier
 5. ⬜ **Stripe Checkout** - simple payment link, webhook to unlock
 6. ⬜ Gallery expiration (7 days free / 90 days paid)
 
@@ -198,6 +205,8 @@ GuestPix ($1K → $5M revenue, 150K+ events, 100 countries) is the polished mark
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-01-15 | Move tier from galleries to users | One payment covers all user galleries, simpler model |
+| 2026-01-15 | Admin gallery review | Abuse detection - view all galleries per user |
 | 2026-01-09 | Pivot to $5 impulse pricing | Bottom-of-market strategy - serve casual hosts big fish ignore |
 | 2026-01-09 | 90-day gallery expiry | Keeps storage costs low, creates urgency |
 | 2026-01-09 | No subscriptions | One-time payments = no churn, simpler billing |

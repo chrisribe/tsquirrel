@@ -82,12 +82,13 @@
       </button>
       
       <!-- Download all as ZIP -->
-      <% if (pageData.photoCount > 0 && pageData.isPaid) { %>
-      <a href="/galleries/<%= pageData.gallery.uuid %>/download-all" class="toolbar-btn" title="Download all photos as ZIP">
-        ⬇
-      </a>
-      <% } else if (pageData.photoCount > 0) { %>
-      <button class="toolbar-btn" title="Download all photos" onclick="Gallery.showUpgrade()" style="opacity: 0.85;">
+      <% if (pageData.photoCount > 0) { %>
+      <button 
+        id="downloadZipBtn"
+        class="toolbar-btn" 
+        title="Download all photos as ZIP"
+        hx-get="/galleries/<%= pageData.gallery.uuid %>/download-all"
+        hx-swap="none">
         ⬇
       </button>
       <% } else { %>
@@ -245,56 +246,33 @@
     </div>
   </div>
 
-  <!-- Upgrade Modal -->
-  <div id="upgradeModal" class="upgrade-modal" onclick="Gallery.closeUpgrade()" style="display: none;">
-    <div class="upgrade-content" onclick="event.stopPropagation()">
-      <button class="close-btn" onclick="Gallery.closeUpgrade()">×</button>
-      
-      <div class="upgrade-header">
-        <span class="upgrade-icon">📦</span>
-        <h2>Download All Photos</h2>
-        <p class="upgrade-subtitle">Get every photo from this gallery in one ZIP file</p>
-      </div>
-      
-      <div class="upgrade-features">
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Download all <strong><%= pageData.photoCount %> photos</strong> as ZIP</span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Full resolution originals</span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Gallery extended to <strong>90 days</strong></span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Upload up to <strong>500 photos</strong></span>
-        </div>
-      </div>
-      
-      <div class="upgrade-price">
-        <span class="price-amount">$5</span>
-        <span class="price-label">one-time</span>
-      </div>
-      
-      <button class="upgrade-btn" onclick="Gallery.startCheckout()">
-        Upgrade Now
-      </button>
-      
-      <p class="upgrade-guarantee">Instant access • Secure payment via Stripe</p>
-    </div>
-  </div>
+  <%- include('../partials/upgrade-modal', { type: 'zip-download', photoCount: pageData.photoCount, galleryUuid: pageData.gallery.uuid, limits: pageData.limits }) %>
 
 </div>
 
 <script>
-// Initialize flex-images after DOM ready
 document.addEventListener('DOMContentLoaded', function() {
+  // Initialize flex-images
   if (typeof FlexImages !== 'undefined') {
     window.galleryFlex = new FlexImages('#photoGrid', { rowHeight: 280 });
   }
+  
+  // Handle 402 response (ZIP download requires payment) - show upgrade modal
+  document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.xhr.status === 402 && evt.detail.elt.id === 'downloadZipBtn') {
+      Upgrade.show();
+    }
+  });
+  
+  // Handle successful ZIP download - redirect to the URL
+  document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.xhr.status === 200 && evt.detail.elt.id === 'downloadZipBtn') {
+      const downloadUrl = evt.detail.xhr.getResponseHeader('X-Download-URL');
+      if (downloadUrl) {
+        window.location.href = downloadUrl;
+      }
+    }
+  });
 });
+//# sourceURL=view-page-inline.js
 </script>

@@ -3,6 +3,20 @@
   <td><%= pageData.user.username %></td>
   <td><%= pageData.user.email %></td>
   <td><%= pageData.user.role %></td>
+  <td>
+    <select 
+      hx-patch="/admin/users/<%= pageData.user.id %>/tier"
+      hx-target="#user-<%= pageData.user.id %>"
+      hx-swap="outerHTML"
+      name="tier"
+      style="padding: 0.25rem 0.5rem; margin: 0;">
+      <option value="free" <%= pageData.user.tier === 'free' || !pageData.user.tier ? 'selected' : '' %>>free</option>
+      <option value="event" <%= pageData.user.tier === 'event' ? 'selected' : '' %>>event ($5)</option>
+      <option value="partypack" <%= pageData.user.tier === 'partypack' ? 'selected' : '' %>>partypack ($12)</option>
+    </select>
+  </td>
+  <td><a href="/admin/users/<%= pageData.user.id %>/galleries"><%= pageData.user.gallery_count || 0 %></a></td>
+  <td><%= pageData.user.photo_count || 0 %></td>
   <td><%= pageData.user.status %></td>
   <td>
     <% if (pageData.user.status === 'active') { %>

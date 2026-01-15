@@ -38,6 +38,21 @@ const migrations = [
       `);
       console.log('Migration 2: Added tier, expires_at, paid_at columns');
     }
+  },
+  {
+    version: 3,
+    description: 'Move tier/expires_at/paid_at from galleries to users',
+    up: async (pool) => {
+      // Add columns to users
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'free'`);
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP`);
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP`);
+      // Drop columns from galleries (no data to migrate)
+      await pool.query(`ALTER TABLE galleries DROP COLUMN IF EXISTS tier`);
+      await pool.query(`ALTER TABLE galleries DROP COLUMN IF EXISTS paid_at`);
+      await pool.query(`ALTER TABLE galleries DROP COLUMN IF EXISTS expires_at`);
+      console.log('Migration 3: Moved tier columns to users, dropped from galleries');
+    }
   }
   // Future migrations go here - just add to the array!
 ];
