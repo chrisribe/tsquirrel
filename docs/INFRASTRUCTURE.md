@@ -18,6 +18,7 @@ Internet → NPM (SSL) → EventGlimpse App → PostgreSQL
 ## Server: Hetzner
 
 **IP:** 5.78.154.18  
+**Client IP (for access lists):** 107.159.90.149  
 **OS:** Ubuntu 24.04  
 **Location:** /opt/stacks/eventglimpse
 
