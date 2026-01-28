@@ -18,6 +18,19 @@ docker compose up -d
 
 ## Common Issues
 
+### 403 Forbidden on npm/dockge Subdomains
+
+Your IP changed and NPM access lists block you.
+
+**Fix:** SSH tunnel to access NPM admin:
+```bash
+# From local machine
+ssh -L 8181:localhost:81 root@5.78.154.18
+
+# Open http://localhost:8181 in browser
+# Login → Access Lists → Update IP to your new one
+```
+
 ### 502 Bad Gateway
 
 NPM can't reach app. Check:
