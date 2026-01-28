@@ -225,6 +225,18 @@
   </div>
   <% } %>
 
+  <!-- Mobile FAB (Add Photos) -->
+  <button class="mobile-fab" onclick="document.getElementById('fabPhotoInput').click()" aria-label="Add photos">
+    <span class="fab-icon">📷</span>
+    <span class="fab-label">Add</span>
+    <input 
+      type="file" 
+      id="fabPhotoInput" 
+      accept="image/*" 
+      multiple 
+      onchange="Gallery.onFilesSelected(this);">
+  </button>
+
   <!-- Lightbox -->
   <div id="lightbox" class="lightbox-showcase" onclick="Gallery.closeLightbox()" style="display: none;">
     <button id="lightboxPrev" class="nav-btn prev-btn" onclick="event.stopPropagation(); Gallery.prevPhoto()">‹</button>

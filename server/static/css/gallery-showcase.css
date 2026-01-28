@@ -946,6 +946,67 @@ body.gallery-page main.container {
 }
 
 /* ============================================
+   Mobile FAB (Floating Action Button)
+   ============================================ */
+.mobile-fab {
+  display: none; /* Hidden on desktop */
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: auto;
+  min-width: 56px;
+  height: 56px;
+  padding: 0 1.25rem;
+  background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+  color: white;
+  border: none;
+  border-radius: 28px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mobile-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), 0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+.mobile-fab:active {
+  transform: translateY(0);
+}
+
+.mobile-fab .fab-icon {
+  font-size: 1.25rem;
+}
+
+.mobile-fab .fab-label {
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+.mobile-fab input {
+  display: none;
+}
+
+/* Show FAB only on mobile */
+@media (max-width: 768px) {
+  .mobile-fab {
+    display: flex;
+  }
+  
+  /* Hide toolbar upload on mobile since we have FAB */
+  .upload-dropdown {
+    display: none;
+  }
+}
+
+/* ============================================
    Slideshow
    ============================================ */
 .slideshow-overlay {
