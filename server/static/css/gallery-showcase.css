@@ -940,7 +940,7 @@ body.gallery-page main.container {
     display: none;
   }
   
-  .toolbar-upload span {
+  .toolbar-upload span:not(:first-child) {
     display: none;
   }
 }
