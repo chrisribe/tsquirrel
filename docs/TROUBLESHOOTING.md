@@ -86,6 +86,16 @@ Lambda not triggered or failing.
 - AWS Console → Lambda → image-processor → Monitor tab
 - S3 trigger configured for `uploads/` folder
 
+### Database Collation Version Mismatch
+
+Warnings like: `database "appdb" has a collation version mismatch`
+
+Happens when container glibc version differs from when DB was created. Safe to ignore, but to silence:
+
+```bash
+docker exec eventglimpse-db-1 psql -U dockeruser -d appdb -c "ALTER DATABASE appdb REFRESH COLLATION VERSION;"
+```
+
 ## Emergency Reset
 
 ```bash
