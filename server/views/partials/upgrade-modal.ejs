@@ -1,87 +1,58 @@
 <%# Upgrade Modal Partial - pass type ('gallery-limit' or 'zip-download') and limits from GalleryService.getAllLimits() %>
-<% 
-  const freeLimits = limits?.free || { maxGalleries: 1, maxPhotosPerGallery: 50, retentionDays: 7 };
-  const upgradeLimits = limits?.event || { maxGalleries: 1, maxPhotosPerGallery: 500, retentionDays: 90, price: 5 };
-  const galleryText = upgradeLimits.maxGalleries === -1 ? 'unlimited galleries' : (upgradeLimits.maxGalleries === 1 ? '1 gallery' : `up to ${upgradeLimits.maxGalleries} galleries`);
+<%
+  const STRIPE_EVENT_LINK = process.env.STRIPE_EVENT_TIER_LINK || 'https://buy.stripe.com/test_fZueVd7J13SIf9i3KS8k800';
+  const STRIPE_PARTY_LINK = process.env.STRIPE_PARTY_PACK_LINK || 'https://buy.stripe.com/test_4gM8wP2oH9d20eoepw8k801';
+  const userEmail = user?.email || '';
 %>
-<div id="upgradeModal" class="upgrade-modal" onclick="Upgrade.close()" style="display: none;">
+<div id="upgradeModal" class="upgrade-modal" data-user-email="<%= userEmail %>" onclick="Upgrade.close()" style="display: none;">
   <div class="upgrade-content" onclick="event.stopPropagation()">
     <button class="close-btn" onclick="Upgrade.close()">×</button>
     
-    <% if (type === 'gallery-limit') { %>
-      <!-- Gallery Limit Upgrade -->
-      <div class="upgrade-header">
-        <span class="upgrade-icon">🎉</span>
-        <h2>Need More Galleries?</h2>
-        <p class="upgrade-subtitle">You've reached the free tier limit of <%= freeLimits.maxGalleries %> galleries</p>
-      </div>
-      
-      <div class="upgrade-features">
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Create <strong><%= galleryText %></strong></span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Up to <strong><%= upgradeLimits.maxPhotosPerGallery.toLocaleString() %> photos</strong> per gallery</span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Galleries extended to <strong><%= upgradeLimits.retentionDays %> days</strong></span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Download all photos as <strong>ZIP</strong></span>
-        </div>
-      </div>
-      
-      <div class="upgrade-price">
-        <span class="price-amount">$<%= upgradeLimits.price %></span>
-        <span class="price-label">per gallery</span>
-      </div>
-      
-      <button class="upgrade-btn" onclick="Upgrade.startCheckout('gallery-limit')">
-        Upgrade Now
-      </button>
-      
-    <% } else if (type === 'zip-download') { %>
-      <!-- ZIP Download Upgrade -->
-      <div class="upgrade-header">
-        <span class="upgrade-icon">📦</span>
-        <h2>Download All Photos</h2>
-        <p class="upgrade-subtitle">Get every photo from this gallery in one ZIP file</p>
-      </div>
-      
-      <div class="upgrade-features">
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Download all <strong><%= photoCount || 0 %> photos</strong> as ZIP</span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Full resolution originals</span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Gallery extended to <strong><%= upgradeLimits.retentionDays %> days</strong></span>
-        </div>
-        <div class="feature">
-          <span class="feature-icon">✓</span>
-          <span>Upload up to <strong><%= upgradeLimits.maxPhotosPerGallery.toLocaleString() %> photos</strong></span>
-        </div>
-      </div>
-      
-      <div class="upgrade-price">
-        <span class="price-amount">$<%= upgradeLimits.price %></span>
-        <span class="price-label">one-time</span>
-      </div>
-      
-      <button class="upgrade-btn" onclick="Upgrade.startCheckout('zip-download', '<%= galleryUuid %>')">
-        Upgrade Now
-      </button>
-      
-    <% } %>
+    <div class="upgrade-header">
+      <span class="upgrade-icon">⚡</span>
+      <h2>Upgrade EventGlimpse</h2>
+      <p class="upgrade-subtitle">Choose the plan that fits your needs</p>
+    </div>
     
-    <p class="upgrade-guarantee">Instant access • Secure payment via Stripe</p>
+    <div class="pricing-tiers">
+      <!-- Event Tier -->
+      <div class="pricing-card">
+        <div class="tier-name">Event Tier</div>
+        <div class="tier-price">
+          <span class="price-amount">$5</span>
+          <span class="price-label">one-time</span>
+        </div>
+        <ul class="tier-features">
+          <li><span class="feature-icon">✓</span> 2 galleries</li>
+          <li><span class="feature-icon">✓</span> 500 photos each</li>
+          <li><span class="feature-icon">✓</span> 90 days retention</li>
+          <li><span class="feature-icon">✓</span> ZIP downloads</li>
+        </ul>
+        <button class="tier-btn" data-stripe-event="<%= STRIPE_EVENT_LINK %>" onclick="Upgrade.startCheckout('event')">
+          Choose Event
+        </button>
+      </div>
+      
+      <!-- Party Pack -->
+      <div class="pricing-card popular">
+        <div class="popular-badge">Best Value</div>
+        <div class="tier-name">Party Pack</div>
+        <div class="tier-price">
+          <span class="price-amount">$12</span>
+          <span class="price-label">one-time</span>
+        </div>
+        <ul class="tier-features">
+          <li><span class="feature-icon">✓</span> 5 galleries</li>
+          <li><span class="feature-icon">✓</span> 500 photos each</li>
+          <li><span class="feature-icon">✓</span> 90 days retention</li>
+          <li><span class="feature-icon">✓</span> ZIP downloads</li>
+        </ul>
+        <button class="tier-btn primary" data-stripe-party="<%= STRIPE_PARTY_LINK %>" onclick="Upgrade.startCheckout('party')">
+          Choose Party Pack
+        </button>
+      </div>
+    </div>
+    
+    <p class="upgrade-guarantee">✓ Instant access • Secure payment via Stripe</p>
   </div>
 </div>

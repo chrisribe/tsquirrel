@@ -75,4 +75,9 @@ router.get('/:uuid/download-all', (req, res, next) =>
   controller.downloadAllPhotos(req, res, next)
 );
 
+// HEAD request to check download access (for pre-flight check)
+router.head('/:uuid/download-all', (req, res, next) => 
+  controller.downloadAllPhotos(req, res, next)
+);
+
 module.exports = router;

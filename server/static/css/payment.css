@@ -1,0 +1,104 @@
+/* Payment Confirmation Page */
+
+.payment-success-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.payment-success-card {
+  max-width: 720px;
+  width: 100%;
+  text-align: center;
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+}
+
+.payment-success-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.payment-success-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.75rem;
+  margin: 0 0 0.5rem;
+  color: #1a1a1a;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.payment-success-subtitle {
+  font-size: 1rem;
+  color: #666;
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+}
+
+.payment-divider {
+  height: 1px;
+  background: #e5e5e5;
+  margin: 0 0 1.25rem;
+}
+
+.payment-benefits {
+  text-align: left;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+}
+
+.payment-benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.payment-benefit-icon {
+  color: #e17055;
+  font-size: 1rem;
+}
+
+.payment-benefit-text {
+  color: #444;
+  font-size: 0.9rem;
+}
+
+.payment-cta {
+  display: inline-block;
+  background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+  color: white;
+  padding: 0.75rem 2rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.payment-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(225, 112, 85, 0.3);
+  color: white;
+}
+
+.payment-footer {
+  margin: 1.5rem 0 0;
+  font-size: 0.8rem;
+  color: #888;
+}

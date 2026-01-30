@@ -25,29 +25,28 @@ const Upgrade = {
 
   /**
    * Start Stripe checkout
-   * @param {string} context - 'gallery-limit' | 'zip-download'
-   * @param {string} [galleryUuid] - Required for zip-download
+   * @param {string} tier - 'event' | 'party'
    */
-  startCheckout(context, galleryUuid) {
-    // Get gallery UUID from param or from page data attribute
-    const uuid = galleryUuid || document.querySelector('[data-gallery-uuid]')?.dataset.galleryUuid;
+  startCheckout(tier) {
+    // Get payment link from button data attribute
+    const paymentLink = document.querySelector(`[data-stripe-${tier}]`)?.dataset[`stripe${tier.charAt(0).toUpperCase() + tier.slice(1)}`];
     
-    if (context === 'zip-download' && !uuid) {
-      this.showToast('Error: Gallery not found', 'error');
+    if (!paymentLink) {
+      this.showToast('Payment link not configured', 'error');
       return;
     }
 
-    // TODO: Call Stripe checkout endpoint
-    // Future implementation:
-    // fetch(`/api/checkout`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ context, galleryUuid: uuid })
-    // })
-    //   .then(res => res.json())
-    //   .then(data => window.location.href = data.checkoutUrl);
+    // Get user email to pre-fill Stripe checkout (prevents wrong user upgrade)
+    const userEmail = document.querySelector('[data-user-email]')?.dataset.userEmail;
     
-    this.showToast('Stripe checkout coming soon!');
+    // Build final URL with pre-filled email
+    const url = new URL(paymentLink);
+    if (userEmail) {
+      url.searchParams.set('prefilled_email', userEmail);
+    }
+
+    // Redirect to Stripe payment page
+    window.location.href = url.toString();
   },
 
   showToast(message, type = 'info') {

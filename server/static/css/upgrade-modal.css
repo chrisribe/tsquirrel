@@ -1,5 +1,5 @@
 /* ============================================
-   Upgrade Modal - Shared styles
+   Upgrade Modal - Pricing Tiers
    ============================================ */
 .upgrade-modal {
   position: fixed;
@@ -19,17 +19,17 @@
   position: relative;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   color: white;
-  padding: 1.5rem 2.5rem;
+  padding: 1.5rem 2rem;
   border-radius: 1rem;
-  max-width: 800px;
-  width: 90%;
+  max-width: 860px;
+  width: 94%;
   text-align: center;
   box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .upgrade-content .close-btn {
-  position: absolute;
+position: absolute;
   top: 1rem;
   right: 1rem;
   width: 2rem;
@@ -64,7 +64,7 @@
 
 .upgrade-header h2 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: white;
 }
@@ -72,87 +72,152 @@
 .upgrade-subtitle {
   margin: 0.25rem 0 0;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
-.upgrade-features {
+/* Pricing Tiers */
+.pricing-tiers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pricing-card {
+  position: relative;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  text-align: left;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.25rem 1rem;
+  transition: transform 0.2s, border-color 0.2s;
 }
 
-.upgrade-features .feature {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.9);
+.pricing-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.upgrade-features .feature-icon {
-  color: #4ade80;
-  font-weight: bold;
+.pricing-card.popular {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.popular-badge {
+  position: absolute;
+  top: -0.65rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  color: #0f172a;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tier-name {
   font-size: 1rem;
-}
-
-.upgrade-features .feature strong {
+  font-weight: 700;
   color: white;
+  margin-bottom: 0.5rem;
 }
 
-.upgrade-price {
-  margin-bottom: 1rem;
+.tier-price {
+  margin-bottom: 0.75rem;
 }
 
-.price-amount {
-  font-size: 2.25rem;
+.tier-price .price-amount {
+  font-size: 2rem;
   font-weight: 800;
   color: white;
   display: block;
   line-height: 1;
 }
 
-.price-label {
-  font-size: 0.85rem;
+.tier-price .price-label {
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.6);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
-.upgrade-btn {
-  width: 100%;
-  padding: 0.875rem 1.5rem;
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-  color: #0f172a;
-  border: none;
-  border-radius: 0.5rem;
+.tier-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+  text-align: left;
+}
+
+.tier-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.tier-features .feature-icon {
+  color: #4ade80;
+  font-weight: bold;
   font-size: 1rem;
-  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.tier-btn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.2s;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.upgrade-btn:hover {
+.tier-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.tier-btn.primary {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  color: #0f172a;
+  border: none;
+}
+
+.tier-btn.primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(74, 222, 128, 0.4);
 }
 
 .upgrade-guarantee {
-  margin: 0.75rem 0 0;
+  margin: 0.5rem 0 0;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.5);
 }
 
-@media (max-width: 480px) {
+/* Mobile */
+@media (max-width: 640px) {
+  .pricing-tiers {
+    grid-template-columns: 1fr;
+  }
+  
   .upgrade-content {
-    padding: 1.25rem 1.5rem;
+    padding: 1.5rem;
   }
   
   .upgrade-header h2 {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
+  }
+  
+  .tier-price .price-amount {
+    font-size: 2rem;
   }
 }

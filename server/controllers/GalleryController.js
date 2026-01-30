@@ -341,6 +341,11 @@ class GalleryController {
         return res.status(400).json({ error: 'No photos to download' });
       }
 
+      // HEAD request = just checking access, don't stream
+      if (req.method === 'HEAD') {
+        return res.status(200).end();
+      }
+
       await downloadService.streamZip(gallery, photos, res);
     } catch (error) {
       console.error('Download all error:', error);

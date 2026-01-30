@@ -557,6 +557,45 @@ const Gallery = {
     }
   },
 
+  // Download all photos as ZIP
+  async downloadZip(galleryUuid) {
+    const btn = document.getElementById('downloadZipBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳';
+    btn.disabled = true;
+    
+    try {
+      // First check if user has access (HEAD request to avoid downloading if 402)
+      const response = await fetch(`/galleries/${galleryUuid}/download-all`, {
+        method: 'HEAD'
+      });
+      
+      if (response.status === 402) {
+        // Show upgrade modal
+        if (typeof Upgrade !== 'undefined') {
+          Upgrade.show();
+        }
+        return;
+      }
+      
+      if (!response.ok) {
+        this.showToast('Download failed', 'warning');
+        return;
+      }
+      
+      // Trigger actual download by navigating to the URL
+      window.location.href = `/galleries/${galleryUuid}/download-all`;
+      this.showToast('Download starting...');
+      
+    } catch (error) {
+      console.error('Download error:', error);
+      this.showToast('Download failed', 'warning');
+    } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }
+  },
+
   // Share modal
   toggleShare() {
     const modal = document.getElementById('shareModal');

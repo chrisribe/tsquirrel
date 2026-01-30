@@ -87,8 +87,7 @@
         id="downloadZipBtn"
         class="toolbar-btn" 
         title="Download all photos as ZIP"
-        hx-get="/galleries/<%= pageData.gallery.uuid %>/download-all"
-        hx-swap="none">
+        onclick="Gallery.downloadZip('<%= pageData.gallery.uuid %>')">
         ⬇
       </button>
       <% } else { %>
@@ -273,16 +272,6 @@ document.addEventListener('DOMContentLoaded', function() {
   document.body.addEventListener('htmx:afterRequest', function(evt) {
     if (evt.detail.xhr.status === 402 && evt.detail.elt.id === 'downloadZipBtn') {
       Upgrade.show();
-    }
-  });
-  
-  // Handle successful ZIP download - redirect to the URL
-  document.body.addEventListener('htmx:afterRequest', function(evt) {
-    if (evt.detail.xhr.status === 200 && evt.detail.elt.id === 'downloadZipBtn') {
-      const downloadUrl = evt.detail.xhr.getResponseHeader('X-Download-URL');
-      if (downloadUrl) {
-        window.location.href = downloadUrl;
-      }
     }
   });
 });
