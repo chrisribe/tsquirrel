@@ -2,33 +2,7 @@
  * GalleryService - Business logic for gallery limits and validation
  */
 
-// Tier limits configuration (aligned with STRATEGY.md pricing)
-const LIMITS = {
-  free: {
-    maxGalleries: 1,
-    maxPhotosPerGallery: 50,
-    retentionDays: 7,
-    zipDownload: false,
-    price: 0
-  },
-  event: {
-    maxGalleries: 2,
-    maxPhotosPerGallery: 500,
-    retentionDays: 90,
-    zipDownload: true,
-    price: 5
-  },
-  partypack: {
-    maxGalleries: 5,
-    maxPhotosPerGallery: 500,
-    retentionDays: 90,
-    zipDownload: true,
-    price: 12
-  }
-};
-
-// Default upgrade tier (what free users upgrade to)
-const UPGRADE_TIER = 'event';
+const { TIERS, UPGRADE_TIER } = require('../config/tiers');
 
 class GalleryService {
   /**
@@ -36,7 +10,7 @@ class GalleryService {
    * @returns {{ allowed: boolean, error?: string, hint?: string }}
    */
   static async checkGalleryLimit(galleryDAO, userId, tier = 'free') {
-    const limits = LIMITS[tier] || LIMITS.free;
+    const limits = TIERS[tier] || TIERS.free;
     const count = await galleryDAO.getUserGalleryCount(userId);
     
     if (count >= limits.maxGalleries) {
@@ -55,7 +29,7 @@ class GalleryService {
    * @returns {{ allowed: boolean, remainingSlots: number, error?: string, hint?: string }}
    */
   static async checkPhotoLimit(galleryDAO, uuid, tier = 'free') {
-    const limits = LIMITS[tier] || LIMITS.free;
+    const limits = TIERS[tier] || TIERS.free;
     const count = await galleryDAO.getPhotoCount(uuid);
     const remainingSlots = limits.maxPhotosPerGallery - count;
     
@@ -75,14 +49,14 @@ class GalleryService {
    * Get limits for a tier
    */
   static getLimits(tier = 'free') {
-    return LIMITS[tier] || LIMITS.free;
+    return TIERS[tier] || TIERS.free;
   }
 
   /**
    * Get all tier limits (for upgrade modals)
    */
   static getAllLimits() {
-    return LIMITS;
+    return TIERS;
   }
 
   /**

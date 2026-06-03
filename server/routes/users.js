@@ -10,7 +10,26 @@ router.use((req, res, next) => {
   const pool = req.app.get('pool');
   const userDAO = new UserDAO(pool);
   req.userController = new UserController(userDAO);
+  req.userDAO = userDAO;
   next();
+});
+
+// Get current user (for payment confirmation polling)
+router.get('/me', authMiddleware, async (req, res, next) => {
+  try {
+    // Always get fresh data from DB
+    const user = await req.userDAO.getUserById(req.session.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    // Update session if tier changed
+    if (user.tier !== req.session.user.tier) {
+      req.session.user = user;
+    }
+    res.json({ tier: user.tier, username: user.username, email: user.email });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Routes (protected)

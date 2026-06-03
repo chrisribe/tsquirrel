@@ -83,6 +83,14 @@ position: absolute;
   margin-bottom: 1rem;
 }
 
+/* Center single card when only one tier is shown */
+.pricing-tiers:has(.pricing-card:only-child) {
+  grid-template-columns: 1fr;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .pricing-card {
   position: relative;
   background: rgba(255, 255, 255, 0.05);

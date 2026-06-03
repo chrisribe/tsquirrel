@@ -25,28 +25,29 @@ const Upgrade = {
 
   /**
    * Start Stripe checkout
-   * @param {string} tier - 'event' | 'party'
+   * @param {string} tier - 'event' | 'partypack'
    */
-  startCheckout(tier) {
-    // Get payment link from button data attribute
-    const paymentLink = document.querySelector(`[data-stripe-${tier}]`)?.dataset[`stripe${tier.charAt(0).toUpperCase() + tier.slice(1)}`];
-    
-    if (!paymentLink) {
-      this.showToast('Payment link not configured', 'error');
-      return;
-    }
+  async startCheckout(tier) {
+    try {
+      // Call our API to create checkout session
+      const res = await fetch('/payment/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier })
+      });
 
-    // Get user email to pre-fill Stripe checkout (prevents wrong user upgrade)
-    const userEmail = document.querySelector('[data-user-email]')?.dataset.userEmail;
-    
-    // Build final URL with pre-filled email
-    const url = new URL(paymentLink);
-    if (userEmail) {
-      url.searchParams.set('prefilled_email', userEmail);
-    }
+      const data = await res.json();
 
-    // Redirect to Stripe payment page
-    window.location.href = url.toString();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to start checkout');
+      }
+
+      // Redirect to Stripe-hosted checkout page
+      window.location.href = data.url;
+    } catch (err) {
+      console.error('Checkout error:', err);
+      this.showToast(err.message || 'Failed to start checkout', 'error');
+    }
   },
 
   showToast(message, type = 'info') {

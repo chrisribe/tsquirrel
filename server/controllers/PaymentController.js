@@ -1,4 +1,5 @@
 const Stripe = require('stripe');
+const { TIERS, PURCHASABLE_TIERS } = require('../config/tiers');
 
 class PaymentController {
   constructor(userDAO) {
@@ -8,6 +9,75 @@ class PaymentController {
     // Initialize Stripe if secret key is available
     if (process.env.STRIPE_SECRET_KEY) {
       this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    }
+  }
+
+  /**
+   * POST /payment/checkout
+   * Create Stripe Checkout Session with inline pricing
+   */
+  async createCheckoutSession(req, res, next) {
+    try {
+      if (!this.stripe) {
+        return res.status(500).json({ error: 'Payment processing not configured' });
+      }
+
+      if (!req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { tier } = req.body;
+      const tierConfig = TIERS[tier];
+
+      if (!tierConfig || !PURCHASABLE_TIERS.includes(tier)) {
+        return res.status(400).json({ error: 'Invalid tier' });
+      }
+
+      // Check for existing unprocessed payments before creating new session
+      // Prevents double-charging if webhook failed
+      const freshUser = await this.userDAO.getUserById(req.session.user.id);
+      if (freshUser && freshUser.tier === 'free') {
+        const recovered = await this.recoverMissedPayment(freshUser);
+        if (recovered) {
+          // Payment was found and applied - redirect to confirm instead of charging again
+          const publicUrl = process.env.PUBLIC_URL || 'http://localhost:3000';
+          return res.json({ url: `${publicUrl}/payment/confirm`, recovered: true });
+        }
+      }
+
+      // User already on this tier or higher - no need to pay
+      if (freshUser && freshUser.tier !== 'free') {
+        return res.status(400).json({ error: 'Already upgraded. Refresh the page to see your new limits.' });
+      }
+
+      const publicUrl = process.env.PUBLIC_URL || 'http://localhost:3000';
+
+      const session = await this.stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            unit_amount: tierConfig.amount,
+            product_data: {
+              name: tierConfig.name,
+              description: tierConfig.description
+            }
+          },
+          quantity: 1
+        }],
+        metadata: {
+          userId: req.session.user.id.toString(),
+          tier: tier
+        },
+        customer_email: req.session.user.email,
+        success_url: `${publicUrl}/payment/confirm`,
+        cancel_url: `${publicUrl}/galleries`
+      });
+
+      return res.json({ url: session.url });
+    } catch (err) {
+      console.error('Failed to create checkout session:', err);
+      next(err);
     }
   }
 
@@ -22,7 +92,17 @@ class PaymentController {
       }
 
       // Refresh user data from database (webhook may have upgraded tier)
-      const freshUser = await this.userDAO.getUserById(req.session.user.id);
+      let freshUser = await this.userDAO.getUserById(req.session.user.id);
+      
+      // Fallback: If still free tier, check Stripe for recent payments
+      // This handles webhook failures - user paid but webhook didn't fire
+      if (freshUser && freshUser.tier === 'free' && this.stripe) {
+        const recovered = await this.recoverMissedPayment(freshUser);
+        if (recovered) {
+          freshUser = await this.userDAO.getUserById(req.session.user.id);
+        }
+      }
+
       if (freshUser) {
         req.session.user = freshUser;
       }
@@ -30,7 +110,8 @@ class PaymentController {
       return res.render('layout-main', {
         template: 'payment/confirm-page',
         pageData: {
-          user: req.session.user
+          user: req.session.user,
+          tiers: TIERS
         },
         pageTitle: 'Payment Successful - EventGlimpse',
         noIndex: true,
@@ -40,6 +121,41 @@ class PaymentController {
       });
     } catch (err) {
       next(err);
+    }
+  }
+
+  /**
+   * Check Stripe for recent successful payments and apply tier upgrade
+   * Handles webhook failures - user paid but tier wasn't upgraded
+   * @returns {boolean} true if a payment was recovered
+   */
+  async recoverMissedPayment(user) {
+    try {
+      // List recent completed checkout sessions (last 30 days)
+      const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+      
+      const sessions = await this.stripe.checkout.sessions.list({
+        status: 'complete',
+        limit: 50,
+        created: { gte: thirtyDaysAgo }
+      });
+
+      // Find sessions matching this user's ID in metadata
+      for (const session of sessions.data) {
+        const tier = session.metadata?.tier;
+        const metaUserId = session.metadata?.userId;
+
+        if (tier && metaUserId && parseInt(metaUserId) === user.id) {
+          console.log(`Recovering missed payment: session ${session.id}, tier ${tier}, user ${user.id}`);
+          await this.userDAO.updateUserTier(user.id, tier);
+          return true;
+        }
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Error recovering missed payment:', err);
+      return false;
     }
   }
 
@@ -112,22 +228,22 @@ class PaymentController {
       return;
     }
 
-    // Determine tier from session metadata or product
-    let tier = 'free';
+    // Get tier from checkout session metadata (set in createCheckoutSession)
+    const tier = session.metadata?.tier;
+    const metaUserId = session.metadata?.userId;
     
-    // Check metadata first (if we set it during checkout)
-    if (session.metadata && session.metadata.tier) {
-      tier = session.metadata.tier;
-    } else {
-      // Fallback: derive from amount (testing values from .env.example)
-      // Event Tier: $5 = 500 cents, Party Pack: $12 = 1200 cents
-      const amount = session.amount_total; // in cents
-      if (amount === 500) {
-        tier = 'event';
-      } else if (amount === 1200) {
-        tier = 'partypack';
-      }
+    if (!tier) {
+      console.error(`No tier metadata on session ${session.id}`);
+      return;
     }
+
+    // Verify user ID matches if present (extra security)
+    if (metaUserId && parseInt(metaUserId) !== user.id) {
+      console.error(`User ID mismatch: metadata=${metaUserId}, found=${user.id}`);
+      return;
+    }
+
+    console.log(`Processing tier upgrade: ${tier} for user ${user.id}`);
 
     // Upgrade user tier
     try {

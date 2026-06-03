@@ -12,6 +12,11 @@ router.use((req, res, next) => {
   next();
 });
 
+// Create checkout session (requires auth)
+router.post('/checkout', authMiddleware, (req, res, next) => 
+  req.paymentController.createCheckoutSession(req, res, next)
+);
+
 // Payment confirmation page (requires auth)
 router.get('/confirm', authMiddleware, (req, res, next) => 
   req.paymentController.showConfirmation(req, res, next)

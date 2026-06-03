@@ -18,6 +18,12 @@ class GalleryController {
     try {
       const galleries = await this.galleryDAO.getUserGalleries(req.session.user.id);
       
+      // Refresh user data to ensure tier is current (session may be stale after admin changes)
+      const freshUser = await this.userDAO.getUserById(req.session.user.id);
+      if (freshUser) {
+        res.locals.user = freshUser;
+      }
+      
       // Add thumbnail URLs
       const galleriesWithThumbs = galleries.map(gallery => {
         if (gallery.cover_photo_key && gallery.cover_photo_id) {
@@ -51,8 +57,11 @@ class GalleryController {
         );
       }
 
+      // Fetch fresh user data to get current tier (session may be stale after admin changes)
+      const freshUser = await this.userDAO.getUserById(req.session.user.id);
+      const userTier = freshUser?.tier || 'free';
+      
       // Check gallery limit
-      const userTier = req.session.user.tier || 'free';
       const limitCheck = await GalleryService.checkGalleryLimit(this.galleryDAO, req.session.user.id, userTier);
       if (!limitCheck.allowed) {
         return res.status(403).json({ error: limitCheck.error, hint: limitCheck.hint });
@@ -127,6 +136,14 @@ class GalleryController {
           { error: 'Gallery not found' },
           'errors/general-error'
         );
+      }
+
+      // Refresh logged-in user data to ensure tier is current (for upgrade modal)
+      if (req.session?.user?.id) {
+        const freshUser = await this.userDAO.getUserById(req.session.user.id);
+        if (freshUser) {
+          res.locals.user = freshUser;
+        }
       }
 
       // Generate QR code if needed

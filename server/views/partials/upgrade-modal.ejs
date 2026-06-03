@@ -1,10 +1,14 @@
 <%# Upgrade Modal Partial - pass type ('gallery-limit' or 'zip-download') and limits from GalleryService.getAllLimits() %>
 <%
-  const STRIPE_EVENT_LINK = process.env.STRIPE_EVENT_TIER_LINK || 'https://buy.stripe.com/test_fZueVd7J13SIf9i3KS8k800';
-  const STRIPE_PARTY_LINK = process.env.STRIPE_PARTY_PACK_LINK || 'https://buy.stripe.com/test_4gM8wP2oH9d20eoepw8k801';
-  const userEmail = user?.email || '';
+  const userTier = user?.tier || 'free';
+  const isEventTier = userTier === 'event';
+  const isPartyPackTier = userTier === 'partypack';
+  const eventTier = limits?.event || {};
+  const partyTier = limits?.partypack || {};
+  const formatGalleries = (n) => n >= 100 ? 'Unlimited' : n;
+  const formatRetention = (days) => days >= 365 ? '1 year' : `${days} days`;
 %>
-<div id="upgradeModal" class="upgrade-modal" data-user-email="<%= userEmail %>" onclick="Upgrade.close()" style="display: none;">
+<div id="upgradeModal" class="upgrade-modal" onclick="Upgrade.close()" style="display: none;">
   <div class="upgrade-content" onclick="event.stopPropagation()">
     <button class="close-btn" onclick="Upgrade.close()">×</button>
     
@@ -15,42 +19,53 @@
     </div>
     
     <div class="pricing-tiers">
-      <!-- Event Tier -->
+      <% if (!isEventTier && !isPartyPackTier) { %>
+      <!-- Event Tier - only show for free users -->
       <div class="pricing-card">
-        <div class="tier-name">Event Tier</div>
+        <div class="tier-name"><%= eventTier.name || 'Event' %></div>
         <div class="tier-price">
-          <span class="price-amount">$5</span>
+          <span class="price-amount">$<%= eventTier.price || 5 %></span>
           <span class="price-label">one-time</span>
         </div>
         <ul class="tier-features">
-          <li><span class="feature-icon">✓</span> 2 galleries</li>
-          <li><span class="feature-icon">✓</span> 500 photos each</li>
-          <li><span class="feature-icon">✓</span> 90 days retention</li>
-          <li><span class="feature-icon">✓</span> ZIP downloads</li>
+          <li><span class="feature-icon">✓</span> <%= formatGalleries(eventTier.maxGalleries) %> galleries</li>
+          <li><span class="feature-icon">✓</span> <%= (eventTier.maxPhotosPerGallery || 2000).toLocaleString() %> photos each</li>
+          <li><span class="feature-icon">✓</span> <%= formatRetention(eventTier.retentionDays) %> retention</li>
         </ul>
-        <button class="tier-btn" data-stripe-event="<%= STRIPE_EVENT_LINK %>" onclick="Upgrade.startCheckout('event')">
+        <button class="tier-btn" onclick="Upgrade.startCheckout('event')">
           Choose Event
         </button>
       </div>
+      <% } %>
       
-      <!-- Party Pack -->
+      <% if (!isPartyPackTier) { %>
+      <!-- Party Pack - show for free and event users -->
       <div class="pricing-card popular">
         <div class="popular-badge">Best Value</div>
-        <div class="tier-name">Party Pack</div>
+        <div class="tier-name"><%= partyTier.name || 'Party Pack' %></div>
         <div class="tier-price">
-          <span class="price-amount">$12</span>
+          <span class="price-amount">$<%= partyTier.price || 12 %></span>
           <span class="price-label">one-time</span>
         </div>
         <ul class="tier-features">
-          <li><span class="feature-icon">✓</span> 5 galleries</li>
-          <li><span class="feature-icon">✓</span> 500 photos each</li>
-          <li><span class="feature-icon">✓</span> 90 days retention</li>
-          <li><span class="feature-icon">✓</span> ZIP downloads</li>
+          <li><span class="feature-icon">✓</span> <%= formatGalleries(partyTier.maxGalleries) %> galleries</li>
+          <li><span class="feature-icon">✓</span> <%= (partyTier.maxPhotosPerGallery || 2000).toLocaleString() %> photos each</li>
+          <li><span class="feature-icon">✓</span> <%= formatRetention(partyTier.retentionDays) %> retention</li>
         </ul>
-        <button class="tier-btn primary" data-stripe-party="<%= STRIPE_PARTY_LINK %>" onclick="Upgrade.startCheckout('party')">
-          Choose Party Pack
+        <button class="tier-btn primary" onclick="Upgrade.startCheckout('partypack')">
+          <%= isEventTier ? 'Upgrade to Party Pack' : 'Choose Party Pack' %>
         </button>
       </div>
+      <% } else { %>
+      <!-- Already on max tier -->
+      <div class="pricing-card">
+        <div class="tier-name">Party Pack</div>
+        <div class="tier-price">
+          <span class="price-label">Current Plan</span>
+        </div>
+        <p style="text-align: center; color: var(--muted-color);">You're on the highest tier. Need more galleries? Contact support.</p>
+      </div>
+      <% } %>
     </div>
     
     <p class="upgrade-guarantee">✓ Instant access • Secure payment via Stripe</p>
