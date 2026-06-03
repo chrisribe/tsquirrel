@@ -1,0 +1,17 @@
+name: Deploy on Tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deploy webhook
+        run: |
+          curl -f -X POST https://tagship.pixagreat.com/hooks/deploy \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" \
+            -d '{"repo":"${{ github.repository }}","tag":"${{ github.ref_name }}"}'
