@@ -19,9 +19,13 @@ router.use((req, res, next) => {
 });
 
 router.get('/', (req, res) => req.adminController.dashboard(req, res));
+router.get('/users/:userId/galleries', (req, res) => req.adminController.viewUserGalleries(req, res));
 router.patch('/users/:userId/status',
   validate({ userId: 'id', status: 'status' }),
   (req, res) => req.adminController.updateUserStatus(req, res)
+);
+router.patch('/users/:userId/tier',
+  (req, res) => req.adminController.updateUserTier(req, res)
 );
 
 module.exports = router;

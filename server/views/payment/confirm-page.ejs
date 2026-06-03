@@ -1,0 +1,112 @@
+<%
+  const userTier = pageData.user?.tier || 'free';
+  const tierConfig = pageData.tiers?.[userTier] || pageData.tiers?.event || {};
+  const formatRetention = (days) => days >= 365 ? '1 year' : `${days} days`;
+%>
+<section class="payment-success-container">
+  
+  <div class="payment-success-card">
+    
+    <!-- Processing State -->
+    <div id="payment-processing" class="<%= pageData.user.tier !== 'free' ? 'hidden' : '' %>">
+      <div class="payment-spinner"></div>
+      <h1 class="payment-success-title">Processing Payment...</h1>
+      <p class="payment-success-subtitle">Please wait while we confirm your upgrade.</p>
+    </div>
+    
+    <!-- Success State -->
+    <div id="payment-success" class="<%= pageData.user.tier === 'free' ? 'hidden' : '' %>">
+      <!-- Success Icon -->
+      <div class="payment-success-icon">✓</div>
+      
+      <!-- Title -->
+      <h1 class="payment-success-title">Payment Successful</h1>
+      
+      <!-- Subtitle -->
+      <p class="payment-success-subtitle">
+        Your account has been upgraded to <strong><%= pageData.user.tier %></strong>. All features are now active.
+      </p>
+      
+      <!-- Divider -->
+      <div class="payment-divider"></div>
+      
+      <!-- Benefits -->
+      <div class="payment-benefits">
+        <div class="payment-benefit-item">
+          <span class="payment-benefit-icon">✓</span>
+          <span class="payment-benefit-text"><%= tierConfig.maxGalleries >= 100 ? 'Unlimited' : tierConfig.maxGalleries %> galleries, <%= (tierConfig.maxPhotosPerGallery || 2000).toLocaleString() %> photos each</span>
+        </div>
+        <div class="payment-benefit-item">
+          <span class="payment-benefit-icon">✓</span>
+          <span class="payment-benefit-text">Download all photos as ZIP</span>
+        </div>
+        <div class="payment-benefit-item">
+          <span class="payment-benefit-icon">✓</span>
+          <span class="payment-benefit-text"><%= formatRetention(tierConfig.retentionDays) %> gallery storage</span>
+        </div>
+      </div>
+      
+      <!-- CTA -->
+      <a href="/galleries" class="payment-cta">Go to My Galleries</a>
+      
+      <!-- Footer -->
+      <p class="payment-footer">Receipt sent to your email</p>
+    </div>
+    
+    <!-- Timeout/Error State -->
+    <div id="payment-timeout" class="hidden">
+      <div class="payment-success-icon payment-warning">!</div>
+      <h1 class="payment-success-title">Processing Delayed</h1>
+      <p class="payment-success-subtitle">
+        Your payment was received but processing is taking longer than expected. 
+        Your account will be upgraded shortly. Check back in a few minutes.
+      </p>
+      <a href="/galleries" class="payment-cta">Go to My Galleries</a>
+    </div>
+    
+  </div>
+  
+</section>
+
+<script>
+(function() {
+  const isProcessing = <%= pageData.user.tier === 'free' ? 'true' : 'false' %>;
+  if (!isProcessing) return;
+  
+  let attempts = 0;
+  const maxAttempts = 20; // 20 attempts × 1.5s = 30 seconds max
+  
+  async function checkTier() {
+    attempts++;
+    try {
+      const res = await fetch('/users/me', { 
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      });
+      const data = await res.json();
+      
+      if (data.tier && data.tier !== 'free') {
+        // Success - show success state
+        document.getElementById('payment-processing').classList.add('hidden');
+        document.getElementById('payment-success').classList.remove('hidden');
+        // Update tier text
+        document.querySelector('#payment-success strong').textContent = data.tier;
+        return;
+      }
+    } catch (e) {
+      console.error('Tier check failed:', e);
+    }
+    
+    if (attempts < maxAttempts) {
+      setTimeout(checkTier, 1500);
+    } else {
+      // Timeout - show delayed message
+      document.getElementById('payment-processing').classList.add('hidden');
+      document.getElementById('payment-timeout').classList.remove('hidden');
+    }
+  }
+  
+  // Start polling after 2 seconds (give webhook time to arrive)
+  setTimeout(checkTier, 2000);
+})();
+</script>

@@ -32,6 +32,13 @@ async function startServer() {
       }
     }
   }
+
+  // Run database migrations
+  const { runMigrations } = require('./services/MigrationService');
+  await runMigrations(pool);
+  
+  // Stripe webhook needs raw body for signature verification (before JSON middleware)
+  app.use('/payment/webhook', express.raw({ type: 'application/json' }));
   
   // Middleware
   app.use(express.json());
@@ -98,6 +105,7 @@ async function startServer() {
   app.use('/admin', require('./routes/admin'));
   app.use('/galleries', require('./routes/galleries'));
   app.use('/g', require('./routes/galleries'));  // Short public URL
+  app.use('/payment', require('./routes/payment'));
   app.use('/', require('./routes/web'));
   
   // Error handler

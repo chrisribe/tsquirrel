@@ -253,6 +253,17 @@ const Gallery = {
         document.getElementById('queueSkipped').textContent = this.uploadStats.skipped;
       }
     } catch (error) {
+      // Handle 402 - photo limit reached, show upgrade modal
+      if (error.status === 402) {
+        this.uploadCancelled = true; // Stop remaining uploads
+        this.finishUploadQueue();
+        if (typeof Upgrade !== 'undefined') {
+          Upgrade.show();
+        }
+        return;
+      }
+      
+      // Log actual errors (not handled 402s)
       console.error('Upload failed:', error);
       this.uploadStats.failed++;
       this.uploadedCount++;
@@ -278,6 +289,13 @@ const Gallery = {
         'HX-Request': 'true'  // Get partial HTML response
       }
     });
+    
+    if (response.status === 402) {
+      // Payment required - photo limit reached
+      const error = new Error('Photo limit reached');
+      error.status = 402;
+      throw error;
+    }
     
     if (!response.ok) {
       throw new Error('Upload failed');
@@ -536,6 +554,45 @@ const Gallery = {
       }
     } catch (error) {
       this.showToast('Failed to delete photo', 'warning');
+    }
+  },
+
+  // Download all photos as ZIP
+  async downloadZip(galleryUuid) {
+    const btn = document.getElementById('downloadZipBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳';
+    btn.disabled = true;
+    
+    try {
+      // First check if user has access (HEAD request to avoid downloading if 402)
+      const response = await fetch(`/galleries/${galleryUuid}/download-all`, {
+        method: 'HEAD'
+      });
+      
+      if (response.status === 402) {
+        // Show upgrade modal
+        if (typeof Upgrade !== 'undefined') {
+          Upgrade.show();
+        }
+        return;
+      }
+      
+      if (!response.ok) {
+        this.showToast('Download failed', 'warning');
+        return;
+      }
+      
+      // Trigger actual download by navigating to the URL
+      window.location.href = `/galleries/${galleryUuid}/download-all`;
+      this.showToast('Download starting...');
+      
+    } catch (error) {
+      console.error('Download error:', error);
+      this.showToast('Download failed', 'warning');
+    } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
     }
   },
 

@@ -5,7 +5,7 @@
 
   <!-- Create Form -->
   <div class="create-gallery-form">
-    <form hx-post="/galleries" hx-swap="none">
+    <form id="createGalleryForm" hx-post="/galleries" hx-swap="none">
       <fieldset role="group">
         <input type="text" name="title" placeholder="New gallery name..." required>
         <button type="submit">Create</button>
@@ -37,3 +37,17 @@
     <% } %>
   </div>
 </section>
+
+<%- include('../partials/upgrade-modal', { type: 'gallery-limit', limits: pageData.limits }) %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Handle 403 response (gallery limit reached) - show upgrade modal
+  document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.xhr.status === 403 && evt.detail.elt.id === 'createGalleryForm') {
+      Upgrade.show();
+    }
+  });
+});
+//# sourceURL=list-page-inline.js
+</script>
