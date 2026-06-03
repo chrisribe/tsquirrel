@@ -40,8 +40,6 @@ services:
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-eventglimpse}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      STRIPE_EVENT_TIER_LINK: ${STRIPE_EVENT_TIER_LINK}
-      STRIPE_PARTY_PACK_LINK: ${STRIPE_PARTY_PACK_LINK}
     networks:
       - proxy-net
       - default
