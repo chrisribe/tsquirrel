@@ -53,7 +53,26 @@ class UserDAO {
     await this.pool.query('UPDATE users SET status = $1 WHERE id = $2', [status, userId]);
     
     const result = await this.pool.query(
-      'SELECT id, username, email, role, status FROM users WHERE id = $1',
+      'SELECT id, username, email, role, status, tier, paid_at FROM users WHERE id = $1',
+      [userId]
+    );
+    return result.rows[0];
+  }
+
+  async updateUserTier(userId, tier) {
+    const validTiers = ['free', 'event', 'partypack'];
+    if (!validTiers.includes(tier)) {
+      throw new Error('Invalid tier. Must be one of: ' + validTiers.join(', '));
+    }
+    
+    const paidAt = tier !== 'free' ? 'NOW()' : 'NULL';
+    await this.pool.query(
+      `UPDATE users SET tier = $1, paid_at = ${paidAt} WHERE id = $2`,
+      [tier, userId]
+    );
+    
+    const result = await this.pool.query(
+      'SELECT id, username, email, role, status, tier, paid_at FROM users WHERE id = $1',
       [userId]
     );
     return result.rows[0];
@@ -61,10 +80,28 @@ class UserDAO {
 
   async getUsersWithStats() {
     const result = await this.pool.query(`
-      SELECT id, username, email, role, status
-      FROM users 
-      ORDER BY id
+      SELECT u.id, u.username, u.email, u.role, u.status, u.tier, u.paid_at,
+             COUNT(DISTINCT g.id) as gallery_count,
+             COUNT(p.id) as photo_count
+      FROM users u
+      LEFT JOIN galleries g ON g.user_id = u.id
+      LEFT JOIN photos p ON p.gallery_uuid = g.uuid
+      GROUP BY u.id
+      ORDER BY u.id
     `);
+    return result.rows;
+  }
+
+  async getUserGalleriesForAdmin(userId) {
+    const result = await this.pool.query(`
+      SELECT g.id, g.uuid, g.title, g.created_at,
+             COUNT(p.id) as photo_count
+      FROM galleries g
+      LEFT JOIN photos p ON p.gallery_uuid = g.uuid
+      WHERE g.user_id = $1
+      GROUP BY g.id
+      ORDER BY g.created_at DESC
+    `, [userId]);
     return result.rows;
   }
 }

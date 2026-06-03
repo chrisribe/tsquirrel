@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const checkPageExists = require('../middleware/checkPageExists');
 
+// Redirect dashboard to galleries (dashboard is empty, galleries is useful)
+router.get('/dashboard', (req, res) => res.redirect('/galleries'));
+
 // Specific routes first
 router.get('/register', (req, res) => {
   res.render('layout-main', {

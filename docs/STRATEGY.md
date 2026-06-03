@@ -38,20 +38,32 @@
 - **Pre-upload hash check** - Skip duplicate uploads entirely (saves bandwidth)
 - **Gallery/photo limits** - Free tier enforced with user feedback
 - **EXIF date sorting** - Photos sorted by taken_at from EXIF data
+- **ZIP download** - Bulk download all photos (gated behind paid tier)
 
-### 🔧 Just Fixed (Jan 4-6 Session)
+### 🔧 Just Fixed (Jan 27 Session)
+- **Mobile FAB** - Floating Action Button for photo upload on mobile (<768px) - prominent, always visible
+- Fixed Postgres 18 data directory issue - pinned to 17.2 to preserve existing data
+- Fixed collation version mismatch warnings
+
+### 🔧 Previously Fixed (Jan 15 Session)
+- **ZIP download** - Bulk download all gallery photos, unlocks with paid tier
+- Tier system refactored: Moved from galleries to users table (one payment covers all galleries)
+- Admin tier management: Dropdown to change user tier directly
+- Admin abuse review: View all galleries for any user with photo counts
+- Admin dashboard: Shows gallery/photo counts per user
+
+### 🔧 Fixed Earlier (Jan 4-6 Session)
 - Homepage redesign: Hero section with coral gradient, Inter font, sticky header
 - App-like nav: Pill-shaped CTA buttons, "How it works" section
 - Share modal UX: Larger QR code (280x280), full-width copy button, keyboard support
 - Lightbox: Uses display image directly, better error handling
-- Cache busting: ASSET_VERSION system for CSS/JS
+- Cache busting: ASSET_VERSION system for CSS/CSS
 - Admin dashboard: Responsive card layout for mobile
 - Problem/solution section on homepage
 
 ### ⏳ Not Yet Built
-- Payment/billing (Stripe Checkout - simple payment links)
-- Bulk download (ZIP)
-- Gallery expiration (7 days free, 90 days paid)
+- Payment/billing (Stripe Checkout - inline pricing, no Dashboard products)
+- Gallery expiration enforcement (14 days free, 1 year paid)
 
 ---
 
@@ -80,9 +92,16 @@
 **Pricing (impulse-buy model):**
 | Tier | Price | Galleries | Photos | Duration | ZIP Download |
 |------|-------|-----------|--------|----------|--------------|
-| Free | $0 | 1 | 50 | 7 days | ❌ |
-| Event | $5 | 1 | 500 | 90 days | ✅ |
-| Party Pack | $12 | 3 | 500 each | 90 days | ✅ |
+| Free | $0 | 3 | 200/gallery | 14 days | ❌ |
+| Event | $5 | 10 | 2,000/gallery | 1 year | ✅ |
+| Party Pack | $12 | Unlimited | 2,000/gallery | 1 year | ✅ |
+
+**Why these limits:**
+- Galleries are cheap (DB rows), photos are the cost driver (S3 + Lambda)
+- Free: Try multiple small events, hit photo limits at medium ones
+- Event ($5): Covers most normal users (10 events!)
+- Party Pack ($12): Event photographers / power users
+- 1 year retention: Enough time to download, can send reminder emails before expiry
 
 **Why $5:**
 - Impulse buy territory - no decision friction
@@ -130,7 +149,7 @@ GuestPix ($1K → $5M revenue, 150K+ events, 100 countries) is the polished mark
 | Full resolution download | ✅ | ✅ | Parity |
 | Auto-resize for display | ✅ | ✅ | Parity |
 | **Duplicate detection** | ❌ | ✅ | **Advantage** |
-| **Bulk ZIP download** | ✅ | ❌ | **Gap - Priority** |
+| **Bulk ZIP download** | ✅ | ✅ | Parity |
 | Video upload | ✅ | ❌ | Gap |
 | Video guestbook | ✅ | ❌ | Gap |
 | Written guestbook | ✅ | ❌ | Gap |
@@ -164,9 +183,9 @@ GuestPix ($1K → $5M revenue, 150K+ events, 100 countries) is the polished mark
 1. ✅ Download actually downloads
 2. ✅ Pre-upload hash check (duplicate detection)
 3. ✅ Gallery/photo limits for free tier
-4. ⬜ **Bulk ZIP download** - unlocks with $5 payment
-5. ⬜ **Stripe Checkout** - simple payment link, webhook to unlock
-6. ⬜ Gallery expiration (7 days free / 90 days paid)
+4. ✅ **Bulk ZIP download** - unlocks with paid tier
+5. ⬜ **Stripe Checkout** - inline pricing, webhook to unlock
+6. ⬜ Gallery expiration (14 days free / 1 year paid)
 
 ### Phase 2 (Close Feature Gap)
 - Guest name capture on upload
@@ -197,7 +216,9 @@ GuestPix ($1K → $5M revenue, 150K+ events, 100 countries) is the polished mark
 ## Decision Log
 
 | Date | Decision | Rationale |
-|------|----------|-----------|
+|------|----------|-----------|| 2026-01-27 | Mobile FAB for upload | Toolbar button too small on mobile - users missed it |
+| 2026-01-27 | Pin Postgres to 17.2 | Major version tags (17) can backport breaking changes || 2026-01-15 | Move tier from galleries to users | One payment covers all user galleries, simpler model |
+| 2026-01-15 | Admin gallery review | Abuse detection - view all galleries per user |
 | 2026-01-09 | Pivot to $5 impulse pricing | Bottom-of-market strategy - serve casual hosts big fish ignore |
 | 2026-01-09 | 90-day gallery expiry | Keeps storage costs low, creates urgency |
 | 2026-01-09 | No subscriptions | One-time payments = no churn, simpler billing |

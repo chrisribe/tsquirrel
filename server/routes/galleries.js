@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const GalleryDAO = require('../dao/GalleryDAO');
+const UserDAO = require('../dao/UserDAO');
 const GalleryController = require('../controllers/GalleryController');
 const { extractDimensions } = require('../middleware/fileUploadMiddleware');
 const requireAuth = require('../middleware/authMiddleware');
@@ -11,7 +12,7 @@ let controller;
 router.use((req, res, next) => {
   if (!controller) {
     const pool = req.app.get('pool');
-    controller = new GalleryController(new GalleryDAO(pool));
+    controller = new GalleryController(new GalleryDAO(pool), new UserDAO(pool));
   }
   next();
 });
@@ -67,6 +68,16 @@ router.delete('/:uuid/photos/:photoId', (req, res, next) =>
 // Download photo with proper Content-Disposition header
 router.get('/download/:photoId', (req, res, next) => 
   controller.downloadPhoto(req, res, next)
+);
+
+// Download all photos as ZIP
+router.get('/:uuid/download-all', (req, res, next) => 
+  controller.downloadAllPhotos(req, res, next)
+);
+
+// HEAD request to check download access (for pre-flight check)
+router.head('/:uuid/download-all', (req, res, next) => 
+  controller.downloadAllPhotos(req, res, next)
 );
 
 module.exports = router;

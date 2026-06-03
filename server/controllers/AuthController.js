@@ -26,11 +26,11 @@ class AuthController {
       
       // For HTMX, redirect via header
       if (req.headers['hx-request']) {
-        res.setHeader('HX-Redirect', '/dashboard');
+        res.setHeader('HX-Redirect', '/galleries');
         return res.send('');
       }
       
-      return res.redirect('/dashboard');
+      return res.redirect('/galleries');
     } catch (error) {
       if (req.headers['hx-request']) {
         return res.send(`<p class="error">${error.message}</p>`);
@@ -75,11 +75,11 @@ class AuthController {
           return res.respondWithTemplateOrJson({
             success: true,
             message: 'Registration successful!',
-            redirect: '/dashboard'
+            redirect: '/galleries'
           });
         }
         
-        return res.redirect('/dashboard');
+        return res.redirect('/galleries');
       }
       
       return res.respondWithTemplateOrJson({
