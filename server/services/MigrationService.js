@@ -87,6 +87,32 @@ const migrations = [
       console.log('Migration 3: Default sources seeded');
     }
   },
+  {
+    version: 4,
+    description: 'Legacy articles — 65 original tsquirrel.com indexed URLs',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS legacy_articles (
+          id INTEGER PRIMARY KEY,
+          slug VARCHAR(300) UNIQUE NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          source_url TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      // Insert all 65 legacy articles
+      const fs = require('fs');
+      const path = require('path');
+      const sql = fs.readFileSync(path.join(__dirname, '../../db/03-legacy.sql'), 'utf8');
+      // Run only the INSERT portion (skip the CREATE TABLE which we already ran)
+      const insertPart = sql.split('INSERT INTO')[1];
+      if (insertPart) {
+        await pool.query('INSERT INTO' + insertPart);
+      }
+      console.log('Migration 4: Legacy articles table + 65 rows seeded');
+    }
+  },
   // Future migrations go here
 ];
 
