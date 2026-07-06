@@ -1,0 +1,48 @@
+<%
+  const { story, articles } = pageData;
+  function timeAgo(date) {
+    const now = new Date();
+    const diff = Math.floor((now - new Date(date)) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+  }
+%>
+
+<article class="story-detail">
+  <header class="story-detail-header">
+    <div class="story-meta">
+      <span class="story-category"><%= story.category || 'News' %></span>
+      <span class="story-time"><%= timeAgo(story.updated_at || story.created_at) %></span>
+      <span class="story-sources"><%= story.source_count %> source<%= story.source_count != 1 ? 's' : '' %></span>
+    </div>
+    <h1><%= story.title %></h1>
+    <% if (story.summary) { %>
+      <p class="story-summary-large"><%= story.summary %></p>
+    <% } %>
+    <% if (story.tags && story.tags.length) { %>
+      <div class="story-tags">
+        <% story.tags.forEach(tag => { %>
+          <span class="story-tag">#<%= tag %></span>
+        <% }); %>
+      </div>
+    <% } %>
+  </header>
+
+  <section class="source-list">
+    <h3>Coverage (<%= articles.length %>)</h3>
+    <% articles.forEach(a => { %>
+      <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="source-item">
+        <span class="source-name"><%= a.source_name %></span>
+        <span class="source-title"><%= a.title %></span>
+        <span class="source-time"><%= timeAgo(a.published_at) %></span>
+        <span class="source-arrow">↗</span>
+      </a>
+    <% }); %>
+  </section>
+</article>
+
+<div style="margin-top:2rem">
+  <a href="/" class="secondary">← Back to trending</a>
+</div>

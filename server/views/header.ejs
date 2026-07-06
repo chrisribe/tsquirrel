@@ -1,42 +1,13 @@
 <header class="container">
   <nav>
     <ul>
-      <li><a href="/" class="logo"><span class="logo-icon">⚡</span><strong>EventGlimpse</strong></a></li>
+      <li><a href="/" class="logo"><span class="logo-icon">🐿️</span><strong>TSquirrel</strong></a></li>
     </ul>
-    
-    <!-- Desktop nav -->
-    <ul class="nav-right nav-desktop">
-      <% if (user) { %>
-        <li><a href="/galleries" class="nav-btn">📸 My Galleries</a></li>
-        <% if (user.role === 'admin') { %>
-          <li><a href="/admin" class="nav-link-subtle">Admin</a></li>
-        <% } %>
-        <li>
-          <a href="#" hx-post="/auth/logout" hx-swap="none" class="nav-link-subtle">Logout</a>
-        </li>
-      <% } else { %>
-        <li><a href="/auth/login" class="nav-link-subtle">Log in</a></li>
-        <li><a href="/register" class="nav-btn-primary">Sign up</a></li>
-      <% } %>
+    <ul class="nav-right">
+      <li><a href="/" class="nav-link-subtle">Trending</a></li>
+      <li><a href="/?category=Technology" class="nav-link-subtle">Tech</a></li>
+      <li><a href="/?category=World" class="nav-link-subtle">World</a></li>
+      <li><a href="/?category=Business" class="nav-link-subtle">Business</a></li>
     </ul>
-    
-    <!-- Mobile hamburger -->
-    <div class="nav-mobile">
-      <div class="hamburger-menu">
-        <button class="hamburger-btn" aria-label="Menu" onclick="this.parentElement.classList.toggle('open')">☰</button>
-        <div class="hamburger-dropdown">
-          <% if (user) { %>
-            <a href="/galleries">📸 My Galleries</a>
-            <% if (user.role === 'admin') { %>
-              <a href="/admin">⚙️ Admin</a>
-            <% } %>
-            <a href="#" hx-post="/auth/logout" hx-swap="none">🚪 Logout</a>
-          <% } else { %>
-            <a href="/auth/login">Log in</a>
-            <a href="/register">Sign up</a>
-          <% } %>
-        </div>
-      </div>
-    </div>
   </nav>
 </header>

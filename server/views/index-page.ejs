@@ -1,37 +1,33 @@
-<section class="hero">
-  <div class="hero-content">
-    <h1>Collect Everyone's Photos<br><span class="hero-highlight">Without the Chaos</span></h1>
-    <p class="hero-subtitle">One link. No apps. No accounts for guests.</p>
-    
-    <% if (user) { %>
-      <a href="/galleries" role="button" class="hero-cta">Go to My Galleries</a>
-    <% } else { %>
-      <div class="hero-buttons">
-        <a href="/register" role="button" class="hero-cta">Start Your Gallery</a>
-        <a href="/auth/login" role="button" class="outline hero-cta-secondary">Sign In</a>
-      </div>
-    <% } %>
+<%
+  const { stories, categories, activeCategory } = pageData;
+%>
+
+<!-- Category filter bar -->
+<section class="category-bar">
+  <div class="category-scroll">
+    <a href="/" class="category-pill <%= !activeCategory ? 'active' : '' %>">All</a>
+    <% categories.forEach(c => { %>
+      <a href="/?category=<%= c.category %>"
+         class="category-pill <%= activeCategory === c.category ? 'active' : '' %>">
+        <%= c.category %> <span class="pill-count"><%= c.count %></span>
+      </a>
+    <% }); %>
   </div>
 </section>
 
-<!-- Problem/Solution Story -->
-<section class="container">
-  <div class="problem-section">
-    <h2 class="section-title">Sound familiar?</h2>
-    <div class="pain-points">
-      <div class="pain-item">📱 "Send me your photos!" → crickets</div>
-      <div class="pain-item">🤷 Uncle Bob: "What's AirDrop?"</div>
-      <div class="pain-item">😤 Karen: "I can't access the Google Drive"</div>
-      <div class="pain-item">⏰ WeTransfer: "Your link expired"</div>
-    </div>
-    
-    <p class="solution-line">With EventGlimpse, they just click and drop.</p>
-    
-    <% if (!user) { %>
-    <div class="solution-cta">
-      <a href="/register" role="button" class="hero-cta">Start Your Gallery</a>
-      <p class="cta-subtext">Quick setup. No commitment.</p>
-    </div>
-    <% } %>
+<!-- Story feed -->
+<section class="story-feed"
+         id="story-feed">
+  <%- include('partials/story-cards', { pageData: { stories } }) %>
+
+  <!-- HTMX load-more trigger -->
+  <% if (stories.length === 30) { %>
+  <div id="load-more"
+       hx-get="/api/stories?offset=30<%= activeCategory ? '&category=' + activeCategory : '' %>"
+       hx-trigger="revealed"
+       hx-swap="outerHTML"
+       hx-target="#load-more">
+    <p style="text-align:center; color:var(--pico-muted-color)">Loading more…</p>
   </div>
+  <% } %>
 </section>

@@ -1,68 +1,96 @@
 /**
- * MigrationService - Auto-apply database migrations on startup
- * 
- * Simple approach for single-server deployment:
- * - Tracks versions in schema_migrations table
- * - Runs pending migrations in order
- * - Idempotent DDL (IF NOT EXISTS, IF EXISTS)
- * 
- * ⚠️ SYNC: When adding migrations, also update /db/*.sql files
- *    - .sql files = fresh DB schema (source of truth)
- *    - migrations = patches for existing DBs
+ * MigrationService — TSquirrel
+ * Tracks versions in schema_migrations. Idempotent DDL (IF NOT EXISTS).
  */
 
 const migrations = [
   {
     version: 1,
-    description: 'Baseline - existing schema',
+    description: 'Baseline — sessions + secrets',
     up: async (pool) => {
-      // Existing schema, just mark as v1
       console.log('Migration 1: Baseline schema marked');
     }
   },
   {
     version: 2,
-    description: 'Add tier and expiry to galleries',
+    description: 'News schema — sources, articles, stories',
     up: async (pool) => {
       await pool.query(`
-        ALTER TABLE galleries 
-        ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'free'
+        CREATE TABLE IF NOT EXISTS sources (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          slug VARCHAR(100) UNIQUE NOT NULL,
+          url VARCHAR(500) NOT NULL,
+          feed_url VARCHAR(500),
+          type VARCHAR(20) DEFAULT 'rss',
+          active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
       `);
       await pool.query(`
-        ALTER TABLE galleries 
-        ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP
+        CREATE TABLE IF NOT EXISTS articles (
+          id SERIAL PRIMARY KEY,
+          source_id INTEGER REFERENCES sources(id),
+          external_id VARCHAR(255),
+          title TEXT NOT NULL,
+          url TEXT NOT NULL,
+          published_at TIMESTAMP,
+          fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(source_id, external_id)
+        )
       `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published_at DESC)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_articles_source ON articles(source_id)`);
       await pool.query(`
-        ALTER TABLE galleries 
-        ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP
+        CREATE TABLE IF NOT EXISTS stories (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL,
+          slug VARCHAR(255) UNIQUE NOT NULL,
+          summary TEXT,
+          category VARCHAR(50),
+          tags TEXT[],
+          sentiment NUMERIC(3,2),
+          heat_score INTEGER DEFAULT 0,
+          image_url TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          is_featured BOOLEAN DEFAULT FALSE
+        )
       `);
-      console.log('Migration 2: Added tier, expires_at, paid_at columns');
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_stories_created ON stories(created_at DESC)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_stories_heat ON stories(heat_score DESC)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_stories_category ON stories(category)`);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_articles (
+          story_id INTEGER REFERENCES stories(id) ON DELETE CASCADE,
+          article_id INTEGER REFERENCES articles(id) ON DELETE CASCADE,
+          PRIMARY KEY (story_id, article_id)
+        )
+      `);
+      console.log('Migration 2: News schema created');
     }
   },
   {
     version: 3,
-    description: 'Move tier/expires_at/paid_at from galleries to users',
+    description: 'Seed default sources',
     up: async (pool) => {
-      // Add columns to users
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'free'`);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP`);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP`);
-      // Drop columns from galleries (no data to migrate)
-      await pool.query(`ALTER TABLE galleries DROP COLUMN IF EXISTS tier`);
-      await pool.query(`ALTER TABLE galleries DROP COLUMN IF EXISTS paid_at`);
-      await pool.query(`ALTER TABLE galleries DROP COLUMN IF EXISTS expires_at`);
-      console.log('Migration 3: Moved tier columns to users, dropped from galleries');
+      await pool.query(`
+        INSERT INTO sources (name, slug, url, feed_url, type) VALUES
+          ('Hacker News',    'hackernews',  'https://news.ycombinator.com',  NULL,                                                  'hn'),
+          ('BBC News',       'bbc',         'https://www.bbc.com/news',      'https://feeds.bbci.co.uk/news/rss.xml',               'rss'),
+          ('Reuters',        'reuters',     'https://www.reuters.com',       'https://feeds.reuters.com/reuters/topNews',           'rss'),
+          ('The Guardian',   'guardian',    'https://www.theguardian.com',   'https://www.theguardian.com/world/rss',               'rss'),
+          ('Ars Technica',   'arstechnica', 'https://arstechnica.com',       'https://feeds.arstechnica.com/arstechnica/index',     'rss'),
+          ('TechCrunch',     'techcrunch',  'https://techcrunch.com',        'https://techcrunch.com/feed/',                        'rss')
+        ON CONFLICT (slug) DO NOTHING
+      `);
+      console.log('Migration 3: Default sources seeded');
     }
-  }
-  // Future migrations go here - just add to the array!
+  },
+  // Future migrations go here
 ];
 
-/**
- * Run all pending migrations
- * Call this on server startup after pool is connected
- */
 async function runMigrations(pool) {
-  // Ensure migration tracking table exists
   await pool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version INTEGER PRIMARY KEY,
@@ -71,40 +99,31 @@ async function runMigrations(pool) {
     )
   `);
 
-  // Get current version
   const result = await pool.query('SELECT MAX(version) as version FROM schema_migrations');
   const currentVersion = result.rows[0]?.version || 0;
-
-  // Find pending migrations
   const pending = migrations.filter(m => m.version > currentVersion);
 
   if (pending.length === 0) {
-    console.log('Database schema is up to date (v' + currentVersion + ')');
+    console.log(`DB schema up to date (v${currentVersion})`);
     return;
   }
 
-  console.log(`Found ${pending.length} pending migration(s)`);
-
-  // Run each pending migration
+  console.log(`Running ${pending.length} migration(s)…`);
   for (const migration of pending) {
-    console.log(`Applying migration ${migration.version}: ${migration.description}`);
-    
+    console.log(`  → v${migration.version}: ${migration.description}`);
     try {
       await migration.up(pool);
-      
       await pool.query(
         'INSERT INTO schema_migrations (version, description) VALUES ($1, $2)',
         [migration.version, migration.description]
       );
-      
-      console.log(`✅ Migration ${migration.version} completed`);
-    } catch (error) {
-      console.error(`❌ Migration ${migration.version} failed:`, error.message);
-      throw error; // Stop server if migration fails
+      console.log(`  ✅ v${migration.version} done`);
+    } catch (err) {
+      console.error(`  ❌ v${migration.version} failed:`, err.message);
+      throw err;
     }
   }
-
-  console.log('All migrations completed successfully');
+  console.log('All migrations complete');
 }
 
 module.exports = { runMigrations, migrations };
