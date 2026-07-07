@@ -43,7 +43,8 @@
     }
 
     header {
-      background: var(--brand);
+      background: #fff;
+      border-bottom: 1px solid var(--border);
       position: sticky; top: 0; z-index: 100;
     }
 
@@ -52,10 +53,9 @@
       padding: .6rem 1rem;
       display: flex; align-items: center; justify-content: space-between;
     }
-
     .logo {
       display: inline-flex; align-items: center; gap: .4rem;
-      text-decoration: none; color: #fff;
+      text-decoration: none; color: var(--brand);
     }
     .logo-mark {
       font-size: 1.6rem; line-height: 1;
@@ -72,7 +72,7 @@
       display: block;
     }
     .nav-count {
-      font-size: .75rem; color: rgba(255,255,255,.7);
+      font-size: .75rem; color: var(--muted);
       font-weight: 500;
     }
 
@@ -81,18 +81,18 @@
 
     /* ── SQUIRREL INTRO ── */
     .squirrel-intro {
-      background: var(--brand);
-      padding: .6rem 1rem .9rem;
+      background: var(--page-bg);
+      padding: .5rem 1rem .6rem;
       margin-bottom: 0;
     }
     .squirrel-intro-inner {
       max-width: 720px; margin: 0 auto;
     }
     .chatter {
-      font-size: .82rem; color: rgba(255,255,255,.8);
+      font-size: .82rem; color: var(--muted);
       font-style: italic;
     }
-    .chatter strong { color: #fff; font-style: normal; }
+    .chatter strong { color: var(--brand); font-style: normal; }
 
     /* ── CATEGORY PILLS ── */
     .category-bar {
@@ -134,7 +134,7 @@
 
     /* ── FEATURED STRIP (breaks the grid!) ── */
     .card-featured {
-      background: var(--brand);
+      background: #1e2822;
       border-radius: 16px;
       padding: 1rem;
       text-decoration: none;
