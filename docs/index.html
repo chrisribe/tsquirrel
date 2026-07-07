@@ -18,9 +18,11 @@
       --page-bg: #f3f4f6;
       --muted: #6b7280;
       --border: #e5e7eb;
-      --tag-bg: #f3f4f6;
+      --tag-bg: #f0f0f0;
       --text: #111827;
       --text-sub: #374151;
+      --archive-bg: #faf7f2;
+      --archive-border: #d4c9b8;
     }
 
     body {
@@ -28,9 +30,20 @@
       background: var(--page-bg);
       color: var(--text);
       min-height: 100vh;
+      padding-bottom: 4rem; /* space for bottom nav */
     }
 
-    /* ── Nav ── */
+    /* ── Mock banner ── */
+    .mock-banner {
+      background: #1e40af;
+      color: #fff;
+      text-align: center;
+      font-size: .78rem;
+      padding: .4rem 1rem;
+      font-weight: 500;
+    }
+
+    /* ── Header — logo only on mobile ── */
     header {
       background: #fff;
       border-bottom: 1px solid var(--border);
@@ -41,7 +54,7 @@
     nav {
       max-width: 720px;
       margin: 0 auto;
-      padding: .75rem 1rem;
+      padding: .7rem 1rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -56,43 +69,28 @@
       font-size: 1.15rem;
     }
     .logo-icon { font-size: 1.3rem; }
-    .nav-links {
-      display: flex;
-      gap: 1rem;
-      list-style: none;
-    }
-    .nav-links a {
-      font-size: .85rem;
-      color: var(--muted);
-      text-decoration: none;
-    }
-    .nav-links a:hover { color: var(--brand); }
-    @media (max-width: 480px) { .nav-links { display: none; } }
 
     /* ── Container ── */
     .container {
       max-width: 720px;
       margin: 0 auto;
-      padding: 0 .75rem 3rem;
+      padding: 0 .75rem 1rem;
     }
 
     /* ── Category pills ── */
-    .category-bar {
-      padding: .75rem 0 .25rem;
-      overflow: hidden;
-    }
+    .category-bar { padding: .75rem 0 .25rem; }
     .category-scroll {
       display: flex;
-      gap: .5rem;
+      gap: .45rem;
       overflow-x: auto;
-      padding-bottom: .5rem;
+      padding-bottom: .4rem;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
     }
     .category-scroll::-webkit-scrollbar { display: none; }
     .pill {
       flex-shrink: 0;
-      padding: .3rem .8rem;
+      padding: .3rem .75rem;
       border-radius: 99px;
       font-size: .8rem;
       font-weight: 500;
@@ -102,13 +100,14 @@
       text-decoration: none;
       cursor: pointer;
       transition: all .15s;
+      user-select: none;
     }
     .pill.active, .pill:hover {
       background: var(--brand);
       color: #fff;
       border-color: var(--brand);
     }
-    .pill-count { opacity: .7; font-size: .72rem; }
+    .pill-count { opacity: .65; font-size: .72rem; margin-left: .15rem; }
 
     /* ── Section label ── */
     .section-label {
@@ -120,116 +119,167 @@
       margin: 1rem 0 .5rem;
     }
 
-    /* ── Story card ── */
-    .feed { display: flex; flex-direction: column; gap: .6rem; }
+    /* ── Feed ── */
+    .feed { display: flex; flex-direction: column; gap: .55rem; }
 
+    /* ── Story card ── */
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 1rem 1rem .85rem;
+      padding: .85rem;
       text-decoration: none;
       color: inherit;
       display: block;
-      transition: box-shadow .15s, transform .1s;
+      transition: box-shadow .15s;
+      -webkit-tap-highlight-color: transparent;
     }
-    .card:hover {
-      box-shadow: 0 4px 16px rgba(0,0,0,.09);
-      transform: translateY(-1px);
+    .card:active { opacity: .92; }
+    .card:hover { box-shadow: 0 3px 14px rgba(0,0,0,.08); }
+
+    /* card inner layout: text left, thumb right */
+    .card-inner {
+      display: flex;
+      gap: .75rem;
+      align-items: flex-start;
     }
+    .card-body { flex: 1; min-width: 0; }
+    .card-thumb {
+      flex-shrink: 0;
+      width: 76px;
+      height: 76px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--tag-bg);
+    }
+    /* for featured card, full-width image on top */
+    .card.featured .card-inner { flex-direction: column; }
+    .card.featured .card-thumb {
+      width: 100%;
+      height: 160px;
+      border-radius: 10px;
+    }
+    .card.featured { border-color: var(--brand); border-width: 2px; }
 
     .card-meta {
       display: flex;
       align-items: center;
-      gap: .4rem;
-      margin-bottom: .45rem;
+      gap: .35rem;
+      margin-bottom: .35rem;
       flex-wrap: wrap;
     }
     .badge {
-      font-size: .68rem;
+      font-size: .67rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .04em;
-      padding: .15rem .45rem;
+      padding: .12rem .4rem;
       border-radius: 4px;
+      white-space: nowrap;
     }
     .badge-cat { background: var(--brand); color: #fff; }
-    .badge-archive { background: #e5e7eb; color: #6b7280; }
-    .badge-sources {
-      background: #fef3c7;
-      color: #92400e;
-    }
-    .meta-time { font-size: .75rem; color: var(--muted); }
+    .badge-sources { background: #fef3c7; color: #92400e; }
+    .meta-time { font-size: .73rem; color: var(--muted); }
 
     .card-title {
-      font-size: 1rem;
+      font-size: .97rem;
       font-weight: 600;
-      line-height: 1.4;
+      line-height: 1.38;
       color: var(--text);
-      margin-bottom: .35rem;
+      margin-bottom: .3rem;
     }
+    .card.featured .card-title { font-size: 1.08rem; }
+
     .card-summary {
-      font-size: .875rem;
+      font-size: .845rem;
       color: var(--text-sub);
-      line-height: 1.55;
-      margin-bottom: .45rem;
+      line-height: 1.52;
+      margin-bottom: .4rem;
       display: -webkit-box;
-      -webkit-line-clamp: 3;
+      -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-    .card-tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .card.featured .card-summary { -webkit-line-clamp: 3; }
+
+    .card-tags { display: flex; flex-wrap: wrap; gap: .25rem; }
     .tag {
-      font-size: .72rem;
+      font-size: .7rem;
       color: var(--muted);
       background: var(--tag-bg);
-      padding: .1rem .4rem;
+      padding: .1rem .35rem;
       border-radius: 4px;
-    }
-
-    /* Featured card */
-    .card.featured {
-      border-color: var(--brand);
-      border-width: 2px;
-    }
-    .card.featured .card-title { font-size: 1.1rem; }
-
-    /* ── OG image strip ── */
-    .card-img {
-      width: 100%;
-      height: 140px;
-      object-fit: cover;
-      border-radius: 8px;
-      margin-bottom: .6rem;
-      background: #e5e7eb;
     }
 
     /* ── Divider ── */
     .divider {
       text-align: center;
       color: var(--muted);
-      font-size: .8rem;
-      padding: 1rem 0 .25rem;
+      font-size: .75rem;
+      padding: .75rem 0 .1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
     }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Archive cards ── */
+    .card.archive {
+      background: var(--archive-bg);
+      border-color: var(--archive-border);
+      border-style: dashed;
+    }
+    .badge-archive {
+      background: #e8e0d4;
+      color: #78634a;
+      font-size: .67rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: .12rem .4rem;
+      border-radius: 4px;
+    }
+
+    /* ── Bottom tab bar ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0; right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: .5rem 0 calc(.5rem + env(safe-area-inset-bottom));
+      z-index: 200;
+    }
+    .tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .15rem;
+      font-size: .65rem;
+      color: var(--muted);
+      text-decoration: none;
+      cursor: pointer;
+      min-width: 56px;
+      padding: .25rem;
+      border-radius: 8px;
+      transition: color .15s;
+    }
+    .tab.active { color: var(--brand); }
+    .tab-icon { font-size: 1.3rem; line-height: 1; }
 
     /* ── Footer ── */
     footer {
       text-align: center;
-      padding: 2rem 1rem;
-      font-size: .8rem;
-      color: var(--muted);
-      border-top: 1px solid var(--border);
-      margin-top: 2rem;
-    }
-
-    /* ── Mock badge ── */
-    .mock-banner {
-      background: #1e40af;
-      color: #fff;
-      text-align: center;
+      padding: 1.5rem 1rem;
       font-size: .78rem;
-      padding: .4rem 1rem;
-      font-weight: 500;
+      color: var(--muted);
     }
   </style>
 </head>
@@ -240,18 +290,12 @@
 <header>
   <nav>
     <a href="#" class="logo"><span class="logo-icon">🐿️</span>TSquirrel</a>
-    <ul class="nav-links">
-      <li><a href="#">Trending</a></li>
-      <li><a href="#">Tech</a></li>
-      <li><a href="#">World</a></li>
-      <li><a href="#">Business</a></li>
-    </ul>
   </nav>
 </header>
 
 <div class="container">
 
-  <!-- Category pills -->
+  <!-- Category pills (primary nav on mobile) -->
   <div class="category-bar">
     <div class="category-scroll">
       <span class="pill active">All <span class="pill-count">30</span></span>
@@ -264,180 +308,252 @@
     </div>
   </div>
 
-  <!-- AI Stories -->
+  <!-- Live feed -->
   <p class="section-label">🔥 Trending now</p>
   <div class="feed">
 
-    <!-- Featured multi-source story -->
-    <a href="#" class="card featured">
-      <div class="card-meta">
-        <span class="badge badge-cat">Technology</span>
-        <span class="badge badge-sources">4 sources</span>
-        <span class="meta-time">12m ago</span>
-      </div>
-      <div class="card-title">Apple Announces M4 Ultra Chip With Record-Breaking Neural Engine Performance</div>
-      <div class="card-summary">Apple unveiled its M4 Ultra chip at WWDC, claiming a 40% improvement in neural engine throughput over M3 Ultra. The chip targets AI workloads and professional video production, with Mac Pro availability later this year. Benchmark results from early testers suggest gaming and LLM inference performance well ahead of competing x86 chips.</div>
-      <div class="card-tags">
-        <span class="tag">#Apple</span>
-        <span class="tag">#WWDC</span>
-        <span class="tag">#M4Ultra</span>
-        <span class="tag">#AI</span>
-      </div>
-    </a>
-
-    <!-- Standard AI story -->
-    <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-cat">World</span>
-        <span class="badge badge-sources">3 sources</span>
-        <span class="meta-time">38m ago</span>
-      </div>
-      <div class="card-title">NATO Summit Agrees on $500B Defence Spending Roadmap Through 2030</div>
-      <div class="card-summary">Alliance leaders signed a new defence investment framework committing member states to reach 3% of GDP in military spending by 2030. The deal follows years of friction over burden-sharing and comes ahead of a pivotal US presidential transition.</div>
-      <div class="card-tags">
-        <span class="tag">#NATO</span>
-        <span class="tag">#Defence</span>
-        <span class="tag">#Europe</span>
+    <!-- Featured: full-width image on top -->
+    <a href="story.html" class="card featured">
+      <div class="card-inner">
+        <img class="card-thumb"
+          src="https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80"
+          alt="Apple chip" loading="lazy">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-cat">Technology</span>
+            <span class="badge badge-sources">4 sources</span>
+            <span class="meta-time">12m ago</span>
+          </div>
+          <div class="card-title">Apple Announces M4 Ultra Chip With Record-Breaking Neural Engine Performance</div>
+          <div class="card-summary">Apple unveiled its M4 Ultra chip at WWDC, claiming a 40% improvement in neural engine throughput over M3 Ultra. The chip targets AI workloads and pro video production. Benchmarks suggest it leads competing x86 chips on LLM inference.</div>
+          <div class="card-tags">
+            <span class="tag">#Apple</span><span class="tag">#WWDC</span><span class="tag">#M4Ultra</span><span class="tag">#AI</span>
+          </div>
+        </div>
       </div>
     </a>
 
+    <!-- Standard cards: thumb right -->
     <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-cat">Business</span>
-        <span class="badge badge-sources">2 sources</span>
-        <span class="meta-time">1h ago</span>
-      </div>
-      <div class="card-title">OpenAI Raises $10B Round at $300B Valuation Led by SoftBank</div>
-      <div class="card-summary">OpenAI closed its largest funding round yet, valuing the company at $300 billion. SoftBank led with a $7 billion commitment. Funds will accelerate compute buildout and expand GPT-5 API capacity ahead of enterprise rollout.</div>
-      <div class="card-tags">
-        <span class="tag">#OpenAI</span>
-        <span class="tag">#AI</span>
-        <span class="tag">#Funding</span>
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-cat">World</span>
+            <span class="badge badge-sources">3 sources</span>
+            <span class="meta-time">38m ago</span>
+          </div>
+          <div class="card-title">NATO Summit Agrees on $500B Defence Spending Roadmap Through 2030</div>
+          <div class="card-summary">Alliance leaders signed a new framework committing members to 3% of GDP by 2030, ahead of a pivotal US presidential transition.</div>
+          <div class="card-tags">
+            <span class="tag">#NATO</span><span class="tag">#Defence</span><span class="tag">#Europe</span>
+          </div>
+        </div>
+        <img class="card-thumb"
+          src="https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=200&q=70"
+          alt="NATO" loading="lazy">
       </div>
     </a>
 
     <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-cat">Science</span>
-        <span class="badge badge-sources">2 sources</span>
-        <span class="meta-time">2h ago</span>
-      </div>
-      <div class="card-title">SpaceX Starship Flight 9 Completes Full Stack Landing for First Time</div>
-      <div class="card-summary">Both the Super Heavy booster and Starship upper stage landed successfully in what SpaceX is calling a historic milestone. The mission included a payload deployment test and reentry heat shield validation at Mach 25.</div>
-      <div class="card-tags">
-        <span class="tag">#SpaceX</span>
-        <span class="tag">#Starship</span>
-        <span class="tag">#Space</span>
-      </div>
-    </a>
-
-    <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-cat">Technology</span>
-        <span class="meta-time">3h ago</span>
-      </div>
-      <div class="card-title">GitHub Copilot Now Supports Full Repo Reasoning Across 1M Token Context</div>
-      <div class="card-summary">GitHub's new Copilot Enterprise tier can reason over an entire repository — up to 1 million tokens — enabling cross-file refactoring suggestions and architectural recommendations without manual context pasting.</div>
-      <div class="card-tags">
-        <span class="tag">#GitHub</span>
-        <span class="tag">#Copilot</span>
-        <span class="tag">#DevTools</span>
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-cat">Business</span>
+            <span class="badge badge-sources">2 sources</span>
+            <span class="meta-time">1h ago</span>
+          </div>
+          <div class="card-title">OpenAI Raises $10B Round at $300B Valuation Led by SoftBank</div>
+          <div class="card-summary">Funds will accelerate compute buildout and expand GPT-5 API capacity ahead of enterprise rollout.</div>
+          <div class="card-tags">
+            <span class="tag">#OpenAI</span><span class="tag">#AI</span><span class="tag">#Funding</span>
+          </div>
+        </div>
+        <img class="card-thumb"
+          src="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=200&q=70"
+          alt="AI" loading="lazy">
       </div>
     </a>
 
     <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-cat">World</span>
-        <span class="badge badge-sources">5 sources</span>
-        <span class="meta-time">4h ago</span>
-      </div>
-      <div class="card-title">Ceasefire Agreement Reached in Gaza After 19 Months of Conflict</div>
-      <div class="card-summary">A six-week ceasefire deal brokered by Qatar and Egypt was accepted by both parties, pausing hostilities and allowing humanitarian convoys to resume. The agreement includes a phased hostage exchange but leaves long-term governance unresolved.</div>
-      <div class="card-tags">
-        <span class="tag">#Gaza</span>
-        <span class="tag">#Ceasefire</span>
-        <span class="tag">#MiddleEast</span>
-      </div>
-    </a>
-
-    <!-- Divider to legacy -->
-    <div class="divider">── Earlier today ──</div>
-
-    <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-cat">Business</span>
-        <span class="meta-time">6h ago</span>
-      </div>
-      <div class="card-title">Nvidia Q2 Earnings: Revenue Hits $44B, Data Centre Up 154% YoY</div>
-      <div class="card-summary">Nvidia's data centre division drove record revenues as hyperscaler AI chip demand outpaced supply. CEO Jensen Huang guided for $50B+ next quarter, citing Blackwell GPU backlog stretching into 2026.</div>
-      <div class="card-tags">
-        <span class="tag">#Nvidia</span>
-        <span class="tag">#Earnings</span>
-        <span class="tag">#GPUs</span>
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-cat">Science</span>
+            <span class="badge badge-sources">2 sources</span>
+            <span class="meta-time">2h ago</span>
+          </div>
+          <div class="card-title">SpaceX Starship Flight 9 Completes Full Stack Landing for First Time</div>
+          <div class="card-summary">Both Super Heavy booster and Starship upper stage landed successfully in what SpaceX calls a historic milestone.</div>
+          <div class="card-tags">
+            <span class="tag">#SpaceX</span><span class="tag">#Starship</span><span class="tag">#Space</span>
+          </div>
+        </div>
+        <img class="card-thumb"
+          src="https://images.unsplash.com/photo-1541185933-ef5d8ed016c2?w=200&q=70"
+          alt="SpaceX" loading="lazy">
       </div>
     </a>
 
     <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-cat">Entertainment</span>
-        <span class="meta-time">8h ago</span>
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-cat">Technology</span>
+            <span class="badge badge-sources">1 source</span>
+            <span class="meta-time">3h ago</span>
+          </div>
+          <div class="card-title">GitHub Copilot Now Supports Full Repo Reasoning Across 1M Token Context</div>
+          <div class="card-summary">Cross-file refactoring suggestions and architectural recommendations without manual context pasting.</div>
+          <div class="card-tags">
+            <span class="tag">#GitHub</span><span class="tag">#Copilot</span><span class="tag">#DevTools</span>
+          </div>
+        </div>
+        <img class="card-thumb"
+          src="https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=200&q=70"
+          alt="Code" loading="lazy">
       </div>
-      <div class="card-title">Kendrick Lamar Set to Headline Super Bowl LX Halftime Show</div>
-      <div class="card-summary">The NFL confirmed Kendrick Lamar will perform at Super Bowl LX in New Orleans. The announcement comes a year after his high-profile rap beef with Drake dominated streaming charts and cultural conversation.</div>
-      <div class="card-tags">
-        <span class="tag">#NFL</span>
-        <span class="tag">#SuperBowl</span>
-        <span class="tag">#KendrickLamar</span>
+    </a>
+
+    <a href="#" class="card">
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-cat">World</span>
+            <span class="badge badge-sources">5 sources</span>
+            <span class="meta-time">4h ago</span>
+          </div>
+          <div class="card-title">Ceasefire Agreement Reached in Gaza After 19 Months of Conflict</div>
+          <div class="card-summary">A six-week deal brokered by Qatar and Egypt includes a phased hostage exchange but leaves long-term governance unresolved.</div>
+          <div class="card-tags">
+            <span class="tag">#Gaza</span><span class="tag">#Ceasefire</span><span class="tag">#MiddleEast</span>
+          </div>
+        </div>
+        <img class="card-thumb"
+          src="https://images.unsplash.com/photo-1542037104857-ffbb0b9155fb?w=200&q=70"
+          alt="World news" loading="lazy">
+      </div>
+    </a>
+
+    <div class="divider">Earlier today</div>
+
+    <a href="#" class="card">
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-cat">Business</span>
+            <span class="badge badge-sources">1 source</span>
+            <span class="meta-time">6h ago</span>
+          </div>
+          <div class="card-title">Nvidia Q2 Earnings: Revenue Hits $44B, Data Centre Up 154% YoY</div>
+          <div class="card-summary">Jensen Huang guided $50B+ next quarter, citing Blackwell GPU backlog stretching into 2026.</div>
+          <div class="card-tags">
+            <span class="tag">#Nvidia</span><span class="tag">#Earnings</span><span class="tag">#GPUs</span>
+          </div>
+        </div>
+        <img class="card-thumb"
+          src="https://images.unsplash.com/photo-1642104704074-907c0698cbd9?w=200&q=70"
+          alt="Nvidia" loading="lazy">
+      </div>
+    </a>
+
+    <a href="#" class="card">
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-cat">Entertainment</span>
+            <span class="badge badge-sources">1 source</span>
+            <span class="meta-time">8h ago</span>
+          </div>
+          <div class="card-title">Kendrick Lamar Set to Headline Super Bowl LX Halftime Show</div>
+          <div class="card-summary">The announcement comes a year after his high-profile rap beef with Drake dominated streaming charts.</div>
+          <div class="card-tags">
+            <span class="tag">#NFL</span><span class="tag">#SuperBowl</span><span class="tag">#KendrickLamar</span>
+          </div>
+        </div>
+        <img class="card-thumb"
+          src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&q=70"
+          alt="Concert" loading="lazy">
       </div>
     </a>
 
   </div>
 
-  <!-- Legacy archive section -->
-  <p class="section-label" style="margin-top:1.5rem;">📰 TSquirrel Archive</p>
+  <!-- Archive section -->
+  <p class="section-label" style="margin-top:1.5rem">📰 TSquirrel Archive</p>
   <div class="feed">
 
-    <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-archive">Archive</span>
-        <span class="meta-time">2018</span>
+    <a href="#" class="card archive">
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-archive">Archive · 2015</span>
+          </div>
+          <div class="card-title">Drapeau français : le retour d'un symbole après les attentats</div>
+          <div class="card-summary">Des drapeaux bleu, blanc, rouge à toutes les fenêtres. Les Français sont invités à se réapproprier un symbole mis de côté après les attentats de Paris.</div>
+        </div>
       </div>
-      <div class="card-title">Drapeau français : le retour d'un symbole après les attentats</div>
-      <div class="card-summary">Des drapeaux bleu, blanc, rouge à toutes les fenêtres. Les Français sont invités à se réapproprier un symbole qu'ils avaient mis de côté après les attentats de Paris.</div>
     </a>
 
-    <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-archive">Archive</span>
-        <span class="meta-time">2018</span>
+    <a href="#" class="card archive">
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-archive">Archive · 2015</span>
+          </div>
+          <div class="card-title">Fatal A400M crash linked to data-wipe mistake — BBC News</div>
+          <div class="card-summary">A military plane crash in Spain was probably caused by computer files being accidentally deleted during a software update.</div>
+        </div>
       </div>
-      <div class="card-title">Fatal A400M crash linked to data-wipe mistake - BBC News</div>
-      <div class="card-summary">A military plane crash in Spain was probably caused by computer files being accidentally deleted during a software update, investigation finds.</div>
     </a>
 
-    <a href="#" class="card">
-      <div class="card-meta">
-        <span class="badge badge-archive">Archive</span>
-        <span class="meta-time">2018</span>
+    <a href="#" class="card archive">
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="badge badge-archive">Archive · 2018</span>
+          </div>
+          <div class="card-title">Avicii Died of Apparent Suicide — Rolling Stone</div>
+          <div class="card-summary">Tim Bergling, the Swedish DJ-producer who performed as Avicii, died of an apparent suicide. His family said he "could not go on any longer."</div>
+        </div>
       </div>
-      <div class="card-title">Avicii Died of Apparent Suicide - Rolling Stone</div>
-      <div class="card-summary">Tim Bergling, the Swedish DJ-producer who performed as Avicii, died of an apparent suicide. His family shared a statement about the musician's death.</div>
     </a>
 
   </div>
 
+  <footer>© 2026 TSquirrel — AI-curated news</footer>
 </div>
 
-<footer>
-  © 2026 TSquirrel — AI-curated news &nbsp;·&nbsp; <em>Design preview — not live yet</em>
-</footer>
+<!-- Bottom tab bar -->
+<nav class="bottom-nav">
+  <a href="#" class="tab active">
+    <span class="tab-icon">🔥</span>
+    <span>Trending</span>
+  </a>
+  <a href="#" class="tab">
+    <span class="tab-icon">🔍</span>
+    <span>Search</span>
+  </a>
+  <a href="#" class="tab">
+    <span class="tab-icon">🌐</span>
+    <span>Sources</span>
+  </a>
+  <a href="#" class="tab">
+    <span class="tab-icon">🗂️</span>
+    <span>Archive</span>
+  </a>
+</nav>
 
 <script>
-  // Category pill interaction
   document.querySelectorAll('.pill').forEach(p => {
     p.addEventListener('click', () => {
       document.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
       p.classList.add('active');
+    });
+  });
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
     });
   });
 </script>

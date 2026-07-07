@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TSquirrel — Story</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🐿️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand: #2c5f2e;
+      --card-bg: #fff;
+      --page-bg: #f3f4f6;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --text: #111827;
+      --text-sub: #374151;
+    }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--page-bg);
+      color: var(--text);
+      padding-bottom: 5rem;
+    }
+    .mock-banner {
+      background: #1e40af; color: #fff;
+      text-align: center; font-size: .78rem;
+      padding: .4rem 1rem; font-weight: 500;
+    }
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    nav {
+      max-width: 720px; margin: 0 auto;
+      padding: .7rem 1rem;
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .back-btn {
+      font-size: 1.3rem; text-decoration: none;
+      color: var(--brand); line-height: 1;
+    }
+    .logo {
+      display: flex; align-items: center; gap: .3rem;
+      text-decoration: none; color: var(--brand);
+      font-weight: 700; font-size: 1.1rem;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; padding: .75rem; }
+
+    /* Hero image */
+    .story-hero {
+      width: 100%; height: 200px;
+      object-fit: cover;
+      border-radius: 14px;
+      margin-bottom: .85rem;
+      background: #e5e7eb;
+      display: block;
+    }
+
+    /* Story header card */
+    .story-header {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      margin-bottom: .6rem;
+    }
+    .story-meta {
+      display: flex; align-items: center;
+      gap: .4rem; flex-wrap: wrap; margin-bottom: .55rem;
+    }
+    .badge {
+      font-size: .67rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em;
+      padding: .12rem .4rem; border-radius: 4px;
+    }
+    .badge-cat { background: var(--brand); color: #fff; }
+    .badge-sources { background: #fef3c7; color: #92400e; }
+    .meta-time { font-size: .73rem; color: var(--muted); }
+
+    .story-title {
+      font-size: 1.25rem; font-weight: 700;
+      line-height: 1.35; margin-bottom: .65rem;
+      color: var(--text);
+    }
+    .story-summary {
+      font-size: .92rem; color: var(--text-sub);
+      line-height: 1.62; margin-bottom: .75rem;
+      padding-bottom: .75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .story-tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .tag {
+      font-size: .72rem; color: var(--muted);
+      background: #f3f4f6; padding: .1rem .4rem; border-radius: 4px;
+    }
+
+    /* Sentiment bar */
+    .sentiment-row {
+      display: flex; align-items: center; gap: .6rem;
+      margin-top: .75rem; font-size: .78rem; color: var(--muted);
+    }
+    .sentiment-bar {
+      flex: 1; height: 5px; border-radius: 3px;
+      background: linear-gradient(to right, #ef4444, #e5e7eb 50%, #22c55e);
+      position: relative;
+    }
+    .sentiment-dot {
+      position: absolute; top: 50%; transform: translate(-50%, -50%);
+      width: 11px; height: 11px; border-radius: 50%;
+      background: var(--brand); border: 2px solid #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+      left: 60%; /* slightly positive */
+    }
+
+    /* Section label */
+    .section-label {
+      font-size: .72rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted); margin: 1rem 0 .45rem;
+    }
+
+    /* Source list */
+    .source-list { display: flex; flex-direction: column; gap: .45rem; }
+    .source-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: .75rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      transition: background .1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .source-item:active { background: #f9fafb; }
+    .source-favicon {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      background: var(--page-bg);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; flex-shrink: 0;
+    }
+    .source-content { flex: 1; min-width: 0; }
+    .source-name {
+      font-size: .72rem; font-weight: 600;
+      color: var(--brand); margin-bottom: .15rem;
+    }
+    .source-title {
+      font-size: .855rem; font-weight: 500;
+      line-height: 1.35; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .source-time { font-size: .7rem; color: var(--muted); margin-top: .15rem; }
+    .source-arrow { color: var(--muted); font-size: 1rem; flex-shrink: 0; }
+
+    /* CTA banner */
+    .more-stories {
+      margin-top: 1rem;
+      background: var(--brand);
+      color: #fff;
+      border-radius: 14px;
+      padding: 1rem;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+      font-weight: 600;
+      font-size: .95rem;
+    }
+
+    /* Bottom nav */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 1px solid var(--border);
+      display: flex; justify-content: space-around; align-items: center;
+      padding: .5rem 0 calc(.5rem + env(safe-area-inset-bottom));
+      z-index: 200;
+    }
+    .tab {
+      display: flex; flex-direction: column; align-items: center;
+      gap: .15rem; font-size: .65rem; color: var(--muted);
+      text-decoration: none; min-width: 56px; padding: .25rem;
+      border-radius: 8px;
+    }
+    .tab.active { color: var(--brand); }
+    .tab-icon { font-size: 1.3rem; line-height: 1; }
+  </style>
+</head>
+<body>
+
+<div class="mock-banner">🎨 Design mockup — story detail view</div>
+
+<header>
+  <nav>
+    <a href="index.html" class="back-btn">←</a>
+    <a href="index.html" class="logo"><span>🐿️</span>TSquirrel</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <!-- Hero image -->
+  <img class="story-hero"
+    src="https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=800&q=80"
+    alt="Apple chip">
+
+  <!-- Story header -->
+  <div class="story-header">
+    <div class="story-meta">
+      <span class="badge badge-cat">Technology</span>
+      <span class="badge badge-sources">4 sources</span>
+      <span class="meta-time">12 minutes ago</span>
+    </div>
+
+    <h1 class="story-title">Apple Announces M4 Ultra Chip With Record-Breaking Neural Engine Performance</h1>
+
+    <p class="story-summary">Apple unveiled its M4 Ultra chip at WWDC, claiming a 40% improvement in neural engine throughput over M3 Ultra. The chip targets AI workloads and professional video production, with Mac Pro availability later this year. Benchmark results from early testers suggest gaming and LLM inference performance well ahead of competing x86 chips at similar power envelopes.</p>
+
+    <div class="story-tags">
+      <span class="tag">#Apple</span>
+      <span class="tag">#WWDC</span>
+      <span class="tag">#M4Ultra</span>
+      <span class="tag">#AI</span>
+      <span class="tag">#MacPro</span>
+    </div>
+
+    <div class="sentiment-row">
+      <span>Tone</span>
+      <div class="sentiment-bar"><div class="sentiment-dot"></div></div>
+      <span>Positive</span>
+    </div>
+  </div>
+
+  <!-- Source coverage -->
+  <p class="section-label">Coverage — 4 sources</p>
+  <div class="source-list">
+
+    <a href="#" class="source-item">
+      <div class="source-favicon">🍎</div>
+      <div class="source-content">
+        <div class="source-name">Ars Technica</div>
+        <div class="source-title">Apple's M4 Ultra is the most powerful chip the company has ever made</div>
+        <div class="source-time">8 minutes ago</div>
+      </div>
+      <span class="source-arrow">↗</span>
+    </a>
+
+    <a href="#" class="source-item">
+      <div class="source-favicon">📰</div>
+      <div class="source-content">
+        <div class="source-name">The Verge</div>
+        <div class="source-title">Apple M4 Ultra review: benchmarks break records, prices too</div>
+        <div class="source-time">11 minutes ago</div>
+      </div>
+      <span class="source-arrow">↗</span>
+    </a>
+
+    <a href="#" class="source-item">
+      <div class="source-favicon">💻</div>
+      <div class="source-content">
+        <div class="source-name">TechCrunch</div>
+        <div class="source-title">Apple's new M4 Ultra chip crushes AI inference on device</div>
+        <div class="source-time">14 minutes ago</div>
+      </div>
+      <span class="source-arrow">↗</span>
+    </a>
+
+    <a href="#" class="source-item">
+      <div class="source-favicon">📡</div>
+      <div class="source-content">
+        <div class="source-name">Hacker News</div>
+        <div class="source-title">Apple M4 Ultra — 312 comments</div>
+        <div class="source-time">20 minutes ago</div>
+      </div>
+      <span class="source-arrow">↗</span>
+    </a>
+
+  </div>
+
+  <a href="index.html" class="more-stories">← Back to trending</a>
+
+</div>
+
+<nav class="bottom-nav">
+  <a href="index.html" class="tab active">
+    <span class="tab-icon">🔥</span><span>Trending</span>
+  </a>
+  <a href="#" class="tab">
+    <span class="tab-icon">🔍</span><span>Search</span>
+  </a>
+  <a href="#" class="tab">
+    <span class="tab-icon">🌐</span><span>Sources</span>
+  </a>
+  <a href="#" class="tab">
+    <span class="tab-icon">🗂️</span><span>Archive</span>
+  </a>
+</nav>
+
+</body>
+</html>
