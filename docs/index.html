@@ -3,25 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TSquirrel — What's Trending</title>
-  <meta name="description" content="AI-curated news digest. Top stories across sources, summarized.">
+  <title>TSquirrel 🐿️ — Stashing Today's Best Links</title>
+  <meta name="description" content="A squirrel-curated news digest. We sniff out the good stuff so you don't have to dig.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🐿️</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --brand: #2c5f2e;
-      --card-bg: #fff;
-      --page-bg: #f3f4f6;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --tag-bg: #f0f0f0;
-      --text: #111827;
-      --text-sub: #374151;
-      --archive-bg: #faf7f2;
-      --archive-border: #d4c9b8;
+      --brand:      #2c5f2e;
+      --brand-mid:  #3d7a40;
+      --brand-pale: #e8f5e9;
+      --accent:     #e07b39;
+      --accent-pale:#fff3eb;
+      --card-bg:    #fff;
+      --page-bg:    #f5f3ef;
+      --muted:      #7a7068;
+      --border:     #e2ddd6;
+      --text:       #1a1612;
+      --text-sub:   #4a4540;
+      --acorn:      #b5651d;
     }
 
     body {
@@ -29,330 +31,439 @@
       background: var(--page-bg);
       color: var(--text);
       min-height: 100vh;
-      padding-bottom: 4.5rem;
+      padding-bottom: 5rem;
     }
 
+    /* ── TOP BAR ── */
     .mock-banner {
-      background: #1e40af; color: #fff;
-      text-align: center; font-size: .78rem;
-      padding: .4rem 1rem; font-weight: 500;
+      background: var(--acorn); color: #fff;
+      text-align: center; font-size: .75rem;
+      padding: .35rem 1rem; font-weight: 600;
+      letter-spacing: .02em;
     }
 
     header {
-      background: #fff;
-      border-bottom: 1px solid var(--border);
+      background: var(--brand);
       position: sticky; top: 0; z-index: 100;
     }
-    nav { max-width: 720px; margin: 0 auto; padding: .7rem 1rem; }
-    .logo {
-      display: inline-flex; align-items: center; gap: .35rem;
-      text-decoration: none; color: var(--brand);
-      font-weight: 700; font-size: 1.15rem;
+
+    nav {
+      max-width: 720px; margin: 0 auto;
+      padding: .6rem 1rem;
+      display: flex; align-items: center; justify-content: space-between;
     }
 
+    .logo {
+      display: inline-flex; align-items: center; gap: .4rem;
+      text-decoration: none; color: #fff;
+    }
+    .logo-mark {
+      font-size: 1.6rem; line-height: 1;
+    }
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800; font-size: 1.2rem;
+      letter-spacing: -.02em;
+      line-height: 1;
+    }
+    .logo-tagline {
+      font-size: .65rem; font-weight: 400;
+      opacity: .75; letter-spacing: .04em;
+      display: block;
+    }
+    .nav-count {
+      font-size: .75rem; color: rgba(255,255,255,.7);
+      font-weight: 500;
+    }
+
+    /* ── CONTAINER ── */
     .container { max-width: 720px; margin: 0 auto; padding: 0 .75rem 1rem; }
 
-    /* Pills */
-    .category-bar { padding: .75rem 0 .25rem; }
+    /* ── SQUIRREL INTRO ── */
+    .squirrel-intro {
+      background: var(--brand);
+      padding: .6rem 1rem .9rem;
+      margin-bottom: 0;
+    }
+    .squirrel-intro-inner {
+      max-width: 720px; margin: 0 auto;
+    }
+    .chatter {
+      font-size: .82rem; color: rgba(255,255,255,.8);
+      font-style: italic;
+    }
+    .chatter strong { color: #fff; font-style: normal; }
+
+    /* ── CATEGORY PILLS ── */
+    .category-bar {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 52px; z-index: 90;
+    }
     .category-scroll {
-      display: flex; gap: .45rem;
-      overflow-x: auto; padding-bottom: .4rem;
+      max-width: 720px; margin: 0 auto;
+      display: flex; gap: .4rem;
+      overflow-x: auto; padding: .5rem .75rem;
       -webkit-overflow-scrolling: touch; scrollbar-width: none;
     }
     .category-scroll::-webkit-scrollbar { display: none; }
     .pill {
-      flex-shrink: 0; padding: .3rem .75rem; border-radius: 99px;
-      font-size: .8rem; font-weight: 500; background: #fff;
-      color: var(--muted); border: 1px solid var(--border);
+      flex-shrink: 0; padding: .28rem .7rem; border-radius: 99px;
+      font-size: .78rem; font-weight: 600; background: #fff;
+      color: var(--muted); border: 1.5px solid var(--border);
       cursor: pointer; transition: all .15s; user-select: none;
+      white-space: nowrap;
     }
-    .pill.active, .pill:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
-    .pill-count { opacity: .65; font-size: .72rem; margin-left: .15rem; }
+    .pill.active, .pill:hover {
+      background: var(--brand); color: #fff; border-color: var(--brand);
+    }
 
+    /* ── SECTION LABELS ── */
     .section-label {
-      font-size: .72rem; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--muted); margin: 1rem 0 .5rem;
+      font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--muted);
+      margin: 1.1rem 0 .5rem;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
     }
 
-    .feed { display: flex; flex-direction: column; gap: .55rem; }
+    /* ── FEED ── */
+    .feed { display: flex; flex-direction: column; gap: .5rem; }
 
-    /* Cards */
+    /* ── FEATURED STRIP (breaks the grid!) ── */
+    .card-featured {
+      background: var(--brand);
+      border-radius: 16px;
+      padding: 1rem;
+      text-decoration: none;
+      display: block;
+      color: #fff;
+      margin-top: .75rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-featured::before {
+      content: '🐿️';
+      position: absolute; right: -8px; bottom: -12px;
+      font-size: 5rem; opacity: .15; line-height: 1;
+      transform: scaleX(-1);
+    }
+    .featured-eyebrow {
+      font-size: .68rem; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; opacity: .7; margin-bottom: .5rem;
+    }
+    .featured-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.18rem; font-weight: 800;
+      line-height: 1.3; margin-bottom: .5rem;
+    }
+    .featured-summary {
+      font-size: .84rem; opacity: .85; line-height: 1.55;
+      margin-bottom: .75rem;
+    }
+    .featured-footer {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .featured-sources {
+      font-size: .73rem; opacity: .75;
+    }
+    .featured-pill {
+      font-size: .72rem; font-weight: 700;
+      background: rgba(255,255,255,.2);
+      padding: .2rem .6rem; border-radius: 99px;
+      color: #fff;
+    }
+
+    /* ── STANDARD CARD ── */
     .card {
       background: var(--card-bg); border: 1px solid var(--border);
-      border-radius: 14px; padding: .85rem;
+      border-radius: 12px; padding: .8rem;
       text-decoration: none; color: inherit; display: block;
       transition: box-shadow .15s; -webkit-tap-highlight-color: transparent;
     }
-    .card:active { opacity: .92; }
-    .card:hover { box-shadow: 0 3px 14px rgba(0,0,0,.08); }
-    .card.featured { border-color: var(--brand); border-width: 2px; }
+    .card:hover { box-shadow: 0 3px 16px rgba(0,0,0,.07); }
+    .card:active { opacity: .93; }
 
-    .card-inner { display: flex; gap: .75rem; align-items: flex-start; }
+    .card-inner { display: flex; gap: .7rem; align-items: flex-start; }
     .card-body { flex: 1; min-width: 0; }
 
-    /* CSS-only thumbnails — no external requests */
+    /* Category colour squares — no external requests */
     .thumb {
-      flex-shrink: 0; width: 76px; height: 76px;
-      border-radius: 8px; display: flex; align-items: center;
-      justify-content: center; font-size: 2rem;
-      background: var(--tag-bg);
+      flex-shrink: 0; width: 72px; height: 72px;
+      border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 1.9rem;
     }
-    .thumb-tech  { background: #dbeafe; }
-    .thumb-world { background: #dcfce7; }
-    .thumb-biz   { background: #fef9c3; }
-    .thumb-sci   { background: #ede9fe; }
-    .thumb-ent   { background: #fce7f3; }
-
-    /* Featured: emoji hero on top */
-    .card.featured .card-inner { flex-direction: column; }
-    .card.featured .thumb {
-      width: 100%; height: 120px;
-      border-radius: 10px; font-size: 3.5rem;
-    }
+    .thumb-nuts  { background: #dbeafe; } /* tech */
+    .thumb-world { background: #dcfce7; } /* world */
+    .thumb-acorn { background: #fef9c3; } /* business */
+    .thumb-sci   { background: #ede9fe; } /* science */
+    .thumb-fire  { background: #fce7f3; } /* entertainment */
 
     .card-meta {
-      display: flex; align-items: center; gap: .35rem;
-      margin-bottom: .35rem; flex-wrap: wrap;
+      display: flex; align-items: center; gap: .3rem;
+      margin-bottom: .3rem; flex-wrap: wrap;
     }
     .badge {
-      font-size: .67rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .04em; padding: .12rem .4rem; border-radius: 4px; white-space: nowrap;
+      font-size: .64rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .04em; padding: .1rem .38rem;
+      border-radius: 4px; white-space: nowrap;
     }
-    .badge-cat { background: var(--brand); color: #fff; }
-    .badge-sources { background: #fef3c7; color: #92400e; }
-    .meta-time { font-size: .73rem; color: var(--muted); }
+    .badge-cat-nuts  { background: #2563eb22; color: #1d4ed8; }
+    .badge-cat-world { background: #16a34a22; color: #15803d; }
+    .badge-cat-acorn { background: #ca8a0422; color: #92400e; }
+    .badge-cat-sci   { background: #7c3aed22; color: #6d28d9; }
+    .badge-cat-fire  { background: #db277722; color: #be185d; }
+    .badge-sources { background: var(--accent-pale); color: var(--accent); }
+    .badge-hot { background: #fee2e2; color: #b91c1c; }
+    .meta-time { font-size: .7rem; color: var(--muted); }
 
     .card-title {
-      font-size: .97rem; font-weight: 600;
-      line-height: 1.38; color: var(--text); margin-bottom: .3rem;
+      font-size: .95rem; font-weight: 600;
+      line-height: 1.38; color: var(--text); margin-bottom: .28rem;
     }
-    .card.featured .card-title { font-size: 1.08rem; }
-
+    .card-editorial {
+      font-size: .8rem; color: var(--brand-mid);
+      font-style: italic; margin-bottom: .28rem; line-height: 1.45;
+    }
     .card-summary {
-      font-size: .845rem; color: var(--text-sub); line-height: 1.52;
-      margin-bottom: .4rem;
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      font-size: .82rem; color: var(--text-sub); line-height: 1.52;
+      margin-bottom: .3rem;
     }
-    .card.featured .card-summary { -webkit-line-clamp: 3; }
+    .card-tags { display: flex; gap: .3rem; flex-wrap: wrap; }
+    .tag {
+      font-size: .68rem; color: var(--muted);
+      background: var(--page-bg); padding: .08rem .35rem; border-radius: 4px;
+    }
 
-    .card-tags { display: flex; flex-wrap: wrap; gap: .25rem; }
-    .tag { font-size: .7rem; color: var(--muted); background: var(--tag-bg); padding: .1rem .35rem; border-radius: 4px; }
-
+    /* ── DIVIDER ── */
     .divider {
-      text-align: center; color: var(--muted); font-size: .75rem;
-      padding: .75rem 0 .1rem; display: flex; align-items: center; gap: .5rem;
+      text-align: center; font-size: .72rem;
+      color: var(--muted); font-weight: 600;
+      letter-spacing: .06em; text-transform: uppercase;
+      margin: .5rem 0; position: relative;
     }
-    .divider::before, .divider::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
+    .divider::before, .divider::after {
+      content: ''; position: absolute; top: 50%;
+      width: 30%; height: 1px; background: var(--border);
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
 
-    /* Archive */
-    .card.archive { background: var(--archive-bg); border-color: var(--archive-border); border-style: dashed; }
+    /* ── ARCHIVE CARDS ── */
+    .card.archive {
+      background: #faf7f2;
+      border-style: dashed; border-color: var(--acorn);
+      opacity: .85;
+    }
+    .card.archive .card-title { font-size: .88rem; }
     .badge-archive {
-      background: #e8e0d4; color: #78634a; font-size: .67rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .04em; padding: .12rem .4rem; border-radius: 4px;
+      background: #f3e8d8; color: var(--acorn);
+      font-size: .62rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em;
+      padding: .1rem .38rem; border-radius: 4px;
     }
 
-    /* Bottom nav */
+    /* ── BOTTOM NAV ── */
     .bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: #fff; border-top: 1px solid var(--border);
-      display: flex; justify-content: space-around; align-items: center;
-      padding: .5rem 0 calc(.5rem + env(safe-area-inset-bottom)); z-index: 200;
+      display: flex; z-index: 200;
     }
     .tab {
-      display: flex; flex-direction: column; align-items: center; gap: .15rem;
-      font-size: .65rem; color: var(--muted); text-decoration: none;
-      min-width: 56px; padding: .25rem; border-radius: 8px; transition: color .15s;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: .5rem .25rem .6rem;
+      text-decoration: none; color: var(--muted);
+      font-size: .62rem; font-weight: 600;
+      letter-spacing: .04em; text-transform: uppercase;
+      gap: .15rem; transition: color .15s;
     }
     .tab.active { color: var(--brand); }
     .tab-icon { font-size: 1.3rem; line-height: 1; }
 
-    footer { text-align: center; padding: 1.5rem 1rem; font-size: .78rem; color: var(--muted); }
+    footer {
+      text-align: center; font-size: .72rem;
+      color: var(--muted); padding: 1.5rem 1rem .5rem;
+    }
+    footer strong { color: var(--brand); }
   </style>
 </head>
 <body>
 
-<div class="mock-banner">🎨 Design mockup — <strong>tsquirrel.com</strong> rebuild preview</div>
+<div class="mock-banner">🐿️ Mockup — chrisribe.github.io/tsquirrel · Tap any card</div>
 
 <header>
   <nav>
-    <a href="#" class="logo">🐿️ TSquirrel</a>
+    <a href="#" class="logo">
+      <span class="logo-mark">🐿️</span>
+      <span>
+        <span class="logo-text">TSquirrel</span>
+        <span class="logo-tagline">stashing today's best links</span>
+      </span>
+    </a>
+    <span class="nav-count">42 nuts stashed today</span>
   </nav>
 </header>
 
+<div class="squirrel-intro">
+  <div class="squirrel-intro-inner">
+    <p class="chatter">The internet is a big forest. <strong>We sniff out the good stuff</strong> so you don't have to dig. Updated every 30 minutes. 🌰</p>
+  </div>
+</div>
+
+<div class="category-bar">
+  <div class="category-scroll">
+    <button class="pill active">🌰 All</button>
+    <button class="pill">🔩 Nuts & Bolts</button>
+    <button class="pill">🌍 The Canopy</button>
+    <button class="pill">💰 Acorn Economy</button>
+    <button class="pill">🔭 Deep Forest</button>
+    <button class="pill">🔥 Forest Fire</button>
+    <button class="pill">📰 Buried Seeds</button>
+  </div>
+</div>
+
 <div class="container">
 
-  <div class="category-bar">
-    <div class="category-scroll">
-      <span class="pill active">All <span class="pill-count">30</span></span>
-      <span class="pill">Technology <span class="pill-count">8</span></span>
-      <span class="pill">World <span class="pill-count">6</span></span>
-      <span class="pill">Business <span class="pill-count">5</span></span>
-      <span class="pill">Science <span class="pill-count">4</span></span>
-      <span class="pill">Entertainment <span class="pill-count">4</span></span>
-      <span class="pill">Sports <span class="pill-count">3</span></span>
+  <!-- FEATURED STRIP — breaks the card grid -->
+  <a href="story.html" class="card-featured">
+    <div class="featured-eyebrow">🔥 Everyone's chattering about this</div>
+    <div class="featured-title">Apple M4 MacBook Pro Benchmarks Leak — and They're Terrifying</div>
+    <div class="featured-summary">Single-core scores that rival desktop workstations. The gap between Apple silicon and x86 just got embarrassing. Tech Twitter is having a full meltdown.</div>
+    <div class="featured-footer">
+      <span class="featured-sources">📡 Spotted in 7 sources · 18 min ago</span>
+      <span class="featured-pill">Read story →</span>
     </div>
-  </div>
+  </a>
 
-  <p class="section-label">🔥 Trending now</p>
+  <p class="section-label">🌰 Fresh stash</p>
+
   <div class="feed">
 
-    <a href="story.html" class="card featured">
+    <a href="story.html" class="card">
       <div class="card-inner">
-        <div class="thumb thumb-tech">💻</div>
         <div class="card-body">
           <div class="card-meta">
-            <span class="badge badge-cat">Technology</span>
-            <span class="badge badge-sources">4 sources</span>
-            <span class="meta-time">12m ago</span>
+            <span class="badge badge-cat-nuts">🔩 Nuts & Bolts</span>
+            <span class="badge badge-hot">🔥 hot</span>
+            <span class="meta-time">34 min ago</span>
           </div>
-          <div class="card-title">Apple Announces M4 Ultra Chip With Record-Breaking Neural Engine Performance</div>
-          <div class="card-summary">Apple unveiled its M4 Ultra chip at WWDC, claiming a 40% improvement in neural engine throughput. Benchmarks lead competing x86 chips on LLM inference and pro video.</div>
+          <div class="card-title">GitHub Copilot Now Reasons Across Your Entire Repo</div>
+          <div class="card-editorial">The squirrel verdict: "Finally. Only took three years."</div>
           <div class="card-tags">
-            <span class="tag">#Apple</span><span class="tag">#WWDC</span><span class="tag">#M4Ultra</span><span class="tag">#AI</span>
+            <span class="tag">#GitHub</span><span class="tag">#Copilot</span><span class="tag">#DevTools</span>
           </div>
         </div>
+        <div class="thumb thumb-nuts">🤖</div>
       </div>
     </a>
 
-    <a href="#" class="card">
+    <a href="story.html" class="card">
       <div class="card-inner">
         <div class="card-body">
           <div class="card-meta">
-            <span class="badge badge-cat">World</span>
+            <span class="badge badge-cat-acorn">💰 Acorn Economy</span>
             <span class="badge badge-sources">3 sources</span>
-            <span class="meta-time">38m ago</span>
-          </div>
-          <div class="card-title">NATO Summit Agrees on $500B Defence Spending Roadmap Through 2030</div>
-          <div class="card-summary">Alliance leaders signed a new framework committing members to 3% of GDP by 2030.</div>
-          <div class="card-tags">
-            <span class="tag">#NATO</span><span class="tag">#Defence</span><span class="tag">#Europe</span>
-          </div>
-        </div>
-        <div class="thumb thumb-world">🌍</div>
-      </div>
-    </a>
-
-    <a href="#" class="card">
-      <div class="card-inner">
-        <div class="card-body">
-          <div class="card-meta">
-            <span class="badge badge-cat">Business</span>
-            <span class="badge badge-sources">2 sources</span>
             <span class="meta-time">1h ago</span>
           </div>
-          <div class="card-title">OpenAI Raises $10B Round at $300B Valuation Led by SoftBank</div>
-          <div class="card-summary">Funds accelerate compute buildout and expand GPT-5 API capacity ahead of enterprise rollout.</div>
+          <div class="card-title">OpenAI Raises $10B at $300B Valuation — SoftBank Leads</div>
+          <div class="card-editorial">That's a lot of acorns. The forest is either booming or about to collapse. Nobody agrees which.</div>
           <div class="card-tags">
             <span class="tag">#OpenAI</span><span class="tag">#AI</span><span class="tag">#Funding</span>
           </div>
         </div>
-        <div class="thumb thumb-biz">💰</div>
+        <div class="thumb thumb-acorn">💰</div>
       </div>
     </a>
 
-    <a href="#" class="card">
+    <a href="story.html" class="card">
       <div class="card-inner">
         <div class="card-body">
           <div class="card-meta">
-            <span class="badge badge-cat">Science</span>
+            <span class="badge badge-cat-sci">🔭 Deep Forest</span>
             <span class="badge badge-sources">2 sources</span>
             <span class="meta-time">2h ago</span>
           </div>
-          <div class="card-title">SpaceX Starship Flight 9 Completes Full Stack Landing for First Time</div>
-          <div class="card-summary">Both booster and upper stage landed successfully in what SpaceX calls a historic milestone.</div>
+          <div class="card-title">SpaceX Starship Flight 9: Both Stages Landed. Yes, Really.</div>
+          <div class="card-editorial">Four years ago this thing exploded on the pad. Today it stuck a double landing. We live in a weird timeline.</div>
           <div class="card-tags">
-            <span class="tag">#SpaceX</span><span class="tag">#Starship</span><span class="tag">#Space</span>
+            <span class="tag">#SpaceX</span><span class="tag">#Starship</span>
           </div>
         </div>
         <div class="thumb thumb-sci">🚀</div>
       </div>
     </a>
 
-    <a href="#" class="card">
+    <a href="story.html" class="card">
       <div class="card-inner">
         <div class="card-body">
           <div class="card-meta">
-            <span class="badge badge-cat">Technology</span>
-            <span class="badge badge-sources">1 source</span>
+            <span class="badge badge-cat-world">🌍 The Canopy</span>
+            <span class="badge badge-sources">5 sources</span>
             <span class="meta-time">3h ago</span>
           </div>
-          <div class="card-title">GitHub Copilot Now Supports Full Repo Reasoning Across 1M Token Context</div>
-          <div class="card-summary">Cross-file refactoring and architectural recommendations without manual context pasting.</div>
+          <div class="card-title">Gaza Ceasefire Deal Reached After 19 Months</div>
+          <div class="card-editorial">Brokered by Qatar and Egypt. Fragile. Six-week window for hostage exchange. Every major outlet has a slightly different count.</div>
           <div class="card-tags">
-            <span class="tag">#GitHub</span><span class="tag">#Copilot</span><span class="tag">#DevTools</span>
-          </div>
-        </div>
-        <div class="thumb thumb-tech">🤖</div>
-      </div>
-    </a>
-
-    <a href="#" class="card">
-      <div class="card-inner">
-        <div class="card-body">
-          <div class="card-meta">
-            <span class="badge badge-cat">World</span>
-            <span class="badge badge-sources">5 sources</span>
-            <span class="meta-time">4h ago</span>
-          </div>
-          <div class="card-title">Ceasefire Agreement Reached in Gaza After 19 Months of Conflict</div>
-          <div class="card-summary">A six-week deal brokered by Qatar and Egypt includes a phased hostage exchange.</div>
-          <div class="card-tags">
-            <span class="tag">#Gaza</span><span class="tag">#Ceasefire</span><span class="tag">#MiddleEast</span>
+            <span class="tag">#Gaza</span><span class="tag">#Ceasefire</span>
           </div>
         </div>
         <div class="thumb thumb-world">🕊️</div>
       </div>
     </a>
 
-    <div class="divider">Earlier today</div>
+    <div class="divider">a few hours ago</div>
 
-    <a href="#" class="card">
+    <a href="story.html" class="card">
       <div class="card-inner">
         <div class="card-body">
           <div class="card-meta">
-            <span class="badge badge-cat">Business</span>
+            <span class="badge badge-cat-acorn">💰 Acorn Economy</span>
             <span class="badge badge-sources">1 source</span>
             <span class="meta-time">6h ago</span>
           </div>
-          <div class="card-title">Nvidia Q2 Earnings: Revenue Hits $44B, Data Centre Up 154% YoY</div>
-          <div class="card-summary">Jensen Huang guided $50B+ next quarter, citing Blackwell GPU backlog into 2026.</div>
+          <div class="card-title">Nvidia Q2: $44B Revenue, Data Centre Up 154% YoY</div>
+          <div class="card-editorial">Jensen Huang guided $50B+ next quarter. At this point the man is just speed-running corporate history.</div>
           <div class="card-tags">
-            <span class="tag">#Nvidia</span><span class="tag">#Earnings</span><span class="tag">#GPUs</span>
+            <span class="tag">#Nvidia</span><span class="tag">#Earnings</span>
           </div>
         </div>
-        <div class="thumb thumb-biz">📈</div>
+        <div class="thumb thumb-acorn">📈</div>
       </div>
     </a>
 
-    <a href="#" class="card">
+    <a href="story.html" class="card">
       <div class="card-inner">
         <div class="card-body">
           <div class="card-meta">
-            <span class="badge badge-cat">Entertainment</span>
+            <span class="badge badge-cat-fire">🔥 Forest Fire</span>
             <span class="badge badge-sources">1 source</span>
             <span class="meta-time">8h ago</span>
           </div>
-          <div class="card-title">Kendrick Lamar Set to Headline Super Bowl LX Halftime Show</div>
-          <div class="card-summary">A year after his rap beef with Drake dominated streaming, Lamar headlines the Super Bowl.</div>
+          <div class="card-title">Kendrick Lamar Headlines Super Bowl LX Halftime Show</div>
+          <div class="card-editorial">One year after the Drake beef broke streaming records. The universe has a sense of humour.</div>
           <div class="card-tags">
-            <span class="tag">#NFL</span><span class="tag">#SuperBowl</span><span class="tag">#KendrickLamar</span>
+            <span class="tag">#SuperBowl</span><span class="tag">#KendrickLamar</span>
           </div>
         </div>
-        <div class="thumb thumb-ent">🎤</div>
+        <div class="thumb thumb-fire">🎤</div>
       </div>
     </a>
 
   </div>
 
-  <p class="section-label" style="margin-top:1.5rem">📰 TSquirrel Archive</p>
+  <!-- ARCHIVE -->
+  <p class="section-label">📰 Buried Seeds — TSquirrel Archive</p>
   <div class="feed">
 
     <a href="#" class="card archive">
       <div class="card-inner">
         <div class="card-body">
-          <div class="card-meta"><span class="badge badge-archive">Archive · 2015</span></div>
+          <div class="card-meta"><span class="badge-archive">🌰 Buried · 2015</span></div>
           <div class="card-title">Drapeau français : le retour d'un symbole après les attentats</div>
-          <div class="card-summary">Des drapeaux bleu, blanc, rouge à toutes les fenêtres. Les Français sont invités à se réapproprier un symbole mis de côté après les attentats de Paris.</div>
+          <div class="card-summary" style="font-size:.8rem;color:var(--muted);margin-top:.2rem;">Des drapeaux bleu, blanc, rouge à toutes les fenêtres. Les Français se réapproprient un symbole.</div>
         </div>
       </div>
     </a>
@@ -360,9 +471,8 @@
     <a href="#" class="card archive">
       <div class="card-inner">
         <div class="card-body">
-          <div class="card-meta"><span class="badge badge-archive">Archive · 2015</span></div>
-          <div class="card-title">Fatal A400M crash linked to data-wipe mistake — BBC News</div>
-          <div class="card-summary">A military plane crash in Spain was probably caused by computer files accidentally deleted during a software update.</div>
+          <div class="card-meta"><span class="badge-archive">🌰 Buried · 2015</span></div>
+          <div class="card-title">Fatal A400M Crash Linked to Accidental Data-Wipe — BBC</div>
         </div>
       </div>
     </a>
@@ -370,23 +480,26 @@
     <a href="#" class="card archive">
       <div class="card-inner">
         <div class="card-body">
-          <div class="card-meta"><span class="badge badge-archive">Archive · 2018</span></div>
+          <div class="card-meta"><span class="badge-archive">🌰 Buried · 2018</span></div>
           <div class="card-title">Avicii Died of Apparent Suicide — Rolling Stone</div>
-          <div class="card-summary">Tim Bergling, the Swedish DJ-producer who performed as Avicii, died of an apparent suicide. His family said he "could not go on any longer."</div>
         </div>
       </div>
     </a>
 
   </div>
 
-  <footer>© 2026 TSquirrel — AI-curated news</footer>
+  <footer>
+    © 2026 <strong>TSquirrel</strong> — A squirrel never forgets where it buried its nuts.<br>
+    <span style="font-size:.65rem">Powered by RSS + HN · Summarized by AI · Curated by chaos</span>
+  </footer>
+
 </div>
 
 <nav class="bottom-nav">
   <a href="#" class="tab active"><span class="tab-icon">🔥</span><span>Trending</span></a>
   <a href="#" class="tab"><span class="tab-icon">🔍</span><span>Search</span></a>
   <a href="#" class="tab"><span class="tab-icon">🌐</span><span>Sources</span></a>
-  <a href="#" class="tab"><span class="tab-icon">🗂️</span><span>Archive</span></a>
+  <a href="#" class="tab"><span class="tab-icon">📰</span><span>Archive</span></a>
 </nav>
 
 <script>
