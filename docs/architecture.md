@@ -10,7 +10,7 @@ tsquirrel.com was a dead PHP news aggregator. Cloudflare shows it still gets ~17
 ```
 FeedService (30m cron)
   └─ ingestAll(pool)
-     ├─ HN API → top 30 items
+     ├─ HN API → top 30 items (parallelized in batches of 10)
      └─ RSS/Atom feeds → parsed with stdlib regex (no deps)
      → upserts into articles table (dedup by source_id + external_id)
 
@@ -19,24 +19,42 @@ SummaryService (1h cron)
      ├─ fetch ungrouped articles (last 6h, not in story_articles)
      ├─ LLM cluster: group by topic → stories[]
      └─ LLM summarize: 2-3 sentence synthesis + tags + sentiment + squirrel_take
-     → upserts into stories, links via story_articles
+     → upserts into stories as status='draft'
 
 CronService
   └─ startCron(pool) — called from server.js, skipped in NODE_ENV=test
+
+Hermes curation skill (planned — not yet built)
+  └─ Scheduled daily: scan draft stories, evaluate against curation persona
+     → surfaces 5–7 "ready to publish" picks to owner via Discord
+     → owner approves on phone → POST /api/admin/stories/:id/publish
 ```
 
-## DB Schema (migration v5)
+## Ingestion Philosophy
+- **Narrow sources, not firehose** — ~20–30 high-signal RSS feeds. LLM clusters into story drafts.
+- **Draft → Live workflow** — SummaryService writes `status='draft'`. Homepage only shows `status='live'`.
+- **Hermes as managing editor** — scheduled skill reviews drafts, sends Discord shortlist. Owner does 3-min phone approval. This replaces manual curation without causing burnout.
+- **Curation persona prompt** in the Hermes skill is the product's secret sauce.
+
+## DB Schema (migration v5+)
 
 ```sql
-sources       id, name, slug, url, feed_url, type (rss|hn), active
-articles      id, source_id→sources, external_id, title, url, published_at, fetched_at
-              UNIQUE(source_id, external_id)
-stories       id, title, slug (UNIQUE), summary, squirrel_take, category, tags[], sentiment, heat_score, image_url, updated_at
+sources        id, name, slug, url, feed_url, type (rss|hn), active
+articles       id, source_id→sources, external_id, title, url, published_at, fetched_at
+               UNIQUE(source_id, external_id)
+stories        id, title, slug (UNIQUE), summary, squirrel_take, category, tags[],
+               sentiment, heat_score, image_url, status ('draft'|'live'|'suppressed'),
+               updated_at, created_at
 story_articles story_id→stories, article_id→articles  (PK both)
-legacy_articles id, slug (UNIQUE), title, description, source_url, created_at
+legacy_articles id, slug (UNIQUE), title, description, source_url, image_url, image_status, created_at
 ```
 
 Heat score = source_count × 10. Top stories sorted by heat_score DESC.
+
+## Display Layer
+`server/lib/display.js` — category metadata map (emoji, thumb, CSS classes).
+Maps stored category names (Technology, World, Business …) to themed labels + thumbnail styles.
+Used by views — do not duplicate this logic in EJS.
 
 ## Default Sources (migration v3 seed)
 
@@ -53,12 +71,14 @@ Heat score = source_count × 10. Top stories sorted by heat_score DESC.
 
 | Route | What |
 |---|---|
-| `GET /` | Homepage — top 30 stories, category filter bar |
+| `GET /` | Homepage — top 30 `status='live'` stories, category filter bar |
 | `GET /story/:slug` | Story detail — summary + squirrel_take + all source articles |
-| `GET /api/stories?offset=N&category=X` | HTMX partial — story-cards.ejs, used for infinite scroll |
+| `GET /archive` | Archive page — legacy articles |
+| `GET /api/stories?offset=N&category=X` | HTMX partial — story-cards.ejs, infinite scroll |
 | `GET /health` | `{ status: 'ok' }` + DB connectivity check |
-| `GET /sitemap.xml` | Dynamic sitemap — all active story slugs |
+| `GET /sitemap.xml` | Dynamic sitemap — all live story slugs |
 | `GET /robots.txt` | Static, allows all crawlers |
+| `POST /api/admin/stories/:id/publish` | Token-protected. Moves story draft→live (planned) |
 
 ## Environment Variables (.env.example)
 
@@ -86,49 +106,39 @@ SUMMARY_INTERVAL_MS=3600000     # 1 hour
 
 **Tag deploy:** `git tag v1.0.0 && git push --tags` → GitHub Actions → Tagship webhook → rebuild.
 
-## FeedService — RSS Parser Note
-Uses stdlib-only XML regex (no cheerio/xml2js). Works for standard RSS 2.0 and Atom.
-Falls back gracefully on malformed feeds — bad items are skipped, feed continues.
-
-HN fetch: parallelized in batches of 10 concurrent (no retry burst — do not add retry without rate-limit guard).
+## FeedService — Notes
+- Stdlib-only XML regex parser (no cheerio/xml2js). Works for RSS 2.0 + Atom.
+- Falls back gracefully on malformed feeds — bad items skipped, feed continues.
+- HN fetch: batches of 10 concurrent. **Do not add retry without rate-limit guard.**
 
 ---
 
 ## Refactor Plan (pre-launch, Jul 2026)
 
-Reviewed by Opus (via GitHub Models or OpenRouter `anthropic/claude-opus-4.8`).
+Reviewed by Opus (use GitHub Models or OpenRouter `anthropic/claude-opus-4.8`).
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | Migration v5: add `squirrel_take TEXT` to stories | ⬜ todo | Idempotent DDL, `IF NOT EXISTS` pattern |
-| 2 | SummaryService: add `squirrel_take` to LLM prompts | ⬜ todo | Mascot voice, opinionated take. Must be null-safe (fail = null, don't crash) |
-| 3 | Views: render `squirrel_take` in story-cards.ejs + story-page.ejs | ⬜ todo | `.squirrel-take` component style. Hide block entirely if null |
-| 4 | index-page.ejs: featured strip for first story | ⬜ todo | Dark bg, watermark 🐿️, full-width. Collapses to normal card at <640px |
-| 5 | Category display name map (frontend only) | ⬜ todo | Tech→🔩 Nuts & Bolts, World→🌍 The Canopy, Business→💰 Acorn Economy, Science→🔭 Deep Forest, Entertainment→🔥 Forest Fire, Archive→📰 Buried Seeds |
-| 6 | Header: 'N nuts stashed today' count from DB | ⬜ todo | COUNT articles in last 24h, injected in header.ejs |
+| 1 | Migration v5: add `squirrel_take TEXT` + `status VARCHAR` to stories | ⬜ todo | status: 'draft'\|'live'\|'suppressed', default 'draft' |
+| 2 | SummaryService: write stories as `status='draft'` | ⬜ todo | Homepage query must filter `WHERE status='live'` |
+| 3 | SummaryService: add `squirrel_take` to LLM prompts | ⬜ todo | Mascot voice, opinionated. Null-safe — LLM fail = null, don't crash |
+| 4 | Views: render `squirrel_take` in story-cards.ejs + story-page.ejs | ⬜ todo | `.squirrel-take` component. Hide block if null |
+| 5 | index-page.ejs: featured strip for first story | ⬜ todo | Dark bg, watermark 🐿️, full-width. Collapses to normal card at <640px |
+| 6 | Header: 'N nuts stashed today' count from DB | ⬜ todo | COUNT live stories in last 24h |
 | 7 | Fix docker-compose: DATABASE_URL `***` → `${DB_PASSWORD:-changeme}` | ⬜ todo | Deploy blocker |
-| 8 | Parallelize HN fetch: 30 serial → Promise.all batches of 10 | ⬜ todo | No retry burst; HN Firebase has limits |
+| 8 | Parallelize HN fetch: 30 serial → Promise.all batches of 10 | ⬜ todo | No retry burst |
 | 9 | `/health` route: add DB ping | ⬜ todo | NPM won't route to dead container if health check fails |
-| 10 | `/sitemap.xml` route: dynamic, all story slugs | ⬜ todo | Non-negotiable for SEO — just a simple XML render from DB |
-| 11 | OG/Twitter meta on story detail pages | ⬜ todo | layout-main has partial support; verify `og:url` + `og:description` populated on `/story/:slug` |
-| 12 | Legacy image hosting (see design note below) | ⬜ todo / think | 65 legacy rows have no image. Need resolve-once pipeline w/ fallback |
+| 10 | `/sitemap.xml` route: dynamic, all live story slugs | ⬜ todo | Non-negotiable for SEO |
+| 11 | OG/Twitter meta on story detail pages | ⬜ todo | Verify `og:url` + `og:description` populated on `/story/:slug` |
+| 12 | `POST /api/admin/stories/:id/publish` endpoint | ⬜ todo | Token-protected (ADMIN_TOKEN env var). Moves draft→live |
+| 13 | Hermes curation skill | ⬜ todo | Scheduled daily. Scans drafts, sends Discord shortlist, owner approves on phone |
+| 14 | Expand source list to ~20–30 high-signal feeds | ⬜ todo | Migration v6 seed. Define curation persona prompt alongside this |
 
 ---
 
-## Design Note (TODO — think before implementing): Legacy Image Hosting
+## Design Note: Legacy Image Hosting
 
-**Problem:** `legacy_articles` rows have `title`, `description`, `source_url` — but **no image**. The
-current archive cards fall back to the category emoji. Original tsquirrel.com is dead; the external
-`source_url`s (Gizmodo, DailyMail, Telegraph, RollingStone… circa 2013–2018) are mostly link-rotted.
-
-**Options considered:**
-
-| # | Approach | Resilience | Effort | Legal/risk |
-|---|----------|-----------|--------|-----------|
-| A | Emoji thumbnail (current) | ∞ (nothing breaks) | none | none |
-| B | Hotlink source `og:image` | low — dies with link, hosts block hotlink-referer | low | grey (hotlinking) |
-| C | Wayback-resolved image | good — archive.org is stable & hotlink-friendly | medium | grey, archival-friendly |
-| D | Self-host (download → volume/R2) | best — own the bytes | high | **highest** — rehosting press photos |
+**Problem:** `legacy_articles` rows have no image. Original source URLs (Gizmodo, DailyMail, Telegraph … 2013–2018) are mostly link-rotted.
 
 **Proposed direction — resolve-once, cache-forever (B→C→A chain):**
 
@@ -139,17 +149,11 @@ current archive cards fall back to the category emoji. Original tsquirrel.com is
    ```
 2. **`LegacyImageService`** (one-shot backfill, NOT on cron):
    - Fetch `source_url` → parse `<meta property="og:image">`.
-   - On dead/timeout/403 → query Wayback `http://archive.org/wayback/available?url=<source_url>`
-     → resolve snapshot's og:image (served from `web.archive.org`, hotlink-OK).
+   - On dead/timeout/403 → query Wayback `archive.org/wayback/available?url=<source_url>` → resolve snapshot og:image.
    - Still nothing → `image_status = 'none'`, keep emoji.
-   - Persist resolved URL + status → never refetch.
 3. **Render:** `image_status = 'ok'` → `<img src=image_url>`, else category emoji fallback.
-   Archive degrades cleanly, never shows a broken `<img>`.
-4. **Phase 2 (only if hotlinking proves flaky):** download `ok` images once → self-host on a
-   Docker volume (dev) / Cloudflare R2 (prod). Gated behind proven need — this is where the
-   copyright/takedown exposure lives.
+4. **Phase 2 (only if hotlinking proves flaky):** self-host on Docker volume / Cloudflare R2.
 
-**Decisions to make first:**
-- Scope: stop at resolve+hotlink (C), or go straight to self-host (D)?
-- Fallback aesthetic: keep per-category emoji, or a generic "🌰 buried" placeholder?
+**Decisions still open:**
+- Stop at resolve+hotlink, or go straight to self-host?
 - Same pipeline could later backfill `stories.image_url` for live cards (currently always null).
