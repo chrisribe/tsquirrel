@@ -10,26 +10,35 @@
   }
 %>
 <% stories.forEach(story => { %>
+<% const meta = catMeta(story.category); %>
 <article class="story-card">
   <a href="/story/<%= story.slug %>" class="story-link">
-    <div class="story-meta">
-      <span class="story-category"><%= story.category || 'News' %></span>
-      <span class="story-time"><%= timeAgo(story.updated_at || story.created_at) %></span>
-      <% if (story.source_count > 1) { %>
-        <span class="story-sources"><%= story.source_count %> sources</span>
-      <% } %>
-    </div>
-    <h2 class="story-title"><%= story.title %></h2>
-    <% if (story.summary) { %>
-      <p class="story-summary"><%= story.summary %></p>
-    <% } %>
-    <% if (story.tags && story.tags.length) { %>
-      <div class="story-tags">
-        <% story.tags.slice(0,4).forEach(tag => { %>
-          <span class="story-tag">#<%= tag %></span>
-        <% }); %>
+    <div class="card-inner">
+      <div class="card-body">
+        <div class="story-meta">
+          <span class="badge <%= meta.badge %>"><%= catLabel(story.category) %></span>
+          <% if (story.heat_score >= 30) { %><span class="badge badge-hot">🔥 hot</span><% } %>
+          <% if (story.source_count > 1) { %>
+            <span class="badge badge-sources"><%= story.source_count %> sources</span>
+          <% } %>
+          <span class="story-time"><%= timeAgo(story.updated_at || story.created_at) %></span>
+        </div>
+        <h2 class="story-title"><%= story.title %></h2>
+        <% if (story.squirrel_take) { %>
+          <p class="card-editorial">🐿️ <%= story.squirrel_take %></p>
+        <% } else if (story.summary) { %>
+          <p class="story-summary"><%= story.summary %></p>
+        <% } %>
+        <% if (story.tags && story.tags.length) { %>
+          <div class="story-tags">
+            <% story.tags.slice(0,4).forEach(tag => { %>
+              <span class="story-tag">#<%= tag %></span>
+            <% }); %>
+          </div>
+        <% } %>
       </div>
-    <% } %>
+      <div class="thumb <%= meta.cls %>"><%= meta.thumb %></div>
+    </div>
   </a>
 </article>
 <% }); %>

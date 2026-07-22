@@ -111,3 +111,45 @@ Reviewed by Opus (via GitHub Models or OpenRouter `anthropic/claude-opus-4.8`).
 | 9 | `/health` route: add DB ping | ⬜ todo | NPM won't route to dead container if health check fails |
 | 10 | `/sitemap.xml` route: dynamic, all story slugs | ⬜ todo | Non-negotiable for SEO — just a simple XML render from DB |
 | 11 | OG/Twitter meta on story detail pages | ⬜ todo | layout-main has partial support; verify `og:url` + `og:description` populated on `/story/:slug` |
+| 12 | Legacy image hosting (see design note below) | ⬜ todo / think | 65 legacy rows have no image. Need resolve-once pipeline w/ fallback |
+
+---
+
+## Design Note (TODO — think before implementing): Legacy Image Hosting
+
+**Problem:** `legacy_articles` rows have `title`, `description`, `source_url` — but **no image**. The
+current archive cards fall back to the category emoji. Original tsquirrel.com is dead; the external
+`source_url`s (Gizmodo, DailyMail, Telegraph, RollingStone… circa 2013–2018) are mostly link-rotted.
+
+**Options considered:**
+
+| # | Approach | Resilience | Effort | Legal/risk |
+|---|----------|-----------|--------|-----------|
+| A | Emoji thumbnail (current) | ∞ (nothing breaks) | none | none |
+| B | Hotlink source `og:image` | low — dies with link, hosts block hotlink-referer | low | grey (hotlinking) |
+| C | Wayback-resolved image | good — archive.org is stable & hotlink-friendly | medium | grey, archival-friendly |
+| D | Self-host (download → volume/R2) | best — own the bytes | high | **highest** — rehosting press photos |
+
+**Proposed direction — resolve-once, cache-forever (B→C→A chain):**
+
+1. **Migration v6** — add to `legacy_articles`:
+   ```sql
+   ADD COLUMN image_url TEXT,
+   ADD COLUMN image_status VARCHAR(20) DEFAULT 'pending'  -- pending|ok|dead|none
+   ```
+2. **`LegacyImageService`** (one-shot backfill, NOT on cron):
+   - Fetch `source_url` → parse `<meta property="og:image">`.
+   - On dead/timeout/403 → query Wayback `http://archive.org/wayback/available?url=<source_url>`
+     → resolve snapshot's og:image (served from `web.archive.org`, hotlink-OK).
+   - Still nothing → `image_status = 'none'`, keep emoji.
+   - Persist resolved URL + status → never refetch.
+3. **Render:** `image_status = 'ok'` → `<img src=image_url>`, else category emoji fallback.
+   Archive degrades cleanly, never shows a broken `<img>`.
+4. **Phase 2 (only if hotlinking proves flaky):** download `ok` images once → self-host on a
+   Docker volume (dev) / Cloudflare R2 (prod). Gated behind proven need — this is where the
+   copyright/takedown exposure lives.
+
+**Decisions to make first:**
+- Scope: stop at resolve+hotlink (C), or go straight to self-host (D)?
+- Fallback aesthetic: keep per-category emoji, or a generic "🌰 buried" placeholder?
+- Same pipeline could later backfill `stories.image_url` for live cards (currently always null).

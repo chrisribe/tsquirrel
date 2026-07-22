@@ -1,24 +1,46 @@
 <%
   const { stories, categories, activeCategory } = pageData;
+  const featured = !activeCategory && stories.length ? stories[0] : null;
+  const feedStories = featured ? stories.slice(1) : stories;
 %>
+
+<!-- Squirrel intro -->
+<p class="chatter">The internet is a big forest. <strong>We sniff out the good stuff</strong> so you don't have to dig. Updated every 30 minutes. 🌰</p>
 
 <!-- Category filter bar -->
 <section class="category-bar">
   <div class="category-scroll">
-    <a href="/" class="category-pill <%= !activeCategory ? 'active' : '' %>">All</a>
+    <a href="/" class="category-pill <%= !activeCategory ? 'active' : '' %>">🌰 All</a>
     <% categories.forEach(c => { %>
       <a href="/?category=<%= c.category %>"
          class="category-pill <%= activeCategory === c.category ? 'active' : '' %>">
-        <%= c.category %> <span class="pill-count"><%= c.count %></span>
+        <%= catLabel(c.category) %> <span class="pill-count"><%= c.count %></span>
       </a>
     <% }); %>
   </div>
 </section>
 
+<!-- Featured strip -->
+<% if (featured) { %>
+  <a href="/story/<%= featured.slug %>" class="card-featured">
+    <div class="featured-eyebrow">🔥 Everyone's chattering about this</div>
+    <div class="featured-title"><%= featured.title %></div>
+    <% if (featured.summary) { %>
+      <div class="featured-summary"><%= featured.summary %></div>
+    <% } %>
+    <div class="featured-footer">
+      <span class="featured-sources">📡 <%= featured.source_count %> source<%= featured.source_count == 1 ? '' : 's' %></span>
+      <span class="featured-pill">Read story →</span>
+    </div>
+  </a>
+<% } %>
+
+<p class="section-label">🌰 Fresh stash</p>
+
 <!-- Story feed -->
 <section class="story-feed"
          id="story-feed">
-  <%- include('partials/story-cards', { pageData: { stories } }) %>
+  <%- include('partials/story-cards', { pageData: { stories: feedStories } }) %>
 
   <!-- HTMX load-more trigger -->
   <% if (stories.length === 30) { %>

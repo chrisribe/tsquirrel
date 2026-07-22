@@ -54,6 +54,21 @@ router.get('/', async (req, res) => {
   });
 });
 
+// ── Legacy archive index ───────────────────────────────────────────────
+router.get('/archive', async (req, res) => {
+  const pool = req.app.get('pool');
+  const dao = new NewsDAO(pool);
+
+  const articles = await dao.getLegacyArticles();
+  res.render('layout-main', {
+    template: 'archive-page',
+    pageTitle: 'Archive — TSquirrel',
+    pageDescription: 'The TSquirrel Classic archive — original news picks from the early days.',
+    pageUrl: 'https://tsquirrel.com/archive',
+    pageData: { articles },
+  });
+});
+
 // ── Story detail ───────────────────────────────────────────────────────
 router.get('/story/:slug', async (req, res) => {
   const pool = req.app.get('pool');

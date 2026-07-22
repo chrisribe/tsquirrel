@@ -113,6 +113,14 @@ const migrations = [
       console.log('Migration 4: Legacy articles table + 65 rows seeded');
     }
   },
+  {
+    version: 5,
+    description: 'Add stories.squirrel_take — editorial one-liner',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS squirrel_take TEXT`);
+      console.log('Migration 5: stories.squirrel_take added');
+    }
+  },
   // Future migrations go here
 ];
 

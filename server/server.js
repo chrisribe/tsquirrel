@@ -4,7 +4,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
 
-const ASSET_VERSION = '1.0.0';
+const ASSET_VERSION = '1.1.0';
 
 async function startServer() {
   const app = express();
@@ -47,10 +47,24 @@ async function startServer() {
     next();
   });
 
+  // Category display helpers available in every template
+  const { catMeta, catLabel } = require('./lib/display');
+  app.locals.catMeta = catMeta;
+  app.locals.catLabel = catLabel;
+
   // Inject globals into all views
-  app.use((req, res, next) => {
+  app.use(async (req, res, next) => {
     res.locals.assetVersion = ASSET_VERSION;
     res.locals.user = null; // no auth for MVP
+    res.locals.nutsToday = 0;
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/static')) {
+      try {
+        const { rows } = await pool.query(
+          "SELECT COUNT(*)::int AS n FROM stories WHERE created_at > NOW() - INTERVAL '24 hours'"
+        );
+        res.locals.nutsToday = rows[0]?.n || 0;
+      } catch (_) { /* non-fatal — header just shows 0 */ }
+    }
     next();
   });
 

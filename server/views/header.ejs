@@ -1,13 +1,21 @@
 <header class="container">
   <nav>
     <ul>
-      <li><a href="/" class="logo"><span class="logo-icon">🐿️</span><strong>TSquirrel</strong></a></li>
+      <li><a href="/" class="logo">
+        <span class="logo-icon">🐿️</span>
+        <span class="logo-wrap">
+          <strong class="logo-text">TSquirrel</strong>
+          <span class="logo-tagline">stashing today's best links</span>
+        </span>
+      </a></li>
     </ul>
     <ul class="nav-right">
       <li><a href="/" class="nav-link-subtle">Trending</a></li>
-      <li><a href="/?category=Technology" class="nav-link-subtle">Tech</a></li>
-      <li><a href="/?category=World" class="nav-link-subtle">World</a></li>
-      <li><a href="/?category=Business" class="nav-link-subtle">Business</a></li>
+      <li><a href="/?category=Technology" class="nav-link-subtle">💻 Tech</a></li>
+      <li><a href="/?category=World" class="nav-link-subtle">🌍 World</a></li>
+      <li><a href="/?category=Business" class="nav-link-subtle">💰 Business</a></li>
+      <li><a href="/archive" class="nav-link-subtle">📰 Archive</a></li>
     </ul>
+    <span class="nav-count">🌰 <%= nutsToday %> nut<%= nutsToday === 1 ? '' : 's' %> stashed today</span>
   </nav>
 </header>

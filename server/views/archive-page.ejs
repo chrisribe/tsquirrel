@@ -1,0 +1,32 @@
+<%
+  const { articles } = pageData;
+%>
+
+<section class="story-detail-header">
+  <div class="story-meta">
+    <span class="story-category legacy-badge">📰 Archive</span>
+    <span class="story-time">TSquirrel Classic</span>
+  </div>
+  <h1>🌰 Buried Seeds</h1>
+  <p class="story-summary-large">
+    Original news picks from the early days of tsquirrel.com — <%= articles.length %> stories, preserved.
+  </p>
+</section>
+
+<section class="archive-list">
+  <% articles.forEach(a => { %>
+    <a href="/<%= a.slug %>" class="card archive">
+      <div class="archive-badge-row">
+        <span class="badge-archive">🌰 Buried</span>
+      </div>
+      <span class="archive-item-title"><%= a.title %></span>
+      <% if (a.description) { %>
+        <span class="archive-item-desc"><%= a.description %></span>
+      <% } %>
+    </a>
+  <% }); %>
+</section>
+
+<div style="margin-top:2rem">
+  <a href="/" class="secondary">← Back to trending</a>
+</div>

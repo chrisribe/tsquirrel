@@ -8,16 +8,34 @@
     if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
     return `${Math.floor(diff/86400)}d ago`;
   }
+  const meta = catMeta(story.category);
+  const sentiment = story.sentiment != null ? Number(story.sentiment) : null;
+  const needlePct = sentiment != null ? Math.round(((sentiment + 1) / 2) * 100) : 50;
+  const moodReading = sentiment == null ? 'No reading yet'
+    : sentiment > 0.3 ? 'Mostly excited'
+    : sentiment < -0.3 ? 'Mostly skeptical'
+    : 'Mixed feelings in the forest';
 %>
 
 <article class="story-detail">
+  <!-- Hero -->
+  <div class="story-hero <%= meta.cls %>"><%= meta.thumb %></div>
+
   <header class="story-detail-header">
     <div class="story-meta">
-      <span class="story-category"><%= story.category || 'News' %></span>
-      <span class="story-time"><%= timeAgo(story.updated_at || story.created_at) %></span>
-      <span class="story-sources"><%= story.source_count %> source<%= story.source_count != 1 ? 's' : '' %></span>
+      <span class="badge <%= meta.badge %>"><%= catLabel(story.category) %></span>
+      <% if (story.heat_score >= 30) { %><span class="badge badge-hot">🔥 everyone's chattering</span><% } %>
+      <span class="story-time"><%= timeAgo(story.updated_at || story.created_at) %> · <%= story.source_count %> source<%= story.source_count != 1 ? 's' : '' %></span>
     </div>
     <h1><%= story.title %></h1>
+
+    <% if (story.squirrel_take) { %>
+      <div class="squirrel-take">
+        <div class="squirrel-take-label">🐿️ The Squirrel's Take</div>
+        <div class="squirrel-take-text"><%= story.squirrel_take %></div>
+      </div>
+    <% } %>
+
     <% if (story.summary) { %>
       <p class="story-summary-large"><%= story.summary %></p>
     <% } %>
@@ -30,14 +48,32 @@
     <% } %>
   </header>
 
-  <section class="source-list">
-    <h3>Coverage (<%= articles.length %>)</h3>
+  <!-- Forest mood -->
+  <% if (sentiment != null) { %>
+    <div class="sentiment-card">
+      <div class="sentiment-label">🌡️ Forest Mood</div>
+      <div class="sentiment-bar"><div class="sentiment-needle" style="left: <%= needlePct %>%"></div></div>
+      <div class="sentiment-meta">
+        <span>😤 Skeptical</span>
+        <span>😐 Mixed</span>
+        <span>🤩 Excited</span>
+      </div>
+      <div class="sentiment-reading"><%= moodReading %></div>
+    </div>
+  <% } %>
+
+  <!-- Sources -->
+  <section class="sources-card">
+    <div class="sources-label">📡 Where we spotted it (<%= articles.length %>)</div>
     <% articles.forEach(a => { %>
-      <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="source-item">
-        <span class="source-name"><%= a.source_name %></span>
-        <span class="source-title"><%= a.title %></span>
-        <span class="source-time"><%= timeAgo(a.published_at) %></span>
-        <span class="source-arrow">↗</span>
+      <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="source-row">
+        <div class="source-icon">📰</div>
+        <div class="source-body">
+          <div class="source-name"><%= a.source_name %></div>
+          <div class="source-headline"><%= a.title %></div>
+          <div class="source-time"><%= timeAgo(a.published_at) %></div>
+        </div>
+        <div class="source-arrow">›</div>
       </a>
     <% }); %>
   </section>

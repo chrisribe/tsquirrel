@@ -121,11 +121,12 @@ Only group articles that are genuinely about the same event/topic. Singletons ar
         const result = await callLLM([
           {
             role: 'system',
-            content: 'You are a news summarizer. Write a 2-3 sentence neutral summary of the story covered by these headlines. Return JSON: { "summary": "...", "tags": ["tag1","tag2"], "sentiment": 0.0 } where sentiment is -1 (negative) to 1 (positive).',
+            content: 'You are TSquirrel, a witty but sharp news editor mascot (a squirrel). Write a 2-3 sentence neutral summary of the story covered by these headlines, PLUS a short punchy one-line editorial "squirrel take" (max 20 words, playful, opinionated). Return JSON: { "summary": "...", "squirrel_take": "...", "tags": ["tag1","tag2"], "sentiment": 0.0 } where sentiment is -1 (negative) to 1 (positive).',
           },
           { role: 'user', content: headlines },
         ]);
         summary = result.summary || null;
+        cluster.squirrelTake = result.squirrel_take || null;
         cluster.tags = result.tags || [];
         cluster.sentiment = result.sentiment || 0;
       } catch (err) {
@@ -145,6 +146,7 @@ Only group articles that are genuinely about the same event/topic. Singletons ar
       sentiment: cluster.sentiment || 0,
       heatScore,
       imageUrl: null,
+      squirrelTake: cluster.squirrelTake || null,
     });
 
     for (const article of clusterArticles) {

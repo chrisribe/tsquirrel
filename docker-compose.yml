@@ -22,11 +22,13 @@ services:
       context: ./server
       dockerfile: dockerfile
     pull_policy: build
-    expose:
-      - "3000"
+    ports:
+      - "${SERVER_PORT:-3000}:3000"
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ./db:/db:ro
     environment:
       DATABASE_URL: postgres://dockeruser:${DB_PASSWORD:-changeme}@db:5432/appdb
       NODE_ENV: ${NODE_ENV:-production}

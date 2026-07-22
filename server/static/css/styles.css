@@ -1,23 +1,45 @@
 /* TSquirrel — styles.css */
 :root {
   --brand: #2c5f2e;
+  --brand-mid: #3d7a40;
   --brand-light: #52a653;
+  --brand-pale: #e8f5e9;
+  --accent: #e07b39;
+  --accent-pale: #fff3eb;
+  --acorn: #b5651d;
   --card-bg: #fff;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --tag-bg: #f3f4f6;
+  --page-bg: #f5f3ef;
+  --muted: #7a7068;
+  --border: #e2ddd6;
+  --tag-bg: #efece7;
   --category-active-bg: #2c5f2e;
   --category-active-color: #fff;
 }
 
-body { font-family: 'Inter', sans-serif; background: #f9fafb; }
+body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bottom: 4.5rem; }
 
 /* Nav */
-.logo { display: flex; align-items: center; gap: .4rem; font-size: 1.1rem; color: var(--brand) !important; text-decoration: none; }
-.logo-icon { font-size: 1.3rem; }
+.logo { display: flex; align-items: center; gap: .45rem; color: var(--brand) !important; text-decoration: none; }
+.logo-icon { font-size: 1.5rem; line-height: 1; }
+.logo-wrap { display: flex; flex-direction: column; line-height: 1.1; }
+.logo-text { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; }
+.logo-tagline { font-size: .62rem; font-weight: 400; color: var(--muted); letter-spacing: .03em; }
 .nav-right { gap: .5rem; }
 .nav-link-subtle { color: var(--muted); font-size: .9rem; text-decoration: none; }
 .nav-link-subtle:hover { color: var(--brand); }
+.nav-count { font-size: .75rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
+
+/* Squirrel intro */
+.chatter { font-size: .85rem; color: var(--muted); font-style: italic; margin: .25rem 0 .75rem; }
+.chatter strong { color: var(--brand); font-style: normal; }
+
+/* Section label */
+.section-label {
+  font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); margin: 1.1rem 0 .5rem; display: flex; align-items: center; gap: .4rem;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
 
 /* Category bar */
 .category-bar { margin: 1rem 0; overflow: hidden; }
@@ -150,11 +172,146 @@ body { font-family: 'Inter', sans-serif; background: #f9fafb; }
 .source-time { font-size: .75rem; color: var(--muted); white-space: nowrap; }
 .source-arrow { color: var(--muted); }
 
+/* Archive list */
+.archive-list { display: flex; flex-direction: column; gap: .5rem; }
+.archive-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: .25rem 1rem;
+  padding: .9rem 1.1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: background .1s;
+}
+.archive-item:hover { background: #f9fafb; }
+.archive-item-title { font-size: .95rem; font-weight: 600; color: #111827; line-height: 1.35; }
+.archive-item-desc {
+  grid-column: 1 / 2;
+  font-size: .85rem;
+  color: var(--muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.archive-item-arrow { grid-row: 1 / 3; align-self: center; color: var(--muted); }
+
 /* Mobile tweaks */
 @media (max-width: 600px) {
   .story-title { font-size: .95rem; }
-  .source-item { grid-template-columns: 1fr auto; }
-  .source-name { display: none; }
-  .source-time { display: none; }
   nav ul.nav-right { display: none; }
+  .nav-count { display: none; }
+  .source-item .source-name { display: none; }
+  .source-item .source-time { display: none; }
 }
+
+/* ── Card layout with thumbnail ── */
+.card-inner { display: flex; gap: .7rem; align-items: flex-start; }
+.card-body { flex: 1; min-width: 0; }
+.thumb {
+  flex-shrink: 0; width: 64px; height: 64px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
+}
+.thumb-nuts  { background: #dbeafe; }
+.thumb-world { background: #dcfce7; }
+.thumb-acorn { background: #fef9c3; }
+.thumb-sci   { background: #ede9fe; }
+.thumb-fire  { background: #fce7f3; }
+
+/* ── Badges ── */
+.badge {
+  font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  padding: .12rem .4rem; border-radius: 4px; white-space: nowrap;
+}
+.badge-cat-nuts  { background: #2563eb22; color: #1d4ed8; }
+.badge-cat-world { background: #16a34a22; color: #15803d; }
+.badge-cat-acorn { background: #ca8a0422; color: #92400e; }
+.badge-cat-sci   { background: #7c3aed22; color: #6d28d9; }
+.badge-cat-fire  { background: #db277722; color: #be185d; }
+.badge-sources { background: var(--accent-pale); color: var(--accent); }
+.badge-hot { background: #fee2e2; color: #b91c1c; }
+
+.card-editorial {
+  font-size: .82rem; color: var(--brand-mid); font-style: italic;
+  line-height: 1.45; margin: 0 0 .35rem;
+}
+
+/* ── Featured strip ── */
+.card-featured {
+  display: block; background: #2d6e34; color: #fff; border-radius: 16px;
+  padding: 1rem 1.1rem; text-decoration: none; margin: .25rem 0 .5rem;
+  position: relative; overflow: hidden;
+}
+.card-featured::before {
+  content: '🐿️'; position: absolute; right: -8px; bottom: -14px;
+  font-size: 5rem; opacity: .15; line-height: 1; transform: scaleX(-1);
+}
+.featured-eyebrow { font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .75; margin-bottom: .5rem; }
+.featured-title { font-size: 1.15rem; font-weight: 800; line-height: 1.3; margin-bottom: .5rem; }
+.featured-summary { font-size: .84rem; opacity: .88; line-height: 1.55; margin-bottom: .75rem; }
+.featured-footer { display: flex; align-items: center; justify-content: space-between; }
+.featured-sources { font-size: .73rem; opacity: .8; }
+.featured-pill { font-size: .72rem; font-weight: 700; background: rgba(255,255,255,.2); padding: .2rem .6rem; border-radius: 99px; color: #fff; }
+
+/* ── Story hero ── */
+.story-hero {
+  width: 100%; height: 160px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 4.5rem; margin-bottom: .85rem;
+}
+
+/* ── Squirrel's Take ── */
+.squirrel-take {
+  background: var(--brand-pale); border-left: 3px solid var(--brand);
+  border-radius: 0 10px 10px 0; padding: .7rem .85rem; margin: .5rem 0 .75rem;
+}
+.squirrel-take-label { font-size: .65rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-mid); margin-bottom: .25rem; }
+.squirrel-take-text { font-size: .88rem; color: var(--brand); font-style: italic; line-height: 1.5; }
+
+/* ── Forest mood ── */
+.sentiment-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: .85rem; margin-bottom: .75rem; }
+.sentiment-label { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .5rem; }
+.sentiment-bar { height: 8px; border-radius: 99px; background: linear-gradient(to right, #ef4444 0%, #f59e0b 40%, #22c55e 100%); margin-bottom: .35rem; position: relative; }
+.sentiment-needle { position: absolute; top: -4px; width: 16px; height: 16px; background: #fff; border: 2px solid var(--brand); border-radius: 50%; transform: translateX(-50%); }
+.sentiment-meta { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); }
+.sentiment-reading { font-size: .82rem; font-weight: 600; color: var(--brand); margin-top: .3rem; }
+
+/* ── Sources card ── */
+.sources-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: .85rem; margin-bottom: .75rem; }
+.sources-label { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .6rem; }
+.source-row { display: flex; align-items: flex-start; gap: .6rem; padding: .55rem 0; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; }
+.source-row:last-child { border-bottom: none; padding-bottom: 0; }
+.source-icon { width: 32px; height: 32px; border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; background: var(--page-bg); }
+.source-body { flex: 1; min-width: 0; }
+.source-headline { font-size: .82rem; color: #1a1612; line-height: 1.38; margin: .1rem 0 .15rem; }
+
+/* ── Archive: Buried Seeds cards ── */
+.card.archive {
+  display: block; background: #faf7f2; border: 1px dashed var(--acorn); border-radius: 12px;
+  padding: .85rem 1rem; text-decoration: none; color: inherit; transition: box-shadow .15s;
+}
+.card.archive:hover { box-shadow: 0 3px 14px rgba(0,0,0,.06); }
+.archive-badge-row { margin-bottom: .35rem; }
+.badge-archive { background: #f3e8d8; color: var(--acorn); font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: .1rem .38rem; border-radius: 4px; }
+.card.archive .archive-item-title { display: block; font-size: .9rem; font-weight: 700; color: #1a1612; line-height: 1.35; margin-bottom: .2rem; }
+.card.archive .archive-item-desc {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: .82rem; color: var(--muted); line-height: 1.5;
+}
+
+/* ── Bottom nav ── */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid var(--border); display: flex; z-index: 200; }
+.bottom-nav .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: .5rem .25rem .6rem; text-decoration: none; color: var(--muted); font-size: .62rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; gap: .15rem; }
+.bottom-nav .tab.active { color: var(--brand); }
+.bottom-nav .tab-icon { font-size: 1.3rem; line-height: 1; }
+
+/* ── Footer ── */
+.footer-tagline { display: block; }
+.footer-tagline strong { color: var(--brand); }
+.footer-sub { display: block; font-size: .65rem; color: var(--muted); margin-top: .2rem; }
+

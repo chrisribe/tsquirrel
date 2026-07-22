@@ -64,10 +64,10 @@ class NewsDAO {
     return rows;
   }
 
-  async upsertStory({ title, slug, summary, category, tags, sentiment, heatScore, imageUrl }) {
+  async upsertStory({ title, slug, summary, category, tags, sentiment, heatScore, imageUrl, squirrelTake = null }) {
     const { rows } = await this.pool.query(`
-      INSERT INTO stories (title, slug, summary, category, tags, sentiment, heat_score, image_url, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      INSERT INTO stories (title, slug, summary, category, tags, sentiment, heat_score, image_url, squirrel_take, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
       ON CONFLICT (slug) DO UPDATE SET
         summary = EXCLUDED.summary,
         category = EXCLUDED.category,
@@ -75,9 +75,10 @@ class NewsDAO {
         sentiment = EXCLUDED.sentiment,
         heat_score = EXCLUDED.heat_score,
         image_url = COALESCE(EXCLUDED.image_url, stories.image_url),
+        squirrel_take = COALESCE(EXCLUDED.squirrel_take, stories.squirrel_take),
         updated_at = NOW()
       RETURNING *
-    `, [title, slug, summary, category, tags, sentiment, heatScore, imageUrl]);
+    `, [title, slug, summary, category, tags, sentiment, heatScore, imageUrl, squirrelTake]);
     return rows[0];
   }
 
@@ -123,6 +124,17 @@ class NewsDAO {
       [slug]
     );
     return rows[0] || null;
+  }
+
+  // ── Legacy archive ────────────────────────────────────────────
+
+  async getLegacyArticles() {
+    const { rows } = await this.pool.query(`
+      SELECT id, slug, title, description, source_url, created_at
+      FROM legacy_articles
+      ORDER BY id ASC
+    `);
+    return rows;
   }
 }
 
