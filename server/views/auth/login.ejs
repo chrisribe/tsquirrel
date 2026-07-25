@@ -1,0 +1,25 @@
+<section class="auth-page">
+  <h1>🐿️ Admin Login</h1>
+  <% if (typeof pageData !== 'undefined' && pageData.error) { %>
+    <p class="error"><%= pageData.error %></p>
+  <% } %>
+  <form method="POST" action="/auth/login">
+    <label for="email">Username or Email</label>
+    <input type="text" id="email" name="email" required autofocus>
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required>
+
+    <button type="submit">Log In</button>
+  </form>
+</section>
+
+<style>
+  .auth-page {
+    max-width: 380px;
+    margin: 4rem auto;
+  }
+  .auth-page .error {
+    color: var(--pico-del-color);
+  }
+</style>

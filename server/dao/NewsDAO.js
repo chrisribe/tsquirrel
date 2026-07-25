@@ -126,6 +126,31 @@ class NewsDAO {
     return rows[0] || null;
   }
 
+  async getSourceStats() {
+    const { rows } = await this.pool.query(`
+      SELECT src.*,
+             COUNT(a.id) AS article_count,
+             MAX(a.fetched_at) AS last_fetched_at,
+             MAX(a.published_at) AS last_published_at
+      FROM sources src
+      LEFT JOIN articles a ON a.source_id = src.id
+      GROUP BY src.id
+      ORDER BY src.name
+    `);
+    return rows;
+  }
+
+  async getArticlesBySource(sourceId, { limit = 50 } = {}) {
+    const { rows } = await this.pool.query(`
+      SELECT id, title, url, published_at, fetched_at
+      FROM articles
+      WHERE source_id = $1
+      ORDER BY fetched_at DESC
+      LIMIT $2
+    `, [sourceId, limit]);
+    return rows;
+  }
+
   // ── Legacy archive ────────────────────────────────────────────
 
   async getLegacyArticles() {

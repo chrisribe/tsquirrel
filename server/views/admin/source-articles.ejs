@@ -1,0 +1,30 @@
+<section class="admin-source-articles">
+  <p><a href="/admin">&larr; Back to Admin Dashboard</a></p>
+  <h1>🐿️ <%= pageData.source.name %></h1>
+  <p>
+    <strong>Slug:</strong> <%= pageData.source.slug %> &middot;
+    <strong>Type:</strong> <%= pageData.source.type %> &middot;
+    <strong>Active:</strong> <%= pageData.source.active ? '✅' : '⬜' %> &middot;
+    <strong>Feed URL:</strong> <%= pageData.source.feed_url || pageData.source.url %>
+  </p>
+
+  <h2>Recently Pulled Articles (last <%= pageData.articles.length %>)</h2>
+  <% if (pageData.articles.length === 0) { %>
+    <p class="hint">No articles have been ingested from this source yet.</p>
+  <% } else { %>
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Published</th><th>Fetched</th></tr>
+      </thead>
+      <tbody>
+        <% pageData.articles.forEach(function(article) { %>
+          <tr>
+            <td><a href="<%= article.url %>" target="_blank" rel="noopener noreferrer"><%= article.title %></a></td>
+            <td><%= article.published_at ? new Date(article.published_at).toLocaleString() : '—' %></td>
+            <td><%= new Date(article.fetched_at).toLocaleString() %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+</section>

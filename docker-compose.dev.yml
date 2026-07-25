@@ -1,0 +1,6 @@
+# Development overrides — relaxes secure-cookie requirement for local HTTP testing.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+services:
+  server:
+    environment:
+      NODE_ENV: development

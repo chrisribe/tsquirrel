@@ -71,6 +71,45 @@ async function fetchRss(feedUrl) {
   return parseRss(xml);
 }
 
+// Parse Google Trends RSS — extracts ht:news_item articles from each trending topic
+function parseGoogleTrends(xml) {
+  const items = [];
+  const blockRe = /<item>([\s\S]*?)<\/item>/gi;
+  let block;
+  while ((block = blockRe.exec(xml)) !== null) {
+    const inner = block[1];
+    // Get the trending topic name for context
+    const topicMatch = inner.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+    const topic = topicMatch ? topicMatch[1].trim() : null;
+    const pubMatch = inner.match(/<pubDate>([\s\S]*?)<\/pubDate>/i);
+    const pubDate = pubMatch ? new Date(pubMatch[1].trim()) : new Date();
+
+    // Extract each ht:news_item within this trending topic
+    const newsRe = /<ht:news_item>([\s\S]*?)<\/ht:news_item>/gi;
+    let news;
+    while ((news = newsRe.exec(inner)) !== null) {
+      const ni = news[1];
+      const getHt = (tag) => {
+        const m = ni.match(new RegExp(`<ht:${tag}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/ht:${tag}>`, 'i'));
+        return m ? m[1].trim() : null;
+      };
+      const title = getHt('news_item_title');
+      const url = getHt('news_item_url');
+      if (title && url) {
+        items.push({ title, url, publishedAt: pubDate, trendTopic: topic });
+      }
+    }
+  }
+  return items;
+}
+
+// Fetch Google Trends trending now
+async function fetchGoogleTrends(geo = 'CA') {
+  const url = `https://trends.google.com/trending/rss?geo=${encodeURIComponent(geo)}`;
+  const xml = await fetchUrl(url);
+  return parseGoogleTrends(xml);
+}
+
 // Derive a stable external ID from URL
 function urlHash(url) {
   return crypto.createHash('sha1').update(url).digest('hex').slice(0, 16);
@@ -89,6 +128,10 @@ async function ingestAll(pool) {
       let items = [];
       if (source.type === 'hn') {
         items = await fetchHN(30);
+      } else if (source.type === 'trends') {
+        // Google Trends — geo extracted from slug suffix (e.g. google-trends-ca → CA)
+        const geo = (source.slug.split('-').pop() || 'CA').toUpperCase();
+        items = await fetchGoogleTrends(geo);
       } else if (source.feed_url) {
         items = await fetchRss(source.feed_url);
       }
@@ -114,4 +157,4 @@ async function ingestAll(pool) {
   return newCount;
 }
 
-module.exports = { ingestAll, fetchHN, fetchRss, urlHash };
+module.exports = { ingestAll, fetchHN, fetchRss, fetchGoogleTrends, urlHash };

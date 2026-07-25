@@ -36,6 +36,15 @@ async function startServer() {
   app.set('views', path.join(__dirname, 'views'));
   app.set('pool', pool);
 
+  // Auth/session services
+  const authService = require('./services/authService');
+  authService.initialize(pool);
+
+  const SessionService = require('./services/SessionService');
+  const sessionService = new SessionService(pool);
+  await sessionService.initialize(app);
+  app.use(require('./middleware/sessionMiddleware'));
+
   // Security headers
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -55,7 +64,6 @@ async function startServer() {
   // Inject globals into all views
   app.use(async (req, res, next) => {
     res.locals.assetVersion = ASSET_VERSION;
-    res.locals.user = null; // no auth for MVP
     res.locals.nutsToday = 0;
     if (!req.path.startsWith('/api') && !req.path.startsWith('/static')) {
       try {
@@ -73,6 +81,8 @@ async function startServer() {
   app.get('/robots.txt', (req, res) => res.sendFile(path.join(__dirname, 'static', 'robots.txt')));
 
   // Routes
+  app.use('/auth', require('./routes/auth'));
+  app.use('/admin', require('./routes/admin'));
   app.use('/', require('./routes/web'));
 
   // Error handlers

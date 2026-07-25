@@ -11,7 +11,8 @@ tsquirrel.com was a dead PHP news aggregator. Cloudflare shows it still gets ~17
 FeedService (30m cron)
   └─ ingestAll(pool)
      ├─ HN API → top 30 items
-     └─ RSS/Atom feeds → parsed with stdlib regex (no deps)
+     ├─ RSS/Atom feeds → parsed with stdlib regex (no deps)
+     └─ Google Trends RSS → ht:news_item articles per trending topic
      → upserts into articles table (dedup by source_id + external_id)
 
 SummaryService (1h cron)
@@ -25,10 +26,10 @@ CronService
   └─ startCron(pool) — called from server.js, skipped in NODE_ENV=test
 ```
 
-## DB Schema (migration v5)
+## DB Schema (migration v7)
 
 ```sql
-sources       id, name, slug, url, feed_url, type (rss|hn), active
+sources       id, name, slug, url, feed_url, type (rss|hn|trends), active
 articles      id, source_id→sources, external_id, title, url, published_at, fetched_at
               UNIQUE(source_id, external_id)
 stories       id, title, slug (UNIQUE), summary, squirrel_take, category, tags[], sentiment, heat_score, image_url, updated_at
@@ -38,7 +39,7 @@ legacy_articles id, slug (UNIQUE), title, description, source_url, created_at
 
 Heat score = source_count × 10. Top stories sorted by heat_score DESC.
 
-## Default Sources (migration v3 seed)
+## Default Sources (migration v3 + v7 seed)
 
 | Slug | Type | Feed URL |
 |---|---|---|
@@ -48,6 +49,7 @@ Heat score = source_count × 10. Top stories sorted by heat_score DESC.
 | guardian | rss | theguardian.com/world/rss |
 | arstechnica | rss | feeds.arstechnica.com/arstechnica/index |
 | techcrunch | rss | techcrunch.com/feed/ |
+| google-trends-ca | trends | (constructed: trends.google.com/trending/rss?geo=CA) |
 
 ## Routes
 
@@ -112,6 +114,74 @@ Reviewed by Opus (via GitHub Models or OpenRouter `anthropic/claude-opus-4.8`).
 | 10 | `/sitemap.xml` route: dynamic, all story slugs | ⬜ todo | Non-negotiable for SEO — just a simple XML render from DB |
 | 11 | OG/Twitter meta on story detail pages | ⬜ todo | layout-main has partial support; verify `og:url` + `og:description` populated on `/story/:slug` |
 | 12 | Legacy image hosting (see design note below) | ⬜ todo / think | 65 legacy rows have no image. Need resolve-once pipeline w/ fallback |
+| 13 | Auth + admin (see design note below) | ✅ done | Ported session/auth stack from mood-tube. `/admin` gated by requireAuth+requireAdmin. Source stats + per-source article drill-down live. CLI `npm run create-user`. |
+| 14 | Google Trends source (type `trends`) | ✅ done | Migration v7 seeds `google-trends-ca`. FeedService parses `ht:news_item` blocks from Trends RSS. Each trending topic's linked articles ingested as normal articles. 30m cron picks them up automatically |
+| 15 | Publishing model: manual + API first, retire auto-curation (see design note below) | ⬜ todo | Story becomes first-class authored post w/ draft→published lifecycle. Retire SummaryService from live pipeline. Add `/api/v1` w/ per-agent tokens for external contributors (Hermes). |
+| 16 | Article retention: tombstone-and-prune (see design note below) | ⬜ todo | Keep full rows 30d; after that, if unlinked, move `(source_id, external_id)` to `seen_ids` tombstone (60–90d) + delete heavy row. Linked/cited articles never pruned. **Implement AFTER manual flow.** |
+
+---
+
+## Design Note: Auth + Admin (ported from mood-tube)
+
+**Problem:** No admin interface exists anywhere in tsquirrel. Sources are seeded twice (SQL init
+script + migration v3) with no DAO write methods, no route, no UI. `static/robots.txt` already
+disallows `/admin/` — an admin panel was clearly planned but never built. Before any source-management
+UI can exist it needs an auth gate behind it.
+
+**Decision: port the stack from `mood-tube`, not EventGlimpse.** Both sibling projects
+(`f:\CRibe\GitRepos\DockerProjects\mood-tube`, `f:\CRibe\GitRepos\DockerProjects\Eventglimpse`) already
+have a working `users` + `connect-pg-simple` session + rotating-secret architecture. mood-tube's is the
+better source to copy from:
+
+- Uses **argon2** for password hashing (not bcrypt) + a constant-time dummy hash on unknown-user login
+  to prevent username enumeration via timing attacks (`authService.js`).
+- Has a dedicated **`adminMiddleware.js`** (403 on non-admin role) that EventGlimpse lacks — exactly
+  the gate tsquirrel needs for `/admin/*`.
+- Leaner `users` schema — no `tier`/`paid_at`/`expires_at` billing columns tsquirrel doesn't need.
+- `SessionService.js` cleanly encapsulates `express-session` + `connect-pg-simple` + cookie hardening
+  (`httpOnly`, `sameSite: lax`, `secure` in prod, `trust proxy` behind Nginx) in one class, called once
+  from `server.js`.
+- `scripts/create-user.js` — interactive CLI to provision the first admin post-deploy (no public
+  self-registration for admin accounts).
+
+**Schema (new migration v6 — becomes v7 if legacy-image v6 lands first):**
+
+```sql
+users          id, username (unique), password (argon2 hash), email (unique),
+               role ('user'|'admin', default 'user'), status ('active'|..., default 'active')
+user_session   sid (PK), sess (json), expire   -- managed by connect-pg-simple, createTableIfMissing
+session_secrets id, secret, created_at, active  -- rotated every 24h, last 5 kept active
+```
+
+Indexes: `idx_users_status`, `idx_session_secrets_active`, `IDX_session_expire`.
+
+**Files to port (near-verbatim from mood-tube, path-adjusted for tsquirrel's structure):**
+
+| mood-tube source | tsquirrel destination | Notes |
+|---|---|---|
+| `server/services/SessionService.js` | `server/services/SessionService.js` | Wires `express-session` + `connect-pg-simple` + `SecretService` |
+| `server/services/SecretService.js` | `server/services/SecretService.js` | 24h rotation, keeps last 5 secrets active |
+| `server/services/authService.js` | `server/services/authService.js` | argon2 hash/verify, timing-safe unknown-user path |
+| `server/dao/SessionSecretsDAO.js` | `server/dao/SessionSecretsDAO.js` | As-is |
+| `server/dao/UserDAO.js` | `server/dao/UserDAO.js` | Trim to fields tsquirrel needs (no tier/billing) |
+| `server/middleware/authMiddleware.js` | `server/middleware/authMiddleware.js` | `requireAuth` — redirect HTML, 401 JSON |
+| `server/middleware/adminMiddleware.js` | `server/middleware/adminMiddleware.js` | `requireAdmin` — 403 on non-admin role |
+| `server/middleware/sessionMiddleware.js` | `server/middleware/sessionMiddleware.js` | Injects `res.locals.user`/`isAuthenticated` for EJS |
+| `server/routes/auth.js` + `AuthController` | `server/routes/auth.js` | **Trim: login/logout only, drop public `/register`** |
+| `server/scripts/create-user.js` | `server/scripts/create-user.js` | CLI-provisioned admin, wired as `npm run create-user` |
+
+**New tsquirrel-specific pieces (not ported, built fresh):**
+
+- `server/dao/SourcesDAO.js` — `createSource`, `updateSource`, `deactivateSource`, `listSources` (currently `NewsDAO.getActiveSources`/`getSourceBySlug` are read-only).
+- `server/routes/admin.js` — `GET/POST /admin/sources` (list, add, edit, deactivate), gated by `requireAuth` + `requireAdmin`. Consider an "ingest now" button that calls `FeedService.ingestAll(pool)` on demand.
+- `server/views/admin/*.ejs` — minimal source list/edit forms, reuse `layout-main.ejs`.
+- `server.js`: replace hardcoded `res.locals.user = null` with `sessionMiddleware`; call `new SessionService(pool).initialize(app)` before routes are mounted.
+- De-dupe the source seed: remove the duplicate seed list from `MigrationService.js` v3 now that sources are DAO/UI-manageable (keep `db/02-sources.sql` as the one source of truth, or vice versa — pick one before writing the DAO).
+
+**Decisions made:**
+- No public registration — admin accounts are CLI-provisioned only (`create-user`).
+- Scope of `/admin` for v1: source CRUD + manual ingest trigger only. Story moderation (hide/delete/feature) deferred to a later pass.
+- Reuse `users.role` (`user`/`admin`) rather than a separate permissions table — single-operator use case doesn't need more.
 
 ---
 
@@ -153,3 +223,194 @@ current archive cards fall back to the category emoji. Original tsquirrel.com is
 - Scope: stop at resolve+hotlink (C), or go straight to self-host (D)?
 - Fallback aesthetic: keep per-category emoji, or a generic "🌰 buried" placeholder?
 - Same pipeline could later backfill `stories.image_url` for live cards (currently always null).
+
+---
+
+## Design Note: Publishing Model — Manual + API First, Retire Auto-Curation
+
+**Core philosophy (decided Jul 2026):** TSquirrel is a **host and linker of curated content, not a
+content foundry.** The site's job is to store published stories, accrue source links to them over time,
+and serve them well. Authoring is done by **humans** or **external systems** (e.g. a Hermes LLM
+instance that browses, gathers, summarizes, and submits) — never by an unreviewed baked-in cron.
+"Proud squirrels": full-auto generation produces poor quality, so nothing an agent writes goes live
+without human review.
+
+**The key primitive:** "publish a story" is a single operation that both a human (admin UI, session
+auth) and an external agent (API, token auth) call the same way, through one `StoryService`. Auto-
+curation is not a privileged internal shortcut — if it ever returns, it's just another API client.
+
+```
+articles (raw ingest — unchanged, source material only)
+    │  (attach as citations; links accrue over time → dynamic heat_score)
+    ▼
+┌──────────── StoryService (the ONE publish primitive) ────────────┐
+│  createDraft · updateDraft · attachSource · publish · unpublish  │
+│  · hide · delete                                                 │
+└───────────────────────────────────────────────────────────────────┘
+    ▲                         ▲
+    │ admin UI (session)      │ POST /api/v1/stories (per-agent token)
+    │ = human, manual         │ = Hermes / external contributor
+    │                         │ → always lands as DRAFT (pending review)
+```
+
+**Build order:** manual flow **first** (defines the canonical publish contract), then the API as a
+thin auth-swapped wrapper over the identical `StoryService`. Human and agent become interchangeable
+authors — no separate code path.
+
+### Decisions (locked)
+
+1. **heat_score stays — but must become DYNAMIC.** Concept: publish on a lightly-covered subject; as
+   new sources cover it over time they get linked, and the score rises. **Current code freezes
+   `heat_score = source_count × 10` at cluster-creation** — that must change to **recompute on every
+   source link** (or render as a live `COUNT(story_articles)` × 10). A story published with 1 source
+   must climb as sources #2–#6 attach later. This is the mechanism that makes "host + link over time"
+   meaningful.
+2. **Agent-authored stories → DRAFT only, always human-reviewed before publish.** No auto-publish for
+   agents, ever. Full-auto = poor quality; human-in-the-loop is the default.
+3. **Per-agent API tokens, hashed and REVOCABLE.** New `api_tokens` table (hashed token, agent label,
+   `created_at`, `revoked_at`), not a single shared env secret — gives per-contributor audit trail and
+   independent revocation.
+4. **Site hosts & links; it is not the foundry.** Retire `SummaryService` from the live pipeline
+   (cron off; keep the file dormant as optional reference, not wired to auto-create stories). Humans /
+   external systems author. This keeps the platform flexible — any human or system can complete the
+   authoring task.
+5. **Ranking: `published_at` DESC + manual `featured` flag, `heat_score` as tie-breaker.** Start
+   simple and deterministic (no LLM). "Trending" / "related articles" (shared tags/sources) can layer
+   on later without changing the ranking core.
+
+### Story lifecycle (new columns on `stories`)
+
+```sql
+status        VARCHAR(20) DEFAULT 'draft'   -- draft | published | hidden
+author_type   VARCHAR(20)                   -- human | agent
+author_id     TEXT                          -- user id (human) or agent/token label
+published_at  TIMESTAMP                      -- nullable; set on publish()
+featured      BOOLEAN DEFAULT FALSE          -- manual homepage boost
+```
+
+- Homepage query changes from "all stories" → `WHERE status = 'published'`. That single clause
+  **decouples ingestion from publication** — a `stories` row existing no longer means it's live.
+- Admin sees all statuses. Nothing goes live without an explicit `publish()` call.
+- `heat_score` recomputed on `attachSource` (see decision #1).
+
+### New pieces to build
+
+- **`server/services/StoryService.js`** — the one publish primitive (createDraft, updateDraft,
+  attachSource [recompute heat_score], publish, unpublish, hide, delete). Both UI and API call this.
+- **`server/dao/StoryDAO.js`** (or extend `NewsDAO`) — write methods for the lifecycle + status-
+  filtered reads (`getPublishedStories`, `getAllStoriesForAdmin`).
+- **Admin UI** (`/admin/stories`, `/admin/stories/new`, `/admin/articles`) — browse raw articles,
+  compose a story from selected article_ids, save draft, preview, publish/unpublish/hide/delete,
+  toggle featured. Reuses `layout-main.ejs` + existing session/admin gate.
+- **`server/routes/api.js`** — `POST /api/v1/stories` (create draft), `PATCH /api/v1/stories/:id`,
+  `POST /api/v1/stories/:id/publish` (may be admin-only if agents are review-gated), token-auth
+  middleware validating against `api_tokens`. Drafts from agents surface in the admin review queue.
+- **`api_tokens` table + `apiTokenMiddleware.js`** — hashed token lookup, `revoked_at IS NULL` check,
+  attaches agent label as `author_id`.
+
+### Migration (next version)
+
+```sql
+-- stories lifecycle
+ALTER TABLE stories
+  ADD COLUMN IF NOT EXISTS status       VARCHAR(20)  DEFAULT 'draft',
+  ADD COLUMN IF NOT EXISTS author_type  VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS author_id    TEXT,
+  ADD COLUMN IF NOT EXISTS published_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS featured     BOOLEAN      DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_stories_status_published ON stories(status, published_at DESC);
+
+-- revocable per-agent API tokens
+CREATE TABLE IF NOT EXISTS api_tokens (
+  id          SERIAL PRIMARY KEY,
+  label       VARCHAR(100) NOT NULL,        -- e.g. 'hermes-prod'
+  token_hash  VARCHAR(255) NOT NULL,        -- argon2/sha256 of the token
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  revoked_at  TIMESTAMP                     -- NULL = active
+);
+```
+
+**Data migration note:** existing auto-generated `stories` rows have no `status`. Decide on cutover:
+default them to `hidden` (clean slate, nothing unreviewed stays live) or `published` (keep current
+homepage as-is). Recommend **`hidden`** to honor the "nothing unreviewed is live" principle, then
+manually publish the good ones.
+
+### Open (defer, not blocking v1)
+
+- Do agents ever get a trusted "auto-publish" scope per-token, or is human review permanent? (Start
+  permanent.)
+- "Related articles" surfacing via shared tags/sources — post-v1.
+- Whether `SummaryService` is deleted outright or kept dormant as a future opt-in token client.
+
+---
+
+## Design Note: Article Retention — Tombstone-and-Prune
+
+**Problem:** `FeedService` upserts into `articles` every 30 min, deduped by `(source_id, external_id)`,
+and **nothing ever deletes them.** ~7 sources × dozens of items every 30 min ≈ thousands of rows/day,
+forever. Most are never cited by a published story. Unbounded growth → slower ungrouped-article scans,
+bloated backups, wasted disk.
+
+**Why articles can't just be deleted:** the `(source_id, external_id)` UNIQUE constraint is *also* the
+"already seen" ledger — it's why the same headline isn't re-ingested every 30 min. Delete the row and
+its `external_id` is forgotten, so the next feed poll re-inserts it (re-ingest storm). Articles serve
+three roles: (1) dedup memory, (2) un-curated source inventory for the manual/Hermes compose flow,
+(3) late source-linking material (a week-old corroborating article can attach to an existing story and
+raise its dynamic heat_score). Dedup needs a *long* horizon; the curation window needs a *bounded* one
+— hence two tiers.
+
+**Decision (locked Jul 2026): tombstone-and-prune (Option C).**
+
+1. **Curation window: keep full article rows for 30 days.** Long enough for late source-linking and
+   for a human/agent to compose from recent inventory.
+2. **After 30 days, if still unlinked** (not referenced by any `story_articles` row): move
+   `(source_id, external_id)` into a slim **`seen_ids` tombstone table** and delete the heavy
+   `articles` row. Dedup still works — FeedService checks tombstones before inserting.
+3. **Tombstone retention: 60–90 days.** Feeds don't re-surface items older than a couple months, so
+   the dedup ledger can itself be pruned after 60–90 days without practical re-ingest risk.
+4. **Linked/cited articles are NEVER pruned.** Once an article is attached to any story it's published
+   provenance and is permanent, regardless of age.
+
+This keeps the fat table bounded, preserves dedup effectively forever (within the feed's own re-surface
+window), gives a generous 30-day curation window that serves the "host + link over time" philosophy,
+and garbage-collects noise without ever causing re-ingestion.
+
+### Schema (future migration)
+
+```sql
+CREATE TABLE IF NOT EXISTS seen_ids (
+  source_id   INTEGER NOT NULL REFERENCES sources(id),
+  external_id VARCHAR(255) NOT NULL,
+  seen_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (source_id, external_id)
+);
+```
+
+### Prune cron (runs daily; NOT before manual flow exists)
+
+```sql
+-- 1. Tombstone + delete unlinked articles older than 30 days
+INSERT INTO seen_ids (source_id, external_id, seen_at)
+SELECT source_id, external_id, fetched_at FROM articles a
+WHERE a.fetched_at < NOW() - INTERVAL '30 days'
+  AND a.id NOT IN (SELECT article_id FROM story_articles)
+  AND a.external_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+DELETE FROM articles a
+WHERE a.fetched_at < NOW() - INTERVAL '30 days'
+  AND a.id NOT IN (SELECT article_id FROM story_articles);
+
+-- 2. Prune tombstones older than the feed re-surface window (60–90 days)
+DELETE FROM seen_ids WHERE seen_at < NOW() - INTERVAL '90 days';
+```
+
+FeedService dedup check becomes: skip insert if `(source_id, external_id)` exists in **either**
+`articles` OR `seen_ids`.
+
+**Sequencing: implement AFTER the manual publishing flow is in place** (refactor #15). The retention
+rules depend on `story_articles` linkage being the source of truth for "is this article cited," which
+the manual flow finalizes. Documenting now because it interacts with the dynamic-heat_score /
+late-linking design; not building yet.
+
+

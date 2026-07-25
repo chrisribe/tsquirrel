@@ -121,6 +121,37 @@ const migrations = [
       console.log('Migration 5: stories.squirrel_take added');
     }
   },
+  {
+    version: 6,
+    description: 'Users table — admin auth (user_session/session_secrets already exist from 01-init.sql)',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(60) UNIQUE NOT NULL,
+          password VARCHAR(255) NOT NULL,
+          email VARCHAR(254) UNIQUE NOT NULL,
+          role VARCHAR(20) DEFAULT 'user',
+          status VARCHAR(20) DEFAULT 'active',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)`);
+      console.log('Migration 6: users table created');
+    }
+  },
+  {
+    version: 7,
+    description: 'Seed Google Trends CA source (type trends)',
+    up: async (pool) => {
+      await pool.query(`
+        INSERT INTO sources (name, slug, url, feed_url, type) VALUES
+          ('Google Trends (Canada)', 'google-trends-ca', 'https://trends.google.com/trending?geo=CA', NULL, 'trends')
+        ON CONFLICT (slug) DO NOTHING
+      `);
+      console.log('Migration 7: Google Trends CA source seeded');
+    }
+  },
   // Future migrations go here
 ];
 
