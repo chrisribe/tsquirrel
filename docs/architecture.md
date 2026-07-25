@@ -116,7 +116,7 @@ Reviewed by Opus (via GitHub Models or OpenRouter `anthropic/claude-opus-4.8`).
 | 12 | Legacy image hosting (see design note below) | ⬜ todo / think | 65 legacy rows have no image. Need resolve-once pipeline w/ fallback |
 | 13 | Auth + admin (see design note below) | ✅ done | Ported session/auth stack from mood-tube. `/admin` gated by requireAuth+requireAdmin. Source stats + per-source article drill-down live. CLI `npm run create-user`. |
 | 14 | Google Trends source (type `trends`) | ✅ done | Migration v7 seeds `google-trends-ca`. FeedService parses `ht:news_item` blocks from Trends RSS. Each trending topic's linked articles ingested as normal articles. 30m cron picks them up automatically |
-| 15 | Publishing model: manual + API first, retire auto-curation (see design note below) | ⬜ todo | Story becomes first-class authored post w/ draft→published lifecycle. Retire SummaryService from live pipeline. Add `/api/v1` w/ per-agent tokens for external contributors (Hermes). |
+| 15 | Publishing model: manual + API first, retire auto-curation (see design note below) | 🟡 partial | **Manual flow DONE** (migration v8: status/author/published_at + api_tokens; dynamic heat_score; `/admin/stories` compose/edit/publish/unpublish/hide/feature/delete; homepage published-only; SummaryService retired from cron; existing stories hidden on cutover). **API `/api/v1` + token auth still TODO.** |
 | 16 | Article retention: tombstone-and-prune (see design note below) | ⬜ todo | Keep full rows 30d; after that, if unlinked, move `(source_id, external_id)` to `seen_ids` tombstone (60–90d) + delete heavy row. Linked/cited articles never pruned. **Implement AFTER manual flow.** |
 
 ---
@@ -341,6 +341,10 @@ manually publish the good ones.
   permanent.)
 - "Related articles" surfacing via shared tags/sources — post-v1.
 - Whether `SummaryService` is deleted outright or kept dormant as a future opt-in token client.
+- **Language: English-only for v1.** Open to multi-language articles later — when added, `stories`
+  (and likely `articles`) will need a `lang` column (e.g. BCP-47 `en`, `fr`) plus per-language homepage
+  filtering. Design decisions (per-language homepages vs. mixed feed with filter, translation vs.
+  native-only) deferred until there's demand. Not building now; noted so the schema can accommodate it.
 
 ---
 

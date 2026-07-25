@@ -37,8 +37,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com}
       SUMMARY_MODEL: ${SUMMARY_MODEL:-gpt-4o-mini}
-      INGEST_INTERVAL_MS: ${INGEST_INTERVAL_MS:-1800000}
-      SUMMARY_INTERVAL_MS: ${SUMMARY_INTERVAL_MS:-3600000}
+      INGEST_INTERVAL_MS: ${INGEST_INTERVAL_MS:-21600000}
     networks:
       - proxy-net
       - default

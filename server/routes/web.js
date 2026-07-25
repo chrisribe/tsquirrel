@@ -74,7 +74,7 @@ router.get('/story/:slug', async (req, res) => {
   const pool = req.app.get('pool');
   const dao = new NewsDAO(pool);
 
-  const story = await dao.getStoryBySlug(req.params.slug);
+  const story = await dao.getPublishedStoryBySlug(req.params.slug);
   if (!story) return res.status(404).render('layout-main', {
     template: 'errors/404',
     pageTitle: 'Story Not Found — TSquirrel',

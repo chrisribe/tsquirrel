@@ -152,6 +152,53 @@ const migrations = [
       console.log('Migration 7: Google Trends CA source seeded');
     }
   },
+  {
+    version: 8,
+    description: 'Story publishing lifecycle — status/author/published_at + api_tokens; hide existing auto-generated stories',
+    up: async (pool) => {
+      await pool.query(`
+        ALTER TABLE stories
+          ADD COLUMN IF NOT EXISTS status       VARCHAR(20) DEFAULT 'draft',
+          ADD COLUMN IF NOT EXISTS author_type  VARCHAR(20),
+          ADD COLUMN IF NOT EXISTS author_id    TEXT,
+          ADD COLUMN IF NOT EXISTS published_at TIMESTAMP
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_stories_status_published ON stories(status, published_at DESC)`);
+      // Cutover: existing auto-generated stories were never human-reviewed → hide them.
+      // (Nothing unreviewed stays live. Publish the good ones from /admin/stories.)
+      await pool.query(`UPDATE stories SET status = 'hidden' WHERE status IS NULL OR status = 'draft'`);
+      // Revocable per-agent API tokens (for future /api/v1 external contributors).
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS api_tokens (
+          id         SERIAL PRIMARY KEY,
+          label      VARCHAR(100) NOT NULL,
+          token_hash VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          revoked_at TIMESTAMP
+        )
+      `);
+      console.log('Migration 8: story lifecycle columns + api_tokens; existing stories hidden');
+    }
+  },
+  {
+    version: 9,
+    description: 'Add articles.description — captured from RSS description/summary for search + disambiguation in admin picker',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS description TEXT`);
+      console.log('Migration 9: articles.description added');
+    }
+  },
+  {
+    version: 10,
+    description: 'Limit active sources for initial testing (keep hackernews + bbc, deactivate the rest); ingest is now hourly-scale not every 30min',
+    up: async (pool) => {
+      await pool.query(`
+        UPDATE sources SET active = FALSE
+        WHERE slug NOT IN ('hackernews', 'bbc')
+      `);
+      console.log('Migration 10: deactivated all sources except hackernews + bbc for initial testing');
+    }
+  },
   // Future migrations go here
 ];
 

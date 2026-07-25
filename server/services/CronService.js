@@ -15,15 +15,17 @@ function schedule(intervalMs, fn, label) {
 
 function startCron(pool) {
   const { ingestAll } = require('./FeedService');
-  const { processNewArticles } = require('./SummaryService');
 
-  const INGEST_INTERVAL = parseInt(process.env.INGEST_INTERVAL_MS) || 30 * 60 * 1000;   // 30 min
-  const SUMMARY_INTERVAL = parseInt(process.env.SUMMARY_INTERVAL_MS) || 60 * 60 * 1000; // 1 hour
+  const INGEST_INTERVAL = parseInt(process.env.INGEST_INTERVAL_MS) || 6 * 60 * 60 * 1000;   // 6h default — kept low-frequency during initial testing; tune via INGEST_INTERVAL_MS
 
   schedule(INGEST_INTERVAL, () => ingestAll(pool), 'ingest');
-  schedule(SUMMARY_INTERVAL, () => processNewArticles(pool), 'summary');
 
-  console.log('[Cron] Scheduled: ingest every 30m, summarize every 1h');
+  // NOTE: SummaryService auto-curation is intentionally NOT scheduled.
+  // TSquirrel hosts & links curated content; it does not auto-forge stories.
+  // Stories are authored manually (admin UI) or via /api/v1 (external contributors),
+  // and always go live only through an explicit publish. See architecture.md refactor #15.
+
+  console.log(`[Cron] Scheduled: ingest every ${Math.round(INGEST_INTERVAL / 3600000 * 10) / 10}h (auto-summarize retired)`);
 }
 
 module.exports = { startCron };
