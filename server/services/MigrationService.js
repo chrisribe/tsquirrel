@@ -235,6 +235,16 @@ const migrations = [
       console.log('Migration 12: articles.image_url added');
     }
   },
+  {
+    version: 13,
+    description: 'API token usage tracking + lookup indexes',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_api_tokens_active ON api_tokens(revoked_at)`);
+      console.log('Migration 13: api_tokens.last_used_at + hash/active indexes');
+    }
+  },
   // Future migrations go here
 ];
 

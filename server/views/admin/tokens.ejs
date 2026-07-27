@@ -1,0 +1,68 @@
+<section class="admin-tokens">
+  <p><a href="/admin">&larr; Back to Admin Dashboard</a></p>
+  <h1>🔑 API Tokens</h1>
+  <p class="hint">Create revocable tokens for future API clients. Token secret is shown once at creation.</p>
+
+  <% if (pageData.message) { %>
+    <article style="border-left:4px solid #15803d;padding:.75rem 1rem;background:#f0fdf4;margin-bottom:1rem">
+      <strong><%= pageData.message %></strong>
+      <% if (pageData.createdToken) { %>
+        <div style="margin-top:.5rem">
+          <code style="font-size:.95rem;word-break:break-all;display:block"><%= pageData.createdToken %></code>
+        </div>
+      <% } %>
+    </article>
+  <% } %>
+
+  <% if (pageData.error) { %>
+    <article style="border-left:4px solid #b91c1c;padding:.75rem 1rem;background:#fef2f2;margin-bottom:1rem">
+      <strong><%= pageData.error %></strong>
+    </article>
+  <% } %>
+
+  <form method="POST" action="/admin/tokens" style="margin-bottom:1.25rem">
+    <label for="token-label">Token label</label>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <input id="token-label" name="label" type="text" maxlength="100" required placeholder="e.g. Hermes Curator Bot" style="max-width:420px">
+      <button type="submit">Create token</button>
+    </div>
+  </form>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th class="nowrap">Prefix</th>
+          <th class="nowrap">Created</th>
+          <th class="nowrap">Last used</th>
+          <th class="nowrap">Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!pageData.tokens.length) { %>
+          <tr><td colspan="6" class="hint">No tokens yet.</td></tr>
+        <% } %>
+        <% pageData.tokens.forEach(function(t) { %>
+          <tr>
+            <td><%= t.label %></td>
+            <td class="nowrap"><code>tsq_••••</code></td>
+            <td class="nowrap"><%= new Date(t.created_at).toLocaleString() %></td>
+            <td class="nowrap"><%= t.last_used_at ? new Date(t.last_used_at).toLocaleString() : 'never' %></td>
+            <td class="nowrap"><%= t.revoked_at ? 'revoked' : 'active' %></td>
+            <td>
+              <% if (!t.revoked_at) { %>
+                <form method="POST" action="/admin/tokens/<%= t.id %>/revoke" style="display:inline">
+                  <button type="submit" class="outline secondary">Revoke</button>
+                </form>
+              <% } else { %>
+                <span class="hint">revoked <%= new Date(t.revoked_at).toLocaleString() %></span>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "r1",
+    "source_name": "Reuters",
+    "published_at": "2026-07-25T10:00:00Z",
+    "title": "Boeing crash report points to maintenance gaps in 737 MAX fleet",
+    "url": "https://example.com/boeing-crash-report"
+  },
+  {
+    "id": "b1",
+    "source_name": "BBC",
+    "published_at": "2026-07-25T13:20:00Z",
+    "title": "US regulators open broader investigation into Boeing safety controls",
+    "url": "https://example.com/boeing-investigation"
+  },
+  {
+    "id": "g1",
+    "source_name": "Guardian",
+    "published_at": "2026-07-26T08:30:00Z",
+    "title": "Boeing whistleblower testimony raises new pressure in crash investigation",
+    "url": "https://example.com/boeing-whistleblower"
+  },
+  {
+    "id": "r2",
+    "source_name": "Reuters",
+    "published_at": "2026-07-26T11:00:00Z",
+    "title": "Airbus posts stronger deliveries in quarterly update",
+    "url": "https://example.com/airbus-deliveries"
+  }
+]

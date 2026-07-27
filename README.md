@@ -30,6 +30,33 @@ Tag a release → Tagship auto-deploys to Hetzner:
 git tag v1.0.0 && git push --tags
 ```
 
+## Tooling: article regrouping
+
+To inspect related headlines (human triage or LLM pre-processing):
+
+```bash
+node tools/article_cluster_tool.js --input tools/sample_articles_boeing.json --table
+```
+
+Docs: `docs/article-regrouping-tooling.md`.
+
 ## Environment variables
 
 See `.env.example`.
+
+## API auth for agents
+
+LLM/agent clients should not log in via `/auth/login`.
+Use admin-created API tokens with bearer auth:
+
+```bash
+curl -H "Authorization: Bearer tsq_..." http://127.0.0.1:3000/api/v1/me
+```
+
+Available token-auth endpoints:
+- `GET /api/v1/me`
+- `GET /api/v1/stories?status=draft|published|hidden`
+- `POST /api/v1/stories`
+- `POST /api/v1/stories/:id/publish`
+- `POST /api/v1/stories/:id/unpublish`
+

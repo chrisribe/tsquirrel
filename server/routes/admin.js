@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const NewsDAO = require('../dao/NewsDAO');
 const requireAuth = require('../middleware/authMiddleware');
@@ -8,6 +9,23 @@ const requireAdmin = require('../middleware/adminMiddleware');
 const { slugify } = require('../lib/slug');
 
 router.use(requireAuth, requireAdmin);
+
+
+async function renderTokensPage(req, res, { message = null, error = null, createdToken = null } = {}) {
+  const dao = new NewsDAO(req.app.get('pool'));
+  const tokens = await dao.listApiTokens();
+  res.render('layout-main', {
+    template: 'admin/tokens',
+    pageTitle: 'API Tokens — Admin — TSquirrel',
+    noIndex: true,
+    pageData: {
+      tokens,
+      message,
+      error,
+      createdToken,
+    },
+  });
+}
 
 router.get('/', async (req, res) => {
   const pool = req.app.get('pool');
@@ -20,6 +38,37 @@ router.get('/', async (req, res) => {
     noIndex: true,
     pageData: { sources },
   });
+});
+
+router.get('/tokens', async (req, res) => {
+  const message = req.query.revoked === '1' ? 'Token revoked.' : null;
+  await renderTokensPage(req, res, { message });
+});
+
+router.post('/tokens', async (req, res) => {
+  const dao = new NewsDAO(req.app.get('pool'));
+  const rawLabel = (req.body.label || '').trim();
+  const label = rawLabel.slice(0, 100);
+
+  if (!label) {
+    return renderTokensPage(req, res, { error: 'Label is required.' });
+  }
+
+  const token = `tsq_${crypto.randomBytes(24).toString('base64url')}`;
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  await dao.createApiToken({ label, tokenHash });
+
+  return renderTokensPage(req, res, {
+    message: 'Token created. Copy it now — it will not be shown again.',
+    createdToken: token,
+  });
+});
+
+router.post('/tokens/:id/revoke', async (req, res) => {
+  const dao = new NewsDAO(req.app.get('pool'));
+  const id = parseInt(req.params.id, 10);
+  if (id) await dao.revokeApiToken(id);
+  res.redirect('/admin/tokens?revoked=1');
 });
 
 router.get('/sources/:slug', async (req, res) => {
