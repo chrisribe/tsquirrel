@@ -37,11 +37,51 @@ function parseRss(xml) {
     const link = get('link') || get('id');
     const title = get('title');
     const pubDate = get('pubDate') || get('published') || get('updated');
+    const description = get('description') || get('summary');
+    const imageUrl = extractImage(inner);
     if (title && link) {
-      items.push({ title, url: link, publishedAt: pubDate ? new Date(pubDate) : new Date() });
+      items.push({
+        title,
+        url: link,
+        publishedAt: pubDate ? new Date(pubDate) : new Date(),
+        description: description ? stripTags(description).slice(0, 1000) : null,
+        imageUrl,
+      });
     }
   }
   return items;
+}
+
+// Strip HTML tags from a snippet (RSS descriptions often contain markup)
+function stripTags(html) {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Pull the first usable image URL out of an RSS/Atom item block.
+// Priority: media:thumbnail > media:content (image-typed) > enclosure > itunes:image
+// > <image><url> > first <img src> in content:encoded/description.
+// No extra HTTP requests — everything comes from the feed XML we already have.
+function extractImage(inner) {
+  const attrUrl = (tag) => {
+    const m = inner.match(new RegExp(`<${tag}\\b[^>]*\\burl\\s*=\\s*["']([^"']+)["']`, 'i'));
+    return m ? m[1] : null;
+  };
+  const mediaContent = inner.match(/<media:content\b[^>]*\burl\s*=\s*["']([^"']+)["'][^>]*>/i);
+  const img =
+    attrUrl('media:thumbnail') ||
+    (mediaContent && /image|jpg|jpeg|png|gif|webp/i.test(mediaContent[0]) ? mediaContent[1] : null) ||
+    attrUrl('enclosure') ||
+    attrUrl('itunes:image');
+  if (img) return decodeEntities(img);
+  const imageTag = inner.match(/<image\b[^>]*>[\s\S]*?<url>([\s\S]*?)<\/url>[\s\S]*?<\/image>/i);
+  if (imageTag) return decodeEntities(imageTag[1].trim());
+  const imgTag = inner.match(/<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/i);
+  if (imgTag) return decodeEntities(imgTag[1]);
+  return null;
+}
+
+function decodeEntities(s) {
+  return s.replace(/&amp;/g, '&').replace(/&#38;/g, '&').trim();
 }
 
 // Fetch HN top stories
@@ -96,7 +136,7 @@ function parseGoogleTrends(xml) {
       const title = getHt('news_item_title');
       const url = getHt('news_item_url');
       if (title && url) {
-        items.push({ title, url, publishedAt: pubDate, trendTopic: topic });
+        items.push({ title, url, publishedAt: pubDate, trendTopic: topic, imageUrl: getHt('news_item_picture') });
       }
     }
   }
@@ -144,6 +184,8 @@ async function ingestAll(pool) {
           title: item.title,
           url: item.url,
           publishedAt: item.publishedAt,
+          description: item.description || null,
+          imageUrl: item.imageUrl || null,
         });
         if (article) newCount++;
       }

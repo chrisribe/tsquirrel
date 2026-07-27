@@ -88,6 +88,7 @@ router.post('/stories', async (req, res) => {
   const tagArr = (tags || '').split(',').map(t => t.trim()).filter(Boolean);
   const articleIds = [].concat(req.body.articleIds || [])
     .map(s => parseInt(s, 10)).filter(Boolean);
+  const imageUrl = (req.body.image_url_manual || '').trim() || (req.body.image_url || '').trim() || null;
 
   const draft = await dao.createDraft({
     title: title.trim(),
@@ -98,6 +99,7 @@ router.post('/stories', async (req, res) => {
     tags: tagArr,
     authorType: 'human',
     authorId: String(req.session.user.id),
+    imageUrl,
   });
   for (const articleId of articleIds) {
     await dao.attachSource(draft.id, articleId);
@@ -131,12 +133,14 @@ router.post('/stories/:id', async (req, res) => {
   const dao = new NewsDAO(req.app.get('pool'));
   const { title, summary, squirrel_take, category, tags } = req.body;
   const tagArr = (tags || '').split(',').map(t => t.trim()).filter(Boolean);
+  const imageUrl = (req.body.image_url_manual || '').trim() || (req.body.image_url || '').trim() || null;
   await dao.updateDraft(req.params.id, {
     title: (title || '').trim(),
     summary: (summary || '').trim() || null,
     squirrelTake: (squirrel_take || '').trim() || null,
     category: category || 'Other',
     tags: tagArr,
+    imageUrl,
   });
   res.redirect(`/admin/stories/${req.params.id}/edit`);
 });
@@ -227,6 +231,8 @@ router.post('/signals/:id/create-story', async (req, res) => {
 
   const evidence = typeof signal.evidence === 'string' ? JSON.parse(signal.evidence) : (signal.evidence || {});
   const articleIds = evidence.article_ids || [];
+  const articles = await dao.getArticlesByIds(articleIds);
+  const lead = articles.find(a => a.image_url)?.image_url || null;
 
   const draft = await dao.createDraft({
     title: signal.topic.replace(/\b\w/g, c => c.toUpperCase()),
@@ -237,6 +243,7 @@ router.post('/signals/:id/create-story', async (req, res) => {
     tags: [],
     authorType: 'radar',
     authorId: `signal-${signal.id}`,
+    imageUrl: lead,
   });
   for (const articleId of articleIds) {
     await dao.attachSource(draft.id, articleId);

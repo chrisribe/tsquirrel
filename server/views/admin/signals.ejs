@@ -84,6 +84,9 @@
                     const art = pageData.articleMap[aid];
                     if (art) { %>
                   <div class="signal-evidence-row">
+                    <% if (art.image_url) { %>
+                      <img src="<%= art.image_url %>" alt="" loading="lazy" width="80" referrerpolicy="no-referrer" style="border-radius:6px;vertical-align:middle;margin-right:.4rem">
+                    <% } %>
                     <span style="color:var(--muted)"><%= art.source_name %></span>
                     — <a href="<%= art.url %>" target="_blank" rel="noopener"><%= art.title %></a>
                     <span style="color:var(--muted)"><%= art.published_at ? new Date(art.published_at).toLocaleDateString() : '' %></span>

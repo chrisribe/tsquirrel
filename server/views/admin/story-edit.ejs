@@ -47,6 +47,39 @@
       </label>
     </div>
 
+    <!-- ── Story image picker ── -->
+    <%
+      const seenImages = new Set();
+      const imageCandidates = (pageData.attached || []).filter(function(a) {
+        if (!a.image_url || seenImages.has(a.image_url)) return false;
+        seenImages.add(a.image_url);
+        return true;
+      });
+      const currentImage = s.image_url || null;
+      const currentIsCandidate = currentImage && imageCandidates.some(function(a) { return a.image_url === currentImage; });
+    %>
+    <fieldset>
+      <legend>Story image <small>(hotlinked from a source article, or paste your own)</small></legend>
+      <div class="image-picker">
+        <label class="image-picker-option">
+          <input type="radio" name="image_url" value="" <%= !currentImage ? 'checked' : '' %>>
+          <span class="image-picker-none">No image</span>
+        </label>
+        <% imageCandidates.forEach(function(a) { %>
+          <label class="image-picker-option">
+            <input type="radio" name="image_url" value="<%= a.image_url %>"
+              <%= currentImage === a.image_url ? 'checked' : '' %>>
+            <img src="<%= a.image_url %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+            <small><%= a.source_name %></small>
+          </label>
+        <% }); %>
+      </div>
+      <label>Or paste a custom image URL <small>(overrides the selection above)</small>
+        <input type="url" name="image_url_manual" placeholder="https://…"
+          value="<%= (!currentIsCandidate && currentImage) ? currentImage : '' %>">
+      </label>
+    </fieldset>
+
     <% if (!isEdit) { %>
       <!-- New story: pick source articles inline (become citations on create) -->
       <fieldset>
@@ -77,10 +110,15 @@
       <p class="hint">No sources attached yet.</p>
     <% } else { %>
       <table>
-        <thead><tr><th>Title</th><th>Source</th><th></th></tr></thead>
+        <thead><tr><th></th><th>Title</th><th>Source</th><th></th></tr></thead>
         <tbody>
           <% pageData.attached.forEach(function(a) { %>
             <tr>
+              <td>
+                <% if (a.image_url) { %>
+                  <img src="<%= a.image_url %>" alt="" loading="lazy" width="48" referrerpolicy="no-referrer" style="border-radius:4px;display:block">
+                <% } %>
+              </td>
               <td><a href="<%= a.url %>" target="_blank" rel="noopener noreferrer"><%= a.title %></a></td>
               <td><%= a.source_name %></td>
               <td>

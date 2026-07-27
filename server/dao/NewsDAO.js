@@ -108,13 +108,13 @@ class NewsDAO {
 
   // ── Articles ──────────────────────────────────────────────────
 
-  async upsertArticle({ sourceId, externalId, title, url, publishedAt, description = null }) {
+  async upsertArticle({ sourceId, externalId, title, url, publishedAt, description = null, imageUrl = null }) {
     const { rows } = await this.pool.query(`
-      INSERT INTO articles (source_id, external_id, title, url, published_at, description)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO articles (source_id, external_id, title, url, published_at, description, image_url)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (source_id, external_id) DO NOTHING
       RETURNING *
-    `, [sourceId, externalId, title, url, publishedAt, description]);
+    `, [sourceId, externalId, title, url, publishedAt, description, imageUrl]);
     return rows[0] || null; // null = already existed
   }
 
@@ -161,16 +161,30 @@ class NewsDAO {
 
   // ── Story authoring / lifecycle (manual publishing flow) ──────
 
-  async createDraft({ title, slug, summary, squirrelTake = null, category = 'Other', tags = [], authorType = 'human', authorId = null }) {
+  async createDraft({ title, slug, summary, squirrelTake = null, category = 'Other', tags = [], authorType = 'human', authorId = null, imageUrl = null }) {
     const { rows } = await this.pool.query(`
-      INSERT INTO stories (title, slug, summary, squirrel_take, category, tags, status, author_type, author_id, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7, $8, NOW())
+      INSERT INTO stories (title, slug, summary, squirrel_take, category, tags, status, author_type, author_id, image_url, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7, $8, $9, NOW())
       RETURNING *
-    `, [title, slug, summary, squirrelTake, category, tags, authorType, authorId]);
+    `, [title, slug, summary, squirrelTake, category, tags, authorType, authorId, imageUrl]);
     return rows[0];
   }
 
-  async updateDraft(id, { title, summary, squirrelTake, category, tags }) {
+  async updateDraft(id, { title, summary, squirrelTake, category, tags, imageUrl = undefined }) {
+    if (imageUrl === undefined) {
+      const { rows } = await this.pool.query(`
+        UPDATE stories SET
+          title = $2,
+          summary = $3,
+          squirrel_take = $4,
+          category = $5,
+          tags = $6,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [id, title, summary, squirrelTake, category, tags]);
+      return rows[0] || null;
+    }
     const { rows } = await this.pool.query(`
       UPDATE stories SET
         title = $2,
@@ -178,10 +192,11 @@ class NewsDAO {
         squirrel_take = $4,
         category = $5,
         tags = $6,
+        image_url = $7,
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
-    `, [id, title, summary, squirrelTake, category, tags]);
+    `, [id, title, summary, squirrelTake, category, tags, imageUrl]);
     return rows[0] || null;
   }
 
@@ -265,7 +280,7 @@ class NewsDAO {
   async getArticlesByIds(ids) {
     if (!ids || ids.length === 0) return [];
     const { rows } = await this.pool.query(`
-      SELECT a.id, a.title, a.url, a.published_at,
+      SELECT a.id, a.title, a.url, a.published_at, a.image_url,
              src.name AS source_name, src.slug AS source_slug
       FROM articles a
       JOIN sources src ON src.id = a.source_id

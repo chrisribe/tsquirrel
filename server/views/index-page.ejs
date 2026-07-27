@@ -22,7 +22,8 @@
 
 <!-- Featured strip -->
 <% if (featured) { %>
-  <a href="/story/<%= featured.slug %>" class="card-featured">
+  <a href="/story/<%= featured.slug %>" class="card-featured<%= featured.image_url ? ' has-image' : '' %>"
+     <% if (featured.image_url) { %>style="background-image:url('<%= featured.image_url %>')"<% } %>>
     <div class="featured-eyebrow">🔥 Everyone's chattering about this</div>
     <div class="featured-title"><%= featured.title %></div>
     <% if (featured.summary) { %>

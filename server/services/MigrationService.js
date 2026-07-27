@@ -227,6 +227,14 @@ const migrations = [
       console.log('Migration 11: signals table created, sources re-activated for radar');
     }
   },
+  {
+    version: 12,
+    description: 'Article image_url — hotlink thumbnails captured from feed payloads (no extra HTTP)',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS image_url TEXT`);
+      console.log('Migration 12: articles.image_url added');
+    }
+  },
   // Future migrations go here
 ];
 

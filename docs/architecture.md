@@ -137,7 +137,7 @@ Reviewed by Opus (use GitHub Models or OpenRouter `anthropic/claude-opus-4.8`).
 | 14 | Google Trends source (type `trends`) | ✅ done | Migration v7 seeds `google-trends-ca`. IngestionService parses `ht:news_item` blocks from Trends RSS. Each trending topic's linked articles ingested as normal articles. 30m cron picks them up automatically |
 | 15 | Publishing model: manual + API first, retire auto-curation (see design note below) | 🟡 partial | **Manual flow DONE** (migration v8: status/author/published_at + api_tokens; dynamic heat_score; `/admin/stories` compose/edit/publish/unpublish/hide/feature/delete; homepage published-only; SummaryService retired from cron; existing stories hidden on cutover). **API `/api/v1` + token auth still TODO.** |
 | 16 | Article retention: tombstone-and-prune (see design note below) | ⬜ todo | Keep full rows 30d; after that, if unlinked, move `(source_id, external_id)` to `seen_ids` tombstone (60–90d) + delete heavy row. Linked/cited articles never pruned. **Implement AFTER manual flow.** |
-| 17 | Feed-image capture for live articles (see design note below) | ⬜ todo / spec | Capture image + description from feed payloads at ingest (zero extra HTTP). Surface thumbnails in radar authoring; seed `stories.image_url` from first article w/ image on draft creation. Distinct from #12 (legacy backfill). |
+| 17 | Feed-image capture for live articles (see design note below) | ✅ done | Migration v12 (`articles.image_url`). RSS/Atom parser extracts `media:thumbnail`/`media:content`/`enclosure`/`itunes:image`/`<img>` — zero extra HTTP. Google Trends captures `ht:news_item_picture`. Radar-created drafts auto-seed `stories.image_url` from first evidence article w/ image. Admin can override via a thumbnail picker + custom-URL field on the story editor. Hotlinked images rendered (with `referrerpolicy="no-referrer"` + emoji fallback on load error) in signals list, story-edit attached-sources, `/admin/stories` list, homepage cards, featured strip, and story detail hero. |
 
 ---
 
@@ -242,10 +242,11 @@ current archive cards fall back to the category emoji. Original tsquirrel.com is
 
 ## Design Note: Feed-Image Capture (live articles + radar authoring)
 
-> **Status: SPEC — ready to implement.** This is the *live-feed* sibling to the Legacy Image
+> **Status: ✅ IMPLEMENTED (Jul 2026).** This is the *live-feed* sibling to the Legacy Image
 > Hosting note above (#12). That note is a one-shot backfill for dead 2013–2018 links via
 > Wayback; **this** note is about images for articles ingested *right now* from active feeds.
-> The two do not share code and can ship independently.
+> The two do not share code and shipped independently. See "Implementation Summary" at the
+> end of this note for what was actually built, verified, and extended beyond the original spec.
 
 **Problem.** `articles` rows carry `title`, `url`, `published_at`, `description` — but no image.
 When the radar clusters articles into a signal and the operator opens the authoring view, they see
@@ -358,6 +359,70 @@ In `POST /admin/signals/:id/create-story`, after loading `evidence.article_ids`:
 - Overwrite policy: currently `DO NOTHING` means an article's image is set once at first ingest and
   never refreshed. Fine for hotlinks; revisit only if a feed serves a placeholder first then a real image.
 - Whether to also capture image dimensions/`type` for better `<img>` sizing (deferred — not needed for v1).
+
+### Implementation Summary (what actually shipped)
+
+Built and verified live against production feeds (BBC, Guardian, Ars, Google Trends, HN, TechCrunch)
+on 2026-07-27. Matches the spec above with one deliberate addition (admin image override, not in the
+original spec) and one intentionally-skipped item (radar-authored image on the demo path, superseded
+by the manual picker — see below).
+
+**Shipped as specced:**
+- Migration v12 — `articles.image_url TEXT`, applied cleanly, verified via `\d articles`.
+- `IngestionService.extractImage()` — priority chain (`media:thumbnail` → `media:content` →
+  `enclosure` → `itunes:image` → `<image><url>` → `<img src>`), plus `stripTags()`/`decodeEntities()`.
+  Also backfilled the previously-declared-but-unused `description` capture in `parseRss`.
+  Verified 100% extraction rate on live BBC/Guardian/Google-Trends payloads; HN/TechCrunch correctly
+  null (no image tag present, no fallback fetch attempted).
+- `NewsDAO`: `upsertArticle`, `getArticlesByIds`, `createDraft` all thread `imageUrl` through.
+  Round-tripped with a synthetic insert/read/cleanup to confirm the column survives the DAO layer.
+- `admin.js` `POST /signals/:id/create-story` — picks the first evidence article with an image as
+  the new draft's `image_url`.
+- Thumbnails rendered in `/admin/signals` (evidence list) and story-edit (attached-sources table),
+  both with `referrerpolicy="no-referrer"` + `loading="lazy"`.
+- Public output — `story-cards.ejs` (feed grid) and `story-page.ejs` (detail hero) render the
+  hotlinked image with a JS `onerror` fallback that swaps back to the category emoji.
+- **Extra (not in original spec):** the homepage **featured strip** (`index-page.ejs`, `.card-featured`)
+  now also renders the lead story's image as a background with a dark gradient scrim for text
+  legibility — the spec only covered cards/hero, this was found missing during manual QA and closed
+  the same day.
+
+**Extra — Admin image picker (built same day, separate follow-up request, not in original spec):**
+- Problem: auto-picked image (first evidence article with one) is a reasonable default but the
+  operator may want a different source photo, or none at all.
+- `story-edit.ejs` — new "Story image" fieldset: a "No image" radio, one radio + thumbnail per
+  *unique* `image_url` among the story's attached source articles (current selection pre-checked),
+  plus a free-text "custom image URL" field that overrides the radio choice.
+- `admin.js` — both `POST /stories` (create) and `POST /stories/:id` (update) resolve
+  `image_url_manual || image_url || null` and pass it through.
+- `NewsDAO.updateDraft` — gained an optional `imageUrl` param (backward compatible: omitting it
+  leaves the existing image untouched, so other non-image callers are unaffected).
+- Verified end-to-end: picked a different candidate thumbnail via a simulated form POST, confirmed
+  `stories.image_url` changed in the DB to the newly selected URL.
+
+**Admin/stories list layout fix (same session, follow-up):**
+- `/admin/stories` table was not using the `.table-scroll`/`.admin-actions`/`.nowrap` pattern already
+  established for `/admin/signals`, so action buttons and long titles could blow out page width.
+- Brought it in line: table wrapped in `.table-scroll`, Status/Cat/Sources/Heat/Featured marked
+  `.nowrap`, publish/unpublish/feature buttons moved into `.admin-actions`, and added a leading
+  48px thumbnail column (blank cell when a story has no image — no layout break for old rows).
+
+**Verified live (2026-07-27):**
+- Real ingest cycle after deploy populated `image_url` on 6 newly-fetched articles (Guardian +
+  Google Trends confirmed via SQL).
+- Built and published a real demo story from freshly-imaged articles; screenshot-confirmed the
+  Guardian hotlinked image renders in both the story hero and the homepage featured strip.
+- Admin picker confirmed to persist a different image selection to `stories.image_url`.
+- `/admin/stories` list confirmed to show a thumbnail for the imaged story and a blank cell
+  (no breakage) for stories without one.
+
+**Known environment quirk found during QA (not a code bug, documented in repo memory):**
+`NODE_ENV` defaults to `production` in `docker-compose.yml`, which sets the session cookie's
+`secure` flag. Testing directly against the container over plain HTTP (no reverse proxy adding
+`X-Forwarded-Proto: https`) causes the browser to silently drop the session cookie, making login
+appear to fail even with correct credentials. Worked around during testing by sending
+`X-Forwarded-Proto: https` on direct HTTP requests (`trust proxy` is already set to `1`). Not an
+issue in the real deployment, which always sits behind Nginx Proxy Manager over HTTPS.
 
 ---
 

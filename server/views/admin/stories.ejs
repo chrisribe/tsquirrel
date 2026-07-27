@@ -17,46 +17,64 @@
   <% if (pageData.stories.length === 0) { %>
     <p class="hint">No stories<%= pageData.activeStatus ? ' with status ' + pageData.activeStatus : '' %> yet.</p>
   <% } else { %>
+    <div class="table-scroll">
     <table>
       <thead>
-        <tr><th>Title</th><th>Status</th><th>Cat</th><th>Sources</th><th>Heat</th><th>Featured</th><th>Actions</th></tr>
+        <tr>
+          <th></th>
+          <th>Title</th>
+          <th class="nowrap">Status</th>
+          <th class="nowrap">Cat</th>
+          <th class="nowrap">Sources</th>
+          <th class="nowrap">Heat</th>
+          <th class="nowrap">Featured</th>
+          <th>Actions</th>
+        </tr>
       </thead>
       <tbody>
         <% pageData.stories.forEach(function(s) { %>
           <tr>
-            <td><a href="/admin/stories/<%= s.id %>/edit"><%= s.title %></a></td>
             <td>
+              <% if (s.image_url) { %>
+                <img src="<%= s.image_url %>" alt="" loading="lazy" width="48" referrerpolicy="no-referrer" style="border-radius:4px;display:block">
+              <% } %>
+            </td>
+            <td><a href="/admin/stories/<%= s.id %>/edit"><%= s.title %></a></td>
+            <td class="nowrap">
               <% if (s.status === 'published') { %>✅ published
               <% } else if (s.status === 'draft') { %>📝 draft
               <% } else { %>🙈 hidden<% } %>
             </td>
-            <td><%= catLabel(s.category) %></td>
-            <td><%= s.source_count %></td>
-            <td><%= s.heat_score %></td>
-            <td><%= s.is_featured ? '⭐' : '' %></td>
-            <td style="white-space:nowrap">
-              <% if (s.status !== 'published') { %>
-                <form method="POST" action="/admin/stories/<%= s.id %>/publish" style="display:inline">
+            <td class="nowrap"><%= catLabel(s.category) %></td>
+            <td class="nowrap"><%= s.source_count %></td>
+            <td class="nowrap"><%= s.heat_score %></td>
+            <td class="nowrap"><%= s.is_featured ? '⭐' : '' %></td>
+            <td>
+              <div class="admin-actions">
+                <% if (s.status !== 'published') { %>
+                  <form method="POST" action="/admin/stories/<%= s.id %>/publish">
+                    <input type="hidden" name="returnTo" value="/admin/stories<%= pageData.activeStatus ? '?status=' + pageData.activeStatus : '' %>">
+                    <button type="submit" class="outline">Publish</button>
+                  </form>
+                <% } else { %>
+                  <form method="POST" action="/admin/stories/<%= s.id %>/unpublish">
+                    <input type="hidden" name="returnTo" value="/admin/stories<%= pageData.activeStatus ? '?status=' + pageData.activeStatus : '' %>">
+                    <button type="submit" class="outline secondary">Unpublish</button>
+                  </form>
+                  <a href="/story/<%= s.slug %>" target="_blank" rel="noopener">view</a>
+                <% } %>
+                <form method="POST" action="/admin/stories/<%= s.id %>/feature">
+                  <input type="hidden" name="featured" value="<%= s.is_featured ? 'false' : 'true' %>">
                   <input type="hidden" name="returnTo" value="/admin/stories<%= pageData.activeStatus ? '?status=' + pageData.activeStatus : '' %>">
-                  <button type="submit" class="outline" style="padding:.15rem .5rem">Publish</button>
+                  <button type="submit" class="outline"><%= s.is_featured ? 'Unfeature' : 'Feature' %></button>
                 </form>
-              <% } else { %>
-                <form method="POST" action="/admin/stories/<%= s.id %>/unpublish" style="display:inline">
-                  <input type="hidden" name="returnTo" value="/admin/stories<%= pageData.activeStatus ? '?status=' + pageData.activeStatus : '' %>">
-                  <button type="submit" class="outline secondary" style="padding:.15rem .5rem">Unpublish</button>
-                </form>
-                <a href="/story/<%= s.slug %>" target="_blank" rel="noopener" style="margin-left:.25rem">view</a>
-              <% } %>
-              <form method="POST" action="/admin/stories/<%= s.id %>/feature" style="display:inline">
-                <input type="hidden" name="featured" value="<%= s.is_featured ? 'false' : 'true' %>">
-                <input type="hidden" name="returnTo" value="/admin/stories<%= pageData.activeStatus ? '?status=' + pageData.activeStatus : '' %>">
-                <button type="submit" class="outline" style="padding:.15rem .5rem"><%= s.is_featured ? 'Unfeature' : 'Feature' %></button>
-              </form>
+              </div>
             </td>
           </tr>
         <% }); %>
       </tbody>
     </table>
+    </div>
   <% } %>
   <p class="hint">Stories are authored manually here (or via the API later). Nothing is live until <strong>Published</strong>. Existing auto-generated stories were set to <em>hidden</em> on migration — review and publish the good ones.</p>
 </section>
