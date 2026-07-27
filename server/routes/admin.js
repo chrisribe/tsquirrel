@@ -187,5 +187,70 @@ router.post('/stories/:id/delete', async (req, res) => {
   res.redirect('/admin/stories');
 });
 
+// ── Radar signals ────────────────────────────────────────────────────────
+
+router.get('/signals', async (req, res) => {
+  const dao = new NewsDAO(req.app.get('pool'));
+  const filter = req.query.status || 'active';
+  const signals = await dao.getSignals({ status: filter });
+
+  // Build a lookup of article_id -> article for evidence rendering
+  const allArticleIds = new Set();
+  for (const sig of signals) {
+    const evidence = typeof sig.evidence === 'string' ? JSON.parse(sig.evidence) : (sig.evidence || {});
+    (evidence.article_ids || []).forEach(id => allArticleIds.add(id));
+  }
+  const articles = await dao.getArticlesByIds([...allArticleIds]);
+  const articleMap = {};
+  for (const a of articles) articleMap[a.id] = a;
+
+  res.render('layout-main', {
+    template: 'admin/signals',
+    pageTitle: 'Radar Signals — Admin — TSquirrel',
+    noIndex: true,
+    pageData: { signals, filter, articleMap },
+  });
+});
+
+// Trigger an immediate radar scan (same detector the cron runs after ingest)
+router.post('/signals/scan', async (req, res) => {
+  const { radarScan } = require('../services/RadarService');
+  await radarScan(req.app.get('pool'));
+  res.redirect('/admin/signals');
+});
+
+// Create a draft story pre-filled + pre-attached from a signal's evidence
+router.post('/signals/:id/create-story', async (req, res) => {
+  const dao = new NewsDAO(req.app.get('pool'));
+  const signal = await dao.getSignalById(req.params.id);
+  if (!signal) return res.redirect('/admin/signals');
+
+  const evidence = typeof signal.evidence === 'string' ? JSON.parse(signal.evidence) : (signal.evidence || {});
+  const articleIds = evidence.article_ids || [];
+
+  const draft = await dao.createDraft({
+    title: signal.topic.replace(/\b\w/g, c => c.toUpperCase()),
+    slug: slugify(signal.topic),
+    summary: null,
+    squirrelTake: null,
+    category: 'Other',
+    tags: [],
+    authorType: 'radar',
+    authorId: `signal-${signal.id}`,
+  });
+  for (const articleId of articleIds) {
+    await dao.attachSource(draft.id, articleId);
+  }
+  await dao.linkSignalToStory(signal.id, draft.id);
+
+  res.redirect(`/admin/stories/${draft.id}/edit`);
+});
+
+router.post('/signals/:id/dismiss', async (req, res) => {
+  const dao = new NewsDAO(req.app.get('pool'));
+  await dao.setSignalStatus(req.params.id, 'dismissed');
+  res.redirect('/admin/signals');
+});
+
 module.exports = router;
 

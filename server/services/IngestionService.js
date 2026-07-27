@@ -147,13 +147,13 @@ async function ingestAll(pool) {
         });
         if (article) newCount++;
       }
-      console.log(`[FeedService] ${source.name}: ingested ${items.length} items`);
+      console.log(`[IngestionService] ${source.name}: ingested ${items.length} items`);
     } catch (err) {
-      console.error(`[FeedService] Error ingesting ${source.name}:`, err.message);
+      console.error(`[IngestionService] Error ingesting ${source.name}:`, err.message);
     }
   }
 
-  console.log(`[FeedService] Done — ${newCount} new articles`);
+  console.log(`[IngestionService] Done — ${newCount} new articles`);
   return newCount;
 }
 

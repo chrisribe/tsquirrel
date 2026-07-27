@@ -8,7 +8,7 @@ tsquirrel.com was a dead PHP news aggregator. Cloudflare shows it still gets ~17
 ## Service Map
 
 ```
-FeedService (30m cron)
+IngestionService (30m cron)
   └─ ingestAll(pool)
      ├─ HN API → top 30 items (parallelized in batches of 10)
      ├─ RSS/Atom feeds → parsed with stdlib regex (no deps)
@@ -108,7 +108,7 @@ SUMMARY_INTERVAL_MS=3600000     # 1 hour
 
 **Tag deploy:** `git tag v1.0.0 && git push --tags` → GitHub Actions → Tagship webhook → rebuild.
 
-## FeedService — Notes
+## IngestionService — Notes
 - Stdlib-only XML regex parser (no cheerio/xml2js). Works for RSS 2.0 + Atom.
 - Falls back gracefully on malformed feeds — bad items skipped, feed continues.
 - HN fetch: batches of 10 concurrent. **Do not add retry without rate-limit guard.**
@@ -134,9 +134,10 @@ Reviewed by Opus (use GitHub Models or OpenRouter `anthropic/claude-opus-4.8`).
 | 11 | OG/Twitter meta on story detail pages | ⬜ todo | layout-main has partial support; verify `og:url` + `og:description` populated on `/story/:slug` |
 | 12 | Legacy image hosting (see design note below) | ⬜ todo / think | 65 legacy rows have no image. Need resolve-once pipeline w/ fallback |
 | 13 | Auth + admin (see design note below) | ✅ done | Ported session/auth stack from mood-tube. `/admin` gated by requireAuth+requireAdmin. Source stats + per-source article drill-down live. CLI `npm run create-user`. |
-| 14 | Google Trends source (type `trends`) | ✅ done | Migration v7 seeds `google-trends-ca`. FeedService parses `ht:news_item` blocks from Trends RSS. Each trending topic's linked articles ingested as normal articles. 30m cron picks them up automatically |
+| 14 | Google Trends source (type `trends`) | ✅ done | Migration v7 seeds `google-trends-ca`. IngestionService parses `ht:news_item` blocks from Trends RSS. Each trending topic's linked articles ingested as normal articles. 30m cron picks them up automatically |
 | 15 | Publishing model: manual + API first, retire auto-curation (see design note below) | 🟡 partial | **Manual flow DONE** (migration v8: status/author/published_at + api_tokens; dynamic heat_score; `/admin/stories` compose/edit/publish/unpublish/hide/feature/delete; homepage published-only; SummaryService retired from cron; existing stories hidden on cutover). **API `/api/v1` + token auth still TODO.** |
 | 16 | Article retention: tombstone-and-prune (see design note below) | ⬜ todo | Keep full rows 30d; after that, if unlinked, move `(source_id, external_id)` to `seen_ids` tombstone (60–90d) + delete heavy row. Linked/cited articles never pruned. **Implement AFTER manual flow.** |
+| 17 | Feed-image capture for live articles (see design note below) | ⬜ todo / spec | Capture image + description from feed payloads at ingest (zero extra HTTP). Surface thumbnails in radar authoring; seed `stories.image_url` from first article w/ image on draft creation. Distinct from #12 (legacy backfill). |
 
 ---
 
@@ -192,7 +193,7 @@ Indexes: `idx_users_status`, `idx_session_secrets_active`, `IDX_session_expire`.
 **New tsquirrel-specific pieces (not ported, built fresh):**
 
 - `server/dao/SourcesDAO.js` — `createSource`, `updateSource`, `deactivateSource`, `listSources` (currently `NewsDAO.getActiveSources`/`getSourceBySlug` are read-only).
-- `server/routes/admin.js` — `GET/POST /admin/sources` (list, add, edit, deactivate), gated by `requireAuth` + `requireAdmin`. Consider an "ingest now" button that calls `FeedService.ingestAll(pool)` on demand.
+- `server/routes/admin.js` — `GET/POST /admin/sources` (list, add, edit, deactivate), gated by `requireAuth` + `requireAdmin`. Consider an "ingest now" button that calls `IngestionService.ingestAll(pool)` on demand.
 - `server/views/admin/*.ejs` — minimal source list/edit forms, reuse `layout-main.ejs`.
 - `server.js`: replace hardcoded `res.locals.user = null` with `sessionMiddleware`; call `new SessionService(pool).initialize(app)` before routes are mounted.
 - De-dupe the source seed: remove the duplicate seed list from `MigrationService.js` v3 now that sources are DAO/UI-manageable (keep `db/02-sources.sql` as the one source of truth, or vice versa — pick one before writing the DAO).
@@ -236,6 +237,127 @@ current archive cards fall back to the category emoji. Original tsquirrel.com is
 **Decisions still open:**
 - Stop at resolve+hotlink, or go straight to self-host?
 - Same pipeline could later backfill `stories.image_url` for live cards (currently always null).
+
+---
+
+## Design Note: Feed-Image Capture (live articles + radar authoring)
+
+> **Status: SPEC — ready to implement.** This is the *live-feed* sibling to the Legacy Image
+> Hosting note above (#12). That note is a one-shot backfill for dead 2013–2018 links via
+> Wayback; **this** note is about images for articles ingested *right now* from active feeds.
+> The two do not share code and can ship independently.
+
+**Problem.** `articles` rows carry `title`, `url`, `published_at`, `description` — but no image.
+When the radar clusters articles into a signal and the operator opens the authoring view, they see
+a wall of text with no visual cue about what each cluster is. And when a draft story is created from
+a signal, `stories.image_url` is left null, so the published card/detail page also has no image.
+
+**Key finding (verified live 2026-07-27).** The active RSS feeds already embed a usable image URL
+**inside the feed XML we download anyway** — no per-article page fetch, no scraping, no `og:image`
+round-trip. Confirmed samples:
+
+| Source | Tag present | Example |
+|---|---|---|
+| BBC (`feeds.bbci.co.uk/news/rss.xml`) | `<media:thumbnail url="…">` | `ichef.bbci.co.uk/ace/standard/240/…jpg` |
+| Guardian (`theguardian.com/world/rss`) | `<media:content url="…">` | `i.guim.co.uk/img/media/…jpg` |
+| Ars Technica | `<media:thumbnail url="…">` | `cdn.arstechnica.net/…jpg` |
+| Google Trends RSS | `<ht:news_item_picture>…</ht:news_item_picture>` | per news item |
+| Hacker News API | none | (no image — expected; leave null) |
+| TechCrunch | none in the sampled item | leave null, no fallback fetch |
+
+Because the bytes are already in-hand, this is **Option B (hotlink)** from the legacy note — the
+user has confirmed hotlinking is acceptable — but with *far higher resilience* than the legacy case:
+these are live feeds pointing at CDN-hosted assets (BBC ichef, Guardian guim, Ars CDN) that are
+hotlink-tolerant and current, not link-rotted archives. **No Wayback fallback is needed here.**
+
+**Explicitly out of scope (do NOT build):**
+- No fetching of each article's HTML page to parse `<meta property="og:image">`.
+- No downloading/rehosting of image bytes (that's Phase-2 self-host, deferred exactly as the legacy note defers it).
+- No image proxying or resizing. Hotlink the source URL as-is.
+- No retroactive backfill of already-ingested rows (new column is null for old rows; acceptable — they age out via retention #16).
+
+### Data model
+
+Migration **v12** (idempotent, follows the v11 pattern in `MigrationService.js`):
+
+```sql
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS image_url TEXT;
+```
+
+No index needed (never queried by image). `stories.image_url` already exists.
+
+### Ingestion — `server/services/IngestionService.js`
+
+All image extraction happens in the existing parsers. **No new HTTP requests.** The service is a bag
+of stateless functions (not a class) — keep that shape.
+
+1. **`parseRss(xml)`** — for each `<item>`/`<entry>` block, in addition to title/url/pubDate:
+   - also capture `description` (currently declared as a column but never populated — the admin
+     article-picker `searchAvailableArticles` already ILIKEs `description`, so this fixes a latent gap).
+   - add an `extractImage(innerXml)` helper that returns the **first** match, in priority order:
+     1. `<media:thumbnail url="…">`
+     2. `<media:content url="…">` (only if its attrs/URL look like an image: `type="image/*"` or extension `jpg|jpeg|png|gif|webp`)
+     3. `<enclosure url="…">`
+     4. `<itunes:image href|url="…">`
+     5. `<image><url>…</url></image>`
+     6. first `<img src="…">` inside `content:encoded`/`description`
+   - HTML-decode entities (`&amp;` → `&`) on the returned URL.
+   - `stripTags()` the description and cap it (~1000 chars) since RSS descriptions carry markup.
+   - Return shape gains two fields: `{ title, url, publishedAt, description, imageUrl }`.
+
+2. **`parseGoogleTrends(xml)`** — add `imageUrl: getHt('news_item_picture')` to each pushed item.
+
+3. **`ingestAll(pool)`** — pass the two new fields through to the DAO:
+   `dao.upsertArticle({ …, description: item.description || null, imageUrl: item.imageUrl || null })`.
+
+### DAO — `server/dao/NewsDAO.js` (all SQL lives here, per project rule)
+
+- **`upsertArticle`** — add `imageUrl = null` param; insert into the new `image_url` column.
+  Keep `ON CONFLICT (source_id, external_id) DO NOTHING` (ingest is idempotent; we don't overwrite).
+- **`getArticlesByIds`** — add `a.image_url` to the SELECT (radar authoring reads this).
+- **`createDraft`** — add optional `imageUrl = null` param and write it to `stories.image_url`.
+- No other methods change. `upsertStory` already COALESCEs `image_url`, so nothing there.
+
+### Draft creation from a signal — `server/routes/admin.js`
+
+In `POST /admin/signals/:id/create-story`, after loading `evidence.article_ids`:
+1. `const articles = await dao.getArticlesByIds(articleIds);`
+2. Pick a lead image: `const lead = articles.find(a => a.image_url)?.image_url || null;`
+3. Pass `imageUrl: lead` into `dao.createDraft({ … })`.
+   (Operator can still swap it later in the story editor.)
+
+### Views
+
+- **`server/views/admin/signals.ejs`** — inside the expandable `<details>` article list, if
+  `articleMap[id].image_url` is set, render a small hotlinked thumbnail
+  (`<img src="…" loading="lazy" width="80" referrerpolicy="no-referrer">`) beside the title.
+  `referrerpolicy="no-referrer"` avoids hotlink-referer blocks; `loading="lazy"` keeps the list light.
+- **Story edit view** — surface each attached source article's thumbnail so the operator can
+  eyeball/choose; the auto-picked `stories.image_url` is already the first one.
+- **Public output** — `stories.image_url` now populates on radar-authored drafts, so the existing
+  card/detail `<img>` rendering "just works." Where it renders a hotlinked source image, add
+  `referrerpolicy="no-referrer"` and an `onerror` that hides the `<img>` (fall back to category emoji).
+
+### Failure & edge handling (keep minimal — system boundary only)
+
+- Missing image → column stays null → views fall back to existing emoji/no-image behavior. Never blocks ingest.
+- Broken hotlink at render → `<img onerror>` hides it, category emoji shows. No server-side liveness check.
+- Malformed/edge XML → `extractImage` returns null; do not throw.
+
+### Acceptance checks
+
+1. After v12 + rebuild, `\d articles` shows `image_url`.
+2. Run ingest; `SELECT COUNT(*) FILTER (WHERE image_url IS NOT NULL), COUNT(*) FROM articles WHERE source_id IN (bbc, guardian, ars)` shows a healthy majority populated.
+3. HN/TechCrunch rows remain null (expected) — ingest does not error.
+4. `/admin/signals` shows thumbnails in the expanded article lists.
+5. Creating a story from a signal whose cluster has ≥1 imaged article sets `stories.image_url`.
+6. Re-running ingest is still idempotent (no duplicate rows, existing images unchanged).
+
+### Decisions still open (for the operator, not the implementer)
+
+- Overwrite policy: currently `DO NOTHING` means an article's image is set once at first ingest and
+  never refreshed. Fine for hotlinks; revisit only if a feed serves a placeholder first then a real image.
+- Whether to also capture image dimensions/`type` for better `<img>` sizing (deferred — not needed for v1).
 
 ---
 
@@ -363,7 +485,7 @@ manually publish the good ones.
 
 ## Design Note: Article Retention — Tombstone-and-Prune
 
-**Problem:** `FeedService` upserts into `articles` every 30 min, deduped by `(source_id, external_id)`,
+**Problem:** `IngestionService` upserts into `articles` every 30 min, deduped by `(source_id, external_id)`,
 and **nothing ever deletes them.** ~7 sources × dozens of items every 30 min ≈ thousands of rows/day,
 forever. Most are never cited by a published story. Unbounded growth → slower ungrouped-article scans,
 bloated backups, wasted disk.
@@ -382,7 +504,7 @@ raise its dynamic heat_score). Dedup needs a *long* horizon; the curation window
    for a human/agent to compose from recent inventory.
 2. **After 30 days, if still unlinked** (not referenced by any `story_articles` row): move
    `(source_id, external_id)` into a slim **`seen_ids` tombstone table** and delete the heavy
-   `articles` row. Dedup still works — FeedService checks tombstones before inserting.
+   `articles` row. Dedup still works — IngestionService checks tombstones before inserting.
 3. **Tombstone retention: 60–90 days.** Feeds don't re-surface items older than a couple months, so
    the dedup ledger can itself be pruned after 60–90 days without practical re-ingest risk.
 4. **Linked/cited articles are NEVER pruned.** Once an article is attached to any story it's published
@@ -422,7 +544,7 @@ WHERE a.fetched_at < NOW() - INTERVAL '30 days'
 DELETE FROM seen_ids WHERE seen_at < NOW() - INTERVAL '90 days';
 ```
 
-FeedService dedup check becomes: skip insert if `(source_id, external_id)` exists in **either**
+IngestionService dedup check becomes: skip insert if `(source_id, external_id)` exists in **either**
 `articles` OR `seen_ids`.
 
 **Sequencing: implement AFTER the manual publishing flow is in place** (refactor #15). The retention

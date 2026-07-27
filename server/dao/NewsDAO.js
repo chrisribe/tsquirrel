@@ -334,6 +334,128 @@ class NewsDAO {
     `);
     return rows;
   }
+
+  // ── Radar signals ────────────────────────────────────────────
+
+  // Convergence detector: find bigrams (word pairs) shared by 2+ sources within a time window.
+  // Titles are lowercased + stripped of punctuation before splitting, so matching is
+  // case/format insensitive (see docs/NEWS-RADAR.md for rationale + stopword list source).
+  async detectConvergence({ windowHours = 48, minSources = 2, limit = 30 } = {}) {
+    const { rows } = await this.pool.query(`
+      WITH recent AS (
+        SELECT a.id, a.source_id, lower(a.title) AS title, a.fetched_at, s.name AS source_name
+        FROM articles a
+        JOIN sources s ON s.id = a.source_id
+        WHERE a.fetched_at > NOW() - ($3 || ' hours')::interval
+      ),
+      words AS (
+        SELECT id, source_id, source_name,
+               unnest(string_to_array(
+                 regexp_replace(lower(title), '[^a-z0-9 ]', ' ', 'g'),
+                 ' '
+               )) AS word,
+               generate_subscripts(string_to_array(
+                 regexp_replace(lower(title), '[^a-z0-9 ]', ' ', 'g'),
+                 ' '
+               ), 1) AS pos
+        FROM recent
+      ),
+      clean AS (
+        SELECT * FROM words
+        WHERE length(word) >= 3
+          AND word NOT IN (
+            'the','and','for','are','but','not','you','all','can','had','her','was','one','our',
+            'has','his','how','its','new','now','say','she','too','use','says','said','been',
+            'have','from','they','will','with','this','that','what','when','your','more','some',
+            'than','them','into','just','also','each','like','many','most','only','over','such',
+            'about','after','being','could','every','first','found','other','right','still',
+            'think','three','under','where','which','while','would','years','before','during',
+            'should','their','there','these','those','through','people',
+            'news','says','report','watch','live','breaking','update','latest','video','opinion'
+          )
+      ),
+      bigrams AS (
+        SELECT a.id, a.source_id, a.source_name,
+               a.word || ' ' || b.word AS phrase
+        FROM clean a
+        JOIN clean b ON a.id = b.id AND b.pos = a.pos + 1
+      )
+      SELECT phrase AS topic,
+             COUNT(DISTINCT source_id) AS source_count,
+             COUNT(DISTINCT id) AS article_count,
+             array_agg(DISTINCT source_name ORDER BY source_name) AS source_names,
+             array_agg(DISTINCT id) AS article_ids
+      FROM bigrams
+      WHERE length(phrase) >= 7
+      GROUP BY phrase
+      HAVING COUNT(DISTINCT source_id) >= $1
+      ORDER BY COUNT(DISTINCT source_id) DESC, COUNT(DISTINCT id) DESC
+      LIMIT $2
+    `, [minSources, limit, String(windowHours)]);
+    return rows;
+  }
+
+  // True if a non-dismissed signal for this topic already fired within the dedup window.
+  async hasRecentSignal(topic, { windowHours = 48 } = {}) {
+    const { rows } = await this.pool.query(`
+      SELECT id FROM signals
+      WHERE topic = $1
+        AND status != 'dismissed'
+        AND fired_at > NOW() - ($2 || ' hours')::interval
+      LIMIT 1
+    `, [topic, String(windowHours)]);
+    return rows.length > 0;
+  }
+
+  async createSignal({ detector, topic, strength, evidence, expiresInHours = 48 }) {
+    const { rows } = await this.pool.query(`
+      INSERT INTO signals (detector, topic, strength, evidence, status, fired_at, expires_at)
+      VALUES ($1, $2, $3, $4, 'new', NOW(), NOW() + ($5 || ' hours')::interval)
+      RETURNING *
+    `, [detector, topic, strength, JSON.stringify(evidence), String(expiresInHours)]);
+    return rows[0];
+  }
+
+  // status: null/'active' → new+reviewed, not expired. 'all' → everything. else exact match.
+  async getSignals({ status = 'active', limit = 50 } = {}) {
+    const params = [limit];
+    let whereClause;
+    if (!status || status === 'active') {
+      whereClause = `WHERE status NOT IN ('used', 'dismissed') AND (expires_at IS NULL OR expires_at > NOW())`;
+    } else if (status === 'all') {
+      whereClause = '';
+    } else {
+      params.push(status);
+      whereClause = `WHERE status = $2`;
+    }
+    const { rows } = await this.pool.query(`
+      SELECT * FROM signals
+      ${whereClause}
+      ORDER BY strength DESC, fired_at DESC
+      LIMIT $1
+    `, params);
+    return rows;
+  }
+
+  async setSignalStatus(id, status) {
+    const { rows } = await this.pool.query(
+      'UPDATE signals SET status = $2 WHERE id = $1 RETURNING *',
+      [id, status]
+    );
+    return rows[0] || null;
+  }
+
+  async linkSignalToStory(signalId, storyId) {
+    await this.pool.query(
+      `UPDATE signals SET status = 'used', story_id = $2 WHERE id = $1`,
+      [signalId, storyId]
+    );
+  }
+
+  async getSignalById(id) {
+    const { rows } = await this.pool.query('SELECT * FROM signals WHERE id = $1', [id]);
+    return rows[0] || null;
+  }
 }
 
 module.exports = NewsDAO;

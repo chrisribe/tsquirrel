@@ -18,7 +18,7 @@ Order matters in `web.js`: legacy slug route and numeric-ID redirect come **befo
 homepage/catch-all.
 
 ## Services (`server/services/`)
-- `FeedService` — RSS + Hacker News ingestion.
+- `IngestionService` — RSS + Hacker News + Google Trends ingestion.
 - `SummaryService` — LLM clustering, summaries, tags, sentiment.
 - `CronService` — schedules ingestion (~30 min).
 - `MigrationService` — idempotent schema setup at startup.

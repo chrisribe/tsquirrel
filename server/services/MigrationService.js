@@ -199,6 +199,34 @@ const migrations = [
       console.log('Migration 10: deactivated all sources except hackernews + bbc for initial testing');
     }
   },
+  {
+    version: 11,
+    description: 'Radar signals table (convergence detector output) + re-activate sources for cross-source detection',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS signals (
+          id          SERIAL PRIMARY KEY,
+          detector    VARCHAR(30) NOT NULL,
+          topic       TEXT NOT NULL,
+          strength    INTEGER NOT NULL DEFAULT 0,
+          evidence    JSONB,
+          status      VARCHAR(20) NOT NULL DEFAULT 'new',
+          story_id    INTEGER REFERENCES stories(id) ON DELETE SET NULL,
+          fired_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          expires_at  TIMESTAMP
+        )
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_signals_status ON signals(status, fired_at DESC)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_signals_topic ON signals(topic)`);
+      // Radar needs multiple active sources to detect cross-source convergence —
+      // re-activate the sources migration 10 turned off for initial testing.
+      await pool.query(`
+        UPDATE sources SET active = TRUE
+        WHERE slug IN ('hackernews', 'bbc', 'guardian', 'arstechnica', 'techcrunch', 'google-trends-ca')
+      `);
+      console.log('Migration 11: signals table created, sources re-activated for radar');
+    }
+  },
   // Future migrations go here
 ];
 

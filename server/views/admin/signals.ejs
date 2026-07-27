@@ -1,0 +1,104 @@
+<section class="admin-signals">
+  <p><a href="/admin">&larr; Back to Admin Dashboard</a></p>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+    <h1>📡 Radar Signals</h1>
+    <form method="POST" action="/admin/signals/scan" style="display:inline">
+      <button type="submit" class="outline">🔄 Run Radar Now</button>
+    </form>
+  </div>
+
+  <p>
+    Filter:
+    <a href="/admin/signals">Active</a> ·
+    <a href="/admin/signals?status=all">All</a> ·
+    <a href="/admin/signals?status=used">Used</a> ·
+    <a href="/admin/signals?status=dismissed">Dismissed</a>
+    <% if (pageData.filter && pageData.filter !== 'active') { %><em>(showing: <%= pageData.filter %>)</em><% } %>
+  </p>
+
+  <% if (pageData.signals.length === 0) { %>
+    <p class="hint">No signals<%= pageData.filter ? ' matching filter' : '' %>. Radar detects cross-source convergence after each ingest cycle.</p>
+  <% } else { %>
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Topic</th>
+          <th class="nowrap">Strength</th>
+          <th>Sources</th>
+          <th class="nowrap">Articles</th>
+          <th class="nowrap">Detected</th>
+          <th class="nowrap">Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% pageData.signals.forEach(function(sig) {
+          const evidence = typeof sig.evidence === 'string' ? JSON.parse(sig.evidence) : (sig.evidence || {});
+          const isExpired = sig.expires_at && new Date(sig.expires_at) < new Date();
+        %>
+          <tr<%= sig.status === 'dismissed' || isExpired ? ' style="opacity:0.5"' : '' %>>
+            <td><strong><%= sig.topic %></strong></td>
+            <td class="nowrap"><%= sig.strength %></td>
+            <td>
+              <div class="signal-sources">
+                <% (evidence.sources || []).forEach(function(src) { %>
+                  <span class="signal-source-tag"><%= src %></span>
+                <% }); %>
+              </div>
+            </td>
+            <td class="nowrap"><%= evidence.article_count || 0 %></td>
+            <td class="nowrap"><%= new Date(sig.fired_at).toLocaleString() %></td>
+            <td class="nowrap">
+              <% if (sig.status === 'new') { %>🆕 new
+              <% } else if (sig.status === 'reviewed') { %>👀 reviewed
+              <% } else if (sig.status === 'used') { %>✅ used
+              <% } else { %>🗑️ dismissed<% } %>
+              <% if (isExpired && sig.status !== 'dismissed') { %> ⏰ expired<% } %>
+            </td>
+            <td>
+              <div class="admin-actions">
+                <% if (sig.status !== 'used' && sig.status !== 'dismissed') { %>
+                  <form method="POST" action="/admin/signals/<%= sig.id %>/create-story">
+                    <button type="submit">📝 Create Story</button>
+                  </form>
+                  <form method="POST" action="/admin/signals/<%= sig.id %>/dismiss">
+                    <button type="submit" class="outline secondary">Dismiss</button>
+                  </form>
+                <% } %>
+                <% if (sig.story_id) { %>
+                  <a href="/admin/stories/<%= sig.story_id %>/edit">View Story →</a>
+                <% } %>
+              </div>
+            </td>
+          </tr>
+          <% if (sig.status !== 'dismissed') { %>
+          <tr>
+            <td colspan="7" style="padding-top:0;border-top:none">
+              <details>
+                <summary>View matching articles (<%= (evidence.article_ids || []).length %>)</summary>
+                <div class="signal-evidence">
+                <% if (pageData.articleMap) {
+                  const articleIds = evidence.article_ids || [];
+                  articleIds.forEach(function(aid) {
+                    const art = pageData.articleMap[aid];
+                    if (art) { %>
+                  <div class="signal-evidence-row">
+                    <span style="color:var(--muted)"><%= art.source_name %></span>
+                    — <a href="<%= art.url %>" target="_blank" rel="noopener"><%= art.title %></a>
+                    <span style="color:var(--muted)"><%= art.published_at ? new Date(art.published_at).toLocaleDateString() : '' %></span>
+                  </div>
+                  <%  }
+                  });
+                } %>
+                </div>
+              </details>
+            </td>
+          </tr>
+          <% } %>
+        <% }); %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</section>
