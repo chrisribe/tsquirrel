@@ -4,6 +4,7 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const NewsDAO = require('../dao/NewsDAO');
+const ApiTokenDAO = require('../dao/ApiTokenDAO');
 const requireAuth = require('../middleware/authMiddleware');
 const requireAdmin = require('../middleware/adminMiddleware');
 const { slugify } = require('../lib/slug');
@@ -12,7 +13,7 @@ router.use(requireAuth, requireAdmin);
 
 
 async function renderTokensPage(req, res, { message = null, error = null, createdToken = null } = {}) {
-  const dao = new NewsDAO(req.app.get('pool'));
+  const dao = new ApiTokenDAO(req.app.get('pool'));
   const tokens = await dao.listApiTokens();
   res.render('layout-main', {
     template: 'admin/tokens',
@@ -46,7 +47,7 @@ router.get('/tokens', async (req, res) => {
 });
 
 router.post('/tokens', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
+  const dao = new ApiTokenDAO(req.app.get('pool'));
   const rawLabel = (req.body.label || '').trim();
   const label = rawLabel.slice(0, 100);
 
@@ -65,7 +66,7 @@ router.post('/tokens', async (req, res) => {
 });
 
 router.post('/tokens/:id/revoke', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
+  const dao = new ApiTokenDAO(req.app.get('pool'));
   const id = parseInt(req.params.id, 10);
   if (id) await dao.revokeApiToken(id);
   res.redirect('/admin/tokens?revoked=1');

@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
-const NewsDAO = require('../dao/NewsDAO');
+const ApiTokenDAO = require('../dao/ApiTokenDAO');
 
 module.exports = async function apiTokenAuthMiddleware(req, res, next) {
   try {
@@ -13,7 +13,7 @@ module.exports = async function apiTokenAuthMiddleware(req, res, next) {
     }
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const dao = new NewsDAO(req.app.get('pool'));
+    const dao = new ApiTokenDAO(req.app.get('pool'));
     const row = await dao.getApiTokenByHash(tokenHash);
 
     if (!row || row.revoked_at) {
