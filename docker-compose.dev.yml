@@ -1,6 +1,13 @@
-# Development overrides — relaxes secure-cookie requirement for local HTTP testing.
+# Development overrides — local HTTP + hot reload for server edits.
 # Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 services:
   server:
+    command: npm run dev
+    volumes:
+      - ./server:/app
+      - tsquirrel_server_node_modules:/app/node_modules
     environment:
       NODE_ENV: development
+
+volumes:
+  tsquirrel_server_node_modules:

@@ -90,6 +90,14 @@ router.get('/sources/:slug', async (req, res) => {
   });
 });
 
+// Enable / disable a source (controls whether ingestion fetches from it)
+router.post('/sources/:slug/toggle', async (req, res) => {
+  const dao = new NewsDAO(req.app.get('pool'));
+  const source = await dao.getSourceBySlug(req.params.slug);
+  if (source) await dao.setSourceActive(source.id, !source.active);
+  res.redirect('/admin');
+});
+
 // ── Story authoring / moderation ───────────────────────────────────────
 
 // List all stories (drafts first) + moderation actions
@@ -114,11 +122,26 @@ router.get('/stories/new', async (req, res) => {
     dao.getRecentArticles({ limit: 100 }),
     dao.getArticlesByIds(seedIds),
   ]);
+  // Ensure seeded articles always appear (and stay checked) in the picker,
+  // even if they aren't in the recent-100 window.
+  const recentIds = new Set(recentArticles.map(a => a.id));
+  const mergedRecent = [
+    ...seededArticles.filter(a => !recentIds.has(a.id)),
+    ...recentArticles,
+  ];
+  // Pre-fill title/summary/image from the first seeded article so authoring
+  // starts from real reporting instead of a blank form.
+  const seed = seededArticles[0];
+  const prefill = seed ? {
+    title: seed.title || '',
+    summary: seed.description || '',
+    image_url: seed.image_url || null,
+  } : null;
   res.render('layout-main', {
     template: 'admin/story-edit',
     pageTitle: 'New Story — Admin — TSquirrel',
     noIndex: true,
-    pageData: { story: null, attached: seededArticles, recentArticles, error: null },
+    pageData: { story: null, attached: seededArticles, recentArticles: mergedRecent, prefill, error: null },
   });
 });
 

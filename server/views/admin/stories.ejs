@@ -1,18 +1,16 @@
 <section class="admin-stories">
-  <p><a href="/admin">&larr; Back to Admin Dashboard</a></p>
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
-    <h1>🐿️ Stories</h1>
+  <a href="/admin" class="admin-back">&larr; Back to Admin Dashboard</a>
+  <div class="admin-toolbar">
+    <h1>Stories</h1>
     <a href="/admin/stories/new" role="button">+ New Story</a>
   </div>
 
-  <p>
-    Filter:
-    <a href="/admin/stories">All</a> ·
-    <a href="/admin/stories?status=draft">Drafts</a> ·
-    <a href="/admin/stories?status=published">Published</a> ·
-    <a href="/admin/stories?status=hidden">Hidden</a>
-    <% if (pageData.activeStatus) { %><em>(showing: <%= pageData.activeStatus %>)</em><% } %>
-  </p>
+  <div class="admin-tabs">
+    <a href="/admin/stories" class="admin-tab <%= !pageData.activeStatus ? 'active' : '' %>">All</a>
+    <a href="/admin/stories?status=draft" class="admin-tab <%= pageData.activeStatus === 'draft' ? 'active' : '' %>">Drafts</a>
+    <a href="/admin/stories?status=published" class="admin-tab <%= pageData.activeStatus === 'published' ? 'active' : '' %>">Published</a>
+    <a href="/admin/stories?status=hidden" class="admin-tab <%= pageData.activeStatus === 'hidden' ? 'active' : '' %>">Hidden</a>
+  </div>
 
   <% if (pageData.stories.length === 0) { %>
     <p class="hint">No stories<%= pageData.activeStatus ? ' with status ' + pageData.activeStatus : '' %> yet.</p>
@@ -24,10 +22,8 @@
           <th></th>
           <th>Title</th>
           <th class="nowrap">Status</th>
-          <th class="nowrap">Cat</th>
+          <th class="nowrap">Category</th>
           <th class="nowrap">Sources</th>
-          <th class="nowrap">Heat</th>
-          <th class="nowrap">Featured</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -36,19 +32,24 @@
           <tr>
             <td>
               <% if (s.image_url) { %>
-                <img src="<%= s.image_url %>" alt="" loading="lazy" width="48" referrerpolicy="no-referrer" style="border-radius:4px;display:block">
+                <img src="<%= s.image_url %>" alt="" loading="lazy" width="40" referrerpolicy="no-referrer" style="border-radius:4px;display:block">
               <% } %>
             </td>
-            <td><a href="/admin/stories/<%= s.id %>/edit"><%= s.title %></a></td>
-            <td class="nowrap">
-              <% if (s.status === 'published') { %>✅ published
-              <% } else if (s.status === 'draft') { %>📝 draft
-              <% } else { %>🙈 hidden<% } %>
+            <td class="story-title-cell">
+              <a href="/admin/stories/<%= s.id %>/edit"><%= s.title %></a>
+              <% if (s.is_featured) { %><span class="story-flag">Featured</span><% } %>
             </td>
-            <td class="nowrap"><%= catLabel(s.category) %></td>
-            <td class="nowrap"><%= s.source_count %></td>
-            <td class="nowrap"><%= s.heat_score %></td>
-            <td class="nowrap"><%= s.is_featured ? '⭐' : '' %></td>
+            <td class="nowrap">
+              <% if (s.status === 'published') { %>
+                <a class="status-pill is-published" href="/story/<%= s.slug %>" target="_blank" rel="noopener">Published</a>
+              <% } else if (s.status === 'draft') { %>
+                <span class="status-pill is-draft">Draft</span>
+              <% } else { %>
+                <span class="status-pill is-hidden">Hidden</span>
+              <% } %>
+            </td>
+            <td class="nowrap"><%= s.category || 'News' %></td>
+            <td class="nowrap mono"><%= s.source_count %></td>
             <td>
               <div class="admin-actions">
                 <% if (s.status !== 'published') { %>
@@ -61,7 +62,6 @@
                     <input type="hidden" name="returnTo" value="/admin/stories<%= pageData.activeStatus ? '?status=' + pageData.activeStatus : '' %>">
                     <button type="submit" class="outline secondary">Unpublish</button>
                   </form>
-                  <a href="/story/<%= s.slug %>" target="_blank" rel="noopener">view</a>
                 <% } %>
                 <form method="POST" action="/admin/stories/<%= s.id %>/feature">
                   <input type="hidden" name="featured" value="<%= s.is_featured ? 'false' : 'true' %>">

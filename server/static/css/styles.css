@@ -1,5 +1,5 @@
 /* TSquirrel — styles.css */
-:root {
+:root:not([data-theme="dark"]) {
   --brand: #2c5f2e;
   --brand-mid: #3d7a40;
   --brand-light: #52a653;
@@ -14,6 +14,21 @@
   --tag-bg: #efece7;
   --category-active-bg: #2c5f2e;
   --category-active-color: #fff;
+
+  /* Rebind Pico's primary tokens to the brand green — Pico ships its own
+     blue (#0172ad) for every button/link/outline, which clashes with the
+     hand-styled green branding used elsewhere (nav, badges, pills). This
+     makes the two "primary" colors one, sitewide. */
+  --pico-primary: var(--brand);
+  --pico-primary-background: var(--brand);
+  --pico-primary-border: var(--brand);
+  --pico-primary-underline: rgba(44, 95, 46, 0.5);
+  --pico-primary-hover: #1f451f;
+  --pico-primary-hover-background: #1f451f;
+  --pico-primary-hover-border: #1f451f;
+  --pico-primary-hover-underline: #1f451f;
+  --pico-primary-focus: rgba(82, 166, 83, 0.5);
+  --pico-primary-inverse: #fff;
 }
 
 body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bottom: 4.5rem; }
@@ -331,7 +346,7 @@ body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bot
   flex-direction: column;
   align-items: center;
   gap: .3rem;
-  width: 84px;
+  width: 96px;
   padding: .4rem;
   border: 2px solid var(--border, var(--pico-muted-border-color));
   border-radius: .5rem;
@@ -344,12 +359,25 @@ body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bot
   background: var(--accent-pale, rgba(0,0,0,.04));
 }
 .image-picker-option input[type="radio"] { margin: 0 0 .3rem; }
+.image-picker-thumb {
+  width: 72px;
+  height: 48px;
+  border-radius: .35rem;
+  overflow: hidden;
+  background: var(--pico-muted-border-color, #eee);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .image-picker-option img {
-  width: 64px; height: 64px; object-fit: cover; border-radius: .35rem;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 .image-picker-option small { font-size: .65rem; color: var(--pico-muted-color); line-height: 1.2; }
 .image-picker-none {
-  width: 64px; height: 64px; border-radius: .35rem;
+  width: 72px; height: 48px; border-radius: .35rem;
   display: flex; align-items: center; justify-content: center;
   background: var(--pico-muted-border-color, #eee);
   font-size: .68rem; color: var(--pico-muted-color); text-align: center;
@@ -368,19 +396,25 @@ body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bot
 .table-scroll table { min-width: 640px; }
 .table-scroll th, .table-scroll td { word-break: break-word; }
 .table-scroll td.nowrap, .table-scroll th.nowrap { white-space: nowrap; }
+.table-scroll td form { margin: 0; }
+.table-scroll td form button { width: auto; margin: 0; padding: .25rem .7rem; font-size: .82rem; white-space: nowrap; }
 
 .admin-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
+  display: grid;
+  grid-template-columns: 6.5rem 6.5rem;
+  gap: .4rem;
   align-items: center;
+  justify-content: end;
+  margin-left: auto;
 }
-.admin-actions form { display: inline-flex; margin: 0; }
+.admin-actions form { display: flex; margin: 0; }
 .admin-actions button, .admin-actions a[role="button"] {
-  padding: .25rem .6rem;
+  width: 100%;
+  padding: .3rem .5rem;
   font-size: .82rem;
   margin: 0;
   white-space: nowrap;
+  text-align: center;
 }
 
 .signal-sources {
@@ -398,12 +432,475 @@ body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bot
   white-space: nowrap;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   ADMIN CONSOLE — dense, operator-tool aesthetic.
+   Scoped to .admin-body so the public reader site is untouched.
+   Pico's defaults (large buttons, loose tables, big headings) read
+   as "blocky" for a data-dense internal tool — this tightens
+   everything up and gives numeric/status data a distinct monospace
+   treatment instead of leaning on Pico's default button/table look.
+   ══════════════════════════════════════════════════════════════ */
+
+.admin-body {
+  --admin-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --admin-line: #dcd6cc;
+  --admin-row-alt: #faf8f4;
+  --pico-spacing: .9rem;
+  --pico-form-element-spacing-vertical: .44rem;
+  --pico-form-element-spacing-horizontal: .58rem;
+  --pico-typography-spacing-vertical: .78rem;
+  font-size: .9rem;
+}
+
+.admin-body main.container {
+  padding-top: 1.25rem;
+  max-width: min(1440px, 96vw);
+}
+
+/* Compact heading rhythm — Pico's h1 is huge and sits far from content */
+.admin-body h1 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  margin: 0 0 .6rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.admin-body h2 {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 1.6rem 0 .6rem;
+  padding-bottom: .35rem;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+/* Back link — small, quiet, not a full paragraph */
+.admin-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .78rem;
+  color: var(--muted);
+  text-decoration: none;
+  margin-bottom: .85rem;
+}
+.admin-back:hover { color: var(--brand); }
+
+/* Toolbar row: title + primary action, replaces ad-hoc inline flex styles */
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-bottom: .5rem;
+}
+.admin-toolbar h1 { margin-bottom: 0; }
+
+.admin-meta {
+  font-size: .82rem;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+.admin-meta strong { color: #111827; font-weight: 600; }
+
+/* Tab-style filters, replacing plain "A · B · C" text links */
+.admin-tabs {
+  display: flex;
+  gap: .35rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+}
+.admin-tab {
+  font-size: .78rem;
+  font-weight: 600;
+  padding: .25rem .65rem;
+  border-radius: 6px;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid var(--admin-line);
+  background: var(--card-bg);
+}
+.admin-tab:hover { color: var(--brand); border-color: var(--brand-light); }
+.admin-tab.active {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
+
+/* Compact buttons — Pico's role="button" is padded like a marketing CTA */
+.admin-body button,
+.admin-body [role="button"] {
+  font-size: .8rem;
+  padding: .34rem .8rem;
+  line-height: 1.25;
+  border-radius: 6px;
+  --pico-box-shadow: none;
+}
+
+.admin-main-submit {
+  width: auto !important;
+  max-width: fit-content;
+  flex: 0 0 auto;
+  min-width: 8.75rem;
+  display: inline-flex;
+  justify-content: center;
+}
+.admin-body .admin-danger,
+.admin-body button.admin-danger {
+  color: #b91c1c;
+  border-color: #b91c1c;
+}
+.admin-body .admin-danger:hover { background: #fef2f2; }
+
+/* Inline label + input + button rows (e.g. create-token form) */
+.admin-inline-form {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1.1rem;
+}
+.admin-inline-form input { max-width: 380px; margin: 0; }
+/* Pico buttons default to width:100%/display:block, which blows up inside
+   a flex row — pin them back to content width here. */
+.admin-inline-form button {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/* Dense data tables — Pico ships ~.75rem/1rem cell padding + 1rem font */
+.admin-body table { font-size: .82rem; }
+.admin-body table thead th {
+  font-size: .66rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  background: var(--admin-row-alt);
+  padding: .4rem .5rem;
+}
+.admin-body table td {
+  padding: .34rem .5rem;
+  vertical-align: middle;
+}
+.admin-body table tbody tr:nth-child(even) { background: var(--admin-row-alt); }
+.admin-body table .mono,
+.admin-body table td.nowrap {
+  font-family: var(--admin-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: .76rem;
+}
+
+/* Status pills — replace bare emoji + text in status columns */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .72rem;
+  font-weight: 600;
+  padding: .12rem .5rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.status-pill.is-published { background: #dcfce7; color: #15803d; }
+.status-pill.is-draft     { background: #fef9c3; color: #92400e; }
+.status-pill.is-hidden    { background: #f1f0ec; color: var(--muted); }
+.status-pill.is-active    { background: #dcfce7; color: #15803d; }
+.status-pill.is-revoked   { background: #f1f0ec; color: var(--muted); }
+.status-pill.is-new       { background: #dbeafe; color: #1d4ed8; }
+.status-pill.is-reviewed  { background: #ede9fe; color: #6d28d9; }
+.status-pill.is-used      { background: #dcfce7; color: #15803d; }
+.status-pill.is-dismissed { background: #f1f0ec; color: var(--muted); }
+a.status-pill { text-decoration: underline; text-underline-offset: 2px; }
+a.status-pill.is-published:hover { background: #bbf7d0; }
+
+.admin-row-faded { opacity: .5; }
+
+/* Alert boxes — replace one-off inline-styled <article> blocks */
+.admin-alert {
+  border-left: 3px solid var(--admin-line);
+  padding: .6rem .85rem;
+  margin: 0 0 1rem;
+  border-radius: 0 6px 6px 0;
+  font-size: .85rem;
+}
+.admin-alert.is-success { border-color: #15803d; background: #f0fdf4; }
+.admin-alert.is-error   { border-color: #b91c1c; background: #fef2f2; }
+.admin-alert code {
+  display: block;
+  margin-top: .45rem;
+  font-size: .88rem;
+  word-break: break-all;
+}
+
+/* Compact fieldsets/legends on the story editor */
+.admin-body fieldset {
+  padding: .85rem 1rem;
+  margin: 0 0 1rem;
+  border-radius: 8px;
+}
+.admin-body legend {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  padding: 0 .4rem;
+}
+.admin-body legend small { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+.admin-body input:not([type="radio"]):not([type="checkbox"]),
+.admin-body textarea,
+.admin-body select {
+  font-size: .86rem;
+  line-height: 1.25;
+  min-height: 2.2rem;
+  padding: .34rem .56rem;
+}
+
+.admin-body input[type="radio"],
+.admin-body input[type="checkbox"] {
+  min-height: 0;
+  padding: 0;
+}
+
+.admin-body label {
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: .62rem;
+}
+
 .signal-evidence { margin: .25rem 0 .5rem; }
 .signal-evidence-row {
   margin: .3rem 0;
   font-size: .85em;
   line-height: 1.4;
   word-break: break-word;
+}
+
+/* ── Admin signals: card layout (replaces cramped table) ── */
+.signals-stack {
+  display: grid;
+  gap: .8rem;
+}
+
+.signal-card {
+  background: var(--card-bg);
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  padding: .75rem .85rem;
+}
+
+.signal-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .6rem;
+  margin-bottom: .45rem;
+}
+
+.signal-topic {
+  margin: 0;
+  font-size: .98rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -.01em;
+  color: #1a1612;
+}
+
+.signal-subject {
+  margin: 0 0 .52rem;
+  font-size: .78rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.signal-head-badges {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.signal-strength {
+  font-size: .73rem;
+  color: var(--muted);
+  border: 1px solid var(--admin-line);
+  border-radius: 99px;
+  padding: .14rem .5rem;
+  white-space: nowrap;
+}
+
+.signal-meta-row {
+  display: flex;
+  gap: .35rem;
+  flex-wrap: wrap;
+  margin: 0 0 .55rem;
+}
+
+.signal-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: .73rem;
+  color: var(--muted);
+  background: var(--admin-row-alt);
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  padding: .12rem .42rem;
+}
+
+a.signal-meta-chip {
+  text-decoration: none;
+}
+
+a.signal-meta-chip:hover {
+  color: var(--brand);
+  border-color: var(--brand-light);
+}
+
+.signal-card .signal-sources {
+  margin-bottom: .6rem;
+}
+
+.signal-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .42rem;
+  align-items: center;
+  margin-bottom: .55rem;
+}
+
+.signal-card-actions form {
+  margin: 0;
+  display: inline-flex;
+}
+
+.signal-card-actions button,
+.signal-card-actions a[role="button"] {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.signal-details {
+  border-top: 1px dashed var(--admin-line);
+  margin-top: .2rem;
+  padding-top: .4rem;
+}
+
+.signal-details > summary {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.signal-evidence-thumb {
+  border-radius: 6px;
+  vertical-align: middle;
+  margin-right: .35rem;
+}
+
+.signal-evidence-source,
+.signal-evidence-date {
+  color: var(--muted);
+}
+
+.story-title-cell a { margin-right: .35rem; }
+
+.story-flag {
+  display: inline-block;
+  font-size: .66rem;
+  font-weight: 600;
+  color: #4b5563;
+  background: #eceff3;
+  border: 1px solid #d5dbe3;
+  border-radius: 99px;
+  padding: .08rem .42rem;
+  white-space: nowrap;
+}
+
+/* ── Admin: source material (reporting to synthesize in the story editor) ── */
+.source-material {
+  list-style: none;
+  margin: .4rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.source-material-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: .8rem;
+  align-items: start;
+  padding: .7rem .8rem;
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  background: #fff;
+}
+.source-material-thumb {
+  width: 88px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+.source-material-body { min-width: 0; }
+.source-material-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .15rem;
+}
+.source-material-source {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--brand);
+}
+.source-material-date {
+  font-size: .7rem;
+  color: var(--muted);
+}
+.source-material-title {
+  display: inline-block;
+  font-weight: 600;
+  font-size: .92rem;
+  line-height: 1.3;
+  margin-bottom: .2rem;
+}
+.source-material-desc {
+  margin: 0;
+  font-size: .84rem;
+  line-height: 1.45;
+  color: #3f4a3f;
+}
+.source-material-detach { margin: 0; align-self: center; }
+.source-material-detach button { margin: 0; width: auto; white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .source-material-item { grid-template-columns: 1fr; }
+  .source-material-thumb { width: 100%; height: 140px; }
+  .source-material-detach { justify-self: start; }
+}
+
+@media (max-width: 860px) {
+  .signal-card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .signal-head-badges {
+    justify-content: flex-start;
+  }
 }
 
 /* ── Story hero ── */

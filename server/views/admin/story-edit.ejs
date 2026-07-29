@@ -1,35 +1,38 @@
 <%
   const isEdit = !!pageData.story;
   const s = pageData.story || {};
+  const pf = pageData.prefill || {};
   const cats = ['Technology','World','Business','Science','Politics','Sports','Entertainment','Other'];
   const attachedIds = pageData.attached.map(a => a.id);
 %>
 <section class="admin-story-edit">
-  <p><a href="/admin/stories">&larr; Back to Stories</a></p>
-  <h1>🐿️ <%= isEdit ? 'Edit Story' : 'New Story' %></h1>
+  <a href="/admin/stories" class="admin-back">&larr; Back to Stories</a>
+  <h1><%= isEdit ? 'Edit Story' : 'New Story' %></h1>
 
   <% if (pageData.error) { %>
     <p style="color:var(--pico-del-color,#b00)"><strong><%= pageData.error %></strong></p>
   <% } %>
 
   <% if (isEdit) { %>
-    <p>
+    <p class="admin-meta">
       Status:
-      <% if (s.status === 'published') { %>✅ published
-      <% } else if (s.status === 'draft') { %>📝 draft
-      <% } else { %>🙈 hidden<% } %>
+      <span class="status-pill is-<%= s.status %>">
+        <% if (s.status === 'published') { %>Published
+        <% } else if (s.status === 'draft') { %>Draft
+        <% } else { %>Hidden<% } %>
+      </span>
       · Heat: <%= s.heat_score %> · Sources: <%= s.source_count %>
-      <% if (s.is_featured) { %> · ⭐ featured<% } %>
+      <% if (s.is_featured) { %> · Featured<% } %>
     </p>
   <% } %>
 
   <!-- ── Story fields ── -->
   <form method="POST" action="<%= isEdit ? '/admin/stories/' + s.id : '/admin/stories' %>">
     <label>Title
-      <input type="text" name="title" required value="<%= s.title || '' %>" placeholder="Story headline">
+      <input type="text" name="title" required value="<%= s.title || pf.title || '' %>" placeholder="Story headline">
     </label>
     <label>Summary
-      <textarea name="summary" rows="4" placeholder="2–3 sentence synthesis"><%= s.summary || '' %></textarea>
+      <textarea name="summary" rows="4" placeholder="2–3 sentence synthesis"><%= s.summary || pf.summary || '' %></textarea>
     </label>
     <label>Squirrel Take <small>(short editorial one-liner, optional)</small>
       <input type="text" name="squirrel_take" value="<%= s.squirrel_take || '' %>" placeholder="Punchy opinionated take">
@@ -55,7 +58,7 @@
         seenImages.add(a.image_url);
         return true;
       });
-      const currentImage = s.image_url || null;
+      const currentImage = s.image_url || pf.image_url || null;
       const currentIsCandidate = currentImage && imageCandidates.some(function(a) { return a.image_url === currentImage; });
     %>
     <fieldset>
@@ -69,7 +72,9 @@
           <label class="image-picker-option">
             <input type="radio" name="image_url" value="<%= a.image_url %>"
               <%= currentImage === a.image_url ? 'checked' : '' %>>
-            <img src="<%= a.image_url %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+            <span class="image-picker-thumb">
+              <img src="<%= a.image_url %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+            </span>
             <small><%= a.source_name %></small>
           </label>
         <% }); %>
@@ -100,37 +105,39 @@
       </fieldset>
     <% } %>
 
-    <button type="submit"><%= isEdit ? 'Save Changes' : 'Create Draft' %></button>
+    <button type="submit" class="admin-main-submit"><%= isEdit ? 'Save Changes' : 'Create Draft' %></button>
   </form>
 
   <% if (isEdit) { %>
     <!-- ── Attached sources ── -->
-    <h2>Attached Sources (<%= pageData.attached.length %>)</h2>
+    <h2>Source Material (<%= pageData.attached.length %>)</h2>
     <% if (pageData.attached.length === 0) { %>
-      <p class="hint">No sources attached yet.</p>
+      <p class="hint">No sources attached yet — attach an article below to pull in reporting to synthesize.</p>
     <% } else { %>
-      <table>
-        <thead><tr><th></th><th>Title</th><th>Source</th><th></th></tr></thead>
-        <tbody>
-          <% pageData.attached.forEach(function(a) { %>
-            <tr>
-              <td>
-                <% if (a.image_url) { %>
-                  <img src="<%= a.image_url %>" alt="" loading="lazy" width="48" referrerpolicy="no-referrer" style="border-radius:4px;display:block">
-                <% } %>
-              </td>
-              <td><a href="<%= a.url %>" target="_blank" rel="noopener noreferrer"><%= a.title %></a></td>
-              <td><%= a.source_name %></td>
-              <td>
-                <form method="POST" action="/admin/stories/<%= s.id %>/detach" style="display:inline">
-                  <input type="hidden" name="articleId" value="<%= a.id %>">
-                  <button type="submit" class="outline secondary" style="padding:.15rem .5rem">Detach</button>
-                </form>
-              </td>
-            </tr>
-          <% }); %>
-        </tbody>
-      </table>
+      <p class="hint">Reporting from your attached sources. Synthesize these into the Summary above.</p>
+      <ul class="source-material">
+        <% pageData.attached.forEach(function(a) { %>
+          <li class="source-material-item">
+            <% if (a.image_url) { %>
+              <img src="<%= a.image_url %>" alt="" loading="lazy" width="88" referrerpolicy="no-referrer" class="source-material-thumb">
+            <% } %>
+            <div class="source-material-body">
+              <div class="source-material-head">
+                <span class="source-material-source"><%= a.source_name %></span>
+                <% if (a.published_at) { %><span class="source-material-date"><%= new Date(a.published_at).toLocaleDateString() %></span><% } %>
+              </div>
+              <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="source-material-title"><%= a.title %></a>
+              <% if (a.description) { %>
+                <p class="source-material-desc"><%= a.description %></p>
+              <% } %>
+            </div>
+            <form method="POST" action="/admin/stories/<%= s.id %>/detach" class="source-material-detach">
+              <input type="hidden" name="articleId" value="<%= a.id %>">
+              <button type="submit" class="outline secondary">Detach</button>
+            </form>
+          </li>
+        <% }); %>
+      </ul>
     <% } %>
 
     <!-- ── Attach more ── -->
@@ -147,7 +154,7 @@
               <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="article-picker-view" title="Open article in new tab">View ↗</a>
               <form method="POST" action="/admin/stories/<%= s.id %>/attach" style="display:inline">
                 <input type="hidden" name="articleId" value="<%= a.id %>">
-                <button type="submit" class="outline" style="padding:.15rem .5rem">Attach</button>
+                <button type="submit" class="outline">Attach</button>
               </form>
             </div>
           <% } %>
@@ -157,7 +164,7 @@
 
     <!-- ── Lifecycle ── -->
     <h2>Actions</h2>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <div class="admin-actions">
       <% if (s.status !== 'published') { %>
         <form method="POST" action="/admin/stories/<%= s.id %>/publish"><button type="submit">Publish</button></form>
       <% } else { %>
@@ -172,7 +179,7 @@
         <button type="submit" class="outline"><%= s.is_featured ? 'Unfeature' : 'Feature' %></button>
       </form>
       <form method="POST" action="/admin/stories/<%= s.id %>/delete" onsubmit="return confirm('Delete this story permanently?')">
-        <button type="submit" class="outline" style="color:var(--pico-del-color,#b00);border-color:var(--pico-del-color,#b00)">Delete</button>
+        <button type="submit" class="outline admin-danger">Delete</button>
       </form>
     </div>
   <% } %>
