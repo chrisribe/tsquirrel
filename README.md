@@ -15,12 +15,23 @@ Express + EJS + Pico.css + HTMX + Postgres. No build step.
 
 ## Local dev
 
+### Host runtime (no Docker)
+
 ```bash
 cp .env.example .env  # fill in values
 cd server && npm install && npm run dev
 ```
 
 Requires a local Postgres instance or run `docker compose up db`.
+
+### Docker runtime with hot reload
+
+```bash
+cp .env.example .env  # fill in values
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+This dev override runs `npm run dev` (nodemon) and bind-mounts `./server` into the container, so edits to EJS/CSS/JS reload without rebuilding the image.
 
 ## Deploy
 

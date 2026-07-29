@@ -1,20 +1,22 @@
 <section class="admin-dashboard">
-  <h1>🐿️ Admin Dashboard</h1>
-  <p>Logged in as <strong><%= user.username %></strong> (<%= user.role %>)
-    — <form method="POST" action="/auth/logout" style="display:inline"><button type="submit" class="secondary outline">Log out</button></form>
-  </p>
+  <div class="admin-toolbar">
+    <h1>Admin Dashboard</h1>
+    <form method="POST" action="/auth/logout"><button type="submit" class="secondary outline">Log out</button></form>
+  </div>
+  <p class="admin-meta">Logged in as <strong><%= user.username %></strong> (<%= user.role %>)</p>
 
-  <p>
-    <a href="/admin/stories" role="button">📝 Manage Stories</a>
-    <a href="/admin/stories/new" role="button" class="outline">+ New Story</a>
-    <a href="/admin/signals" role="button" class="outline">📡 Radar Signals</a>
-    <a href="/admin/tokens" role="button" class="outline">🔑 API Tokens</a>
-  </p>
+  <div class="admin-tabs">
+    <a href="/admin/stories" class="admin-tab">Manage Stories</a>
+    <a href="/admin/stories/new" class="admin-tab">+ New Story</a>
+    <a href="/admin/signals" class="admin-tab">Radar Signals</a>
+    <a href="/admin/tokens" class="admin-tab">API Tokens</a>
+  </div>
 
   <h2>Sources</h2>
+  <div class="table-scroll">
   <table>
     <thead>
-      <tr><th>Name</th><th>Slug</th><th>Type</th><th>Active</th><th>Articles</th><th>Last Fetched</th></tr>
+      <tr><th>Name</th><th>Slug</th><th>Type</th><th>Active</th><th>Articles</th><th>Last Fetched</th><th></th></tr>
     </thead>
     <tbody>
       <% pageData.sources.forEach(function(source) { %>
@@ -22,12 +24,20 @@
           <td><a href="/admin/sources/<%= source.slug %>"><%= source.name %></a></td>
           <td><%= source.slug %></td>
           <td><%= source.type %></td>
-          <td><%= source.active ? '✅' : '⬜' %></td>
-          <td><%= source.article_count %></td>
-          <td><%= source.last_fetched_at ? new Date(source.last_fetched_at).toLocaleString() : 'never' %></td>
+          <td>
+            <span class="status-pill is-<%= source.active ? 'active' : 'revoked' %>"><%= source.active ? 'Active' : 'Inactive' %></span>
+          </td>
+          <td class="nowrap mono"><%= source.article_count %></td>
+          <td class="nowrap"><%= source.last_fetched_at ? new Date(source.last_fetched_at).toLocaleString() : 'never' %></td>
+          <td class="nowrap">
+            <form method="POST" action="/admin/sources/<%= source.slug %>/toggle">
+              <button type="submit" class="outline <%= source.active ? 'secondary' : '' %>"><%= source.active ? 'Disable' : 'Enable' %></button>
+            </form>
+          </td>
         </tr>
       <% }); %>
     </tbody>
   </table>
-  <p class="hint">Source CRUD (add/edit/deactivate) is not yet implemented — see architecture.md refactor #13.</p>
+  </div>
+  <p class="hint">Disabling a source stops ingestion from fetching it; existing articles are kept. Adding/editing sources is not yet implemented — see architecture.md refactor #13.</p>
 </section>

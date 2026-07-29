@@ -280,7 +280,7 @@ class NewsDAO {
   async getArticlesByIds(ids) {
     if (!ids || ids.length === 0) return [];
     const { rows } = await this.pool.query(`
-      SELECT a.id, a.title, a.url, a.published_at, a.image_url,
+      SELECT a.id, a.title, a.url, a.published_at, a.image_url, a.description,
              src.name AS source_name, src.slug AS source_slug
       FROM articles a
       JOIN sources src ON src.id = a.source_id
@@ -310,6 +310,14 @@ class NewsDAO {
     const { rows } = await this.pool.query(
       'SELECT * FROM sources WHERE slug = $1',
       [slug]
+    );
+    return rows[0] || null;
+  }
+
+  async setSourceActive(id, active) {
+    const { rows } = await this.pool.query(
+      'UPDATE sources SET active = $2 WHERE id = $1 RETURNING *',
+      [id, active]
     );
     return rows[0] || null;
   }

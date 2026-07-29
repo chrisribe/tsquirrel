@@ -1,7 +1,7 @@
 <section class="admin-source-articles">
-  <p><a href="/admin">&larr; Back to Admin Dashboard</a></p>
+  <a href="/admin" class="admin-back">&larr; Back to Admin Dashboard</a>
   <h1>🐿️ <%= pageData.source.name %></h1>
-  <p>
+  <p class="admin-meta">
     <strong>Slug:</strong> <%= pageData.source.slug %> &middot;
     <strong>Type:</strong> <%= pageData.source.type %> &middot;
     <strong>Active:</strong> <%= pageData.source.active ? '✅' : '⬜' %> &middot;
@@ -12,19 +12,24 @@
   <% if (pageData.articles.length === 0) { %>
     <p class="hint">No articles have been ingested from this source yet.</p>
   <% } else { %>
+    <div class="table-scroll">
     <table>
       <thead>
-        <tr><th>Title</th><th>Published</th><th>Fetched</th></tr>
+        <tr><th>Title</th><th class="nowrap">Published</th><th class="nowrap">Fetched</th><th></th></tr>
       </thead>
       <tbody>
         <% pageData.articles.forEach(function(article) { %>
           <tr>
             <td><a href="<%= article.url %>" target="_blank" rel="noopener noreferrer"><%= article.title %></a></td>
-            <td><%= article.published_at ? new Date(article.published_at).toLocaleString() : '—' %></td>
-            <td><%= new Date(article.fetched_at).toLocaleString() %></td>
+            <td class="nowrap mono"><%= article.published_at ? new Date(article.published_at).toLocaleString() : '—' %></td>
+            <td class="nowrap mono"><%= new Date(article.fetched_at).toLocaleString() %></td>
+            <td class="nowrap">
+              <a href="/admin/stories/new?articleIds=<%= article.id %>" role="button" class="outline">Create story</a>
+            </td>
           </tr>
         <% }); %>
       </tbody>
     </table>
+    </div>
   <% } %>
 </section>
