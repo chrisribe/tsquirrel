@@ -4,7 +4,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
 
-const ASSET_VERSION = '1.1.0';
+const ASSET_VERSION = '1.1.1';
 
 async function startServer() {
   const app = express();
@@ -35,6 +35,8 @@ async function startServer() {
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
   app.set('pool', pool);
+  const StoryAdminService = require('./services/StoryAdminService');
+  app.set('storyAdminService', new StoryAdminService(pool));
 
   // Auth/session services
   const authService = require('./services/authService');
@@ -44,6 +46,7 @@ async function startServer() {
   const sessionService = new SessionService(pool);
   await sessionService.initialize(app);
   app.use(require('./middleware/sessionMiddleware'));
+  app.use(require('./middleware/responseHandler'));
 
   // Security headers
   app.use((req, res, next) => {
@@ -63,7 +66,9 @@ async function startServer() {
 
   // Inject globals into all views
   app.use(async (req, res, next) => {
-    res.locals.assetVersion = ASSET_VERSION;
+    res.locals.assetVersion = process.env.NODE_ENV === 'development'
+      ? Date.now().toString()
+      : ASSET_VERSION;
     res.locals.nutsToday = 0;
     if (!req.path.startsWith('/api') && !req.path.startsWith('/static')) {
       try {

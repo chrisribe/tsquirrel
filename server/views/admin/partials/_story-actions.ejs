@@ -1,0 +1,40 @@
+<%
+  const story = pageData.story;
+  const baseUrl = `/admin/stories/${story.id}`;
+  const editUrl = `${baseUrl}/edit`;
+%>
+<section id="story-actions">
+  <h2>Actions</h2>
+  <div class="admin-actions-row"
+       hx-target="#story-actions"
+       hx-swap="outerHTML show:none"
+       hx-disabled-elt="find button[type='submit']">
+    <% if (story.status !== 'published') { %>
+      <form method="POST" action="<%= baseUrl %>/publish" hx-post="<%= baseUrl %>/publish">
+        <input type="hidden" name="returnTo" value="<%= editUrl %>">
+        <button type="submit">Publish</button>
+      </form>
+    <% } else { %>
+      <form method="POST" action="<%= baseUrl %>/unpublish" hx-post="<%= baseUrl %>/unpublish">
+        <input type="hidden" name="returnTo" value="<%= editUrl %>">
+        <button type="submit" class="secondary">Unpublish</button>
+      </form>
+    <% } %>
+    <% if (story.status !== 'hidden') { %>
+      <form method="POST" action="<%= baseUrl %>/hide" hx-post="<%= baseUrl %>/hide">
+        <input type="hidden" name="returnTo" value="<%= editUrl %>">
+        <button type="submit" class="outline">Hide</button>
+      </form>
+    <% } %>
+    <form method="POST" action="<%= baseUrl %>/feature" hx-post="<%= baseUrl %>/feature">
+      <input type="hidden" name="featured" value="<%= story.is_featured ? 'false' : 'true' %>">
+      <input type="hidden" name="returnTo" value="<%= editUrl %>">
+      <button type="submit" class="outline"><%= story.is_featured ? 'Unfeature' : 'Feature' %></button>
+    </form>
+    <form method="POST" action="<%= baseUrl %>/delete"
+          hx-post="<%= baseUrl %>/delete"
+          hx-confirm="Delete this story permanently?">
+      <button type="submit" class="outline admin-danger">Delete</button>
+    </form>
+  </div>
+</section>

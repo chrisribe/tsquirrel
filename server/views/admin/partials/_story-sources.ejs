@@ -1,0 +1,41 @@
+<section id="story-sources">
+  <h2>Source Material (<%= pageData.attached.length %>)</h2>
+  <% if (pageData.attached.length === 0) { %>
+    <p class="hint">No sources attached yet — attach an article below to pull in reporting to synthesize.</p>
+  <% } else { %>
+    <p class="hint">Reporting from your attached sources. Synthesize these into the Summary above.</p>
+    <ul class="source-material">
+      <% pageData.attached.forEach(function(article) { %>
+        <li class="source-material-item">
+          <% if (article.image_url) { %>
+            <img src="<%= article.image_url %>" alt="" loading="lazy" width="88" referrerpolicy="no-referrer" class="source-material-thumb">
+          <% } %>
+          <div class="source-material-body">
+            <div class="source-material-head">
+              <span class="source-material-source"><%= article.source_name %></span>
+              <% if (article.published_at) { %><span class="source-material-date"><%= new Date(article.published_at).toLocaleDateString() %></span><% } %>
+            </div>
+            <a href="<%= article.url %>" target="_blank" rel="noopener noreferrer" class="source-material-title"><%= article.title %></a>
+            <% if (article.description) { %><p class="source-material-desc"><%= article.description %></p><% } %>
+          </div>
+          <form method="POST" action="/admin/stories/<%= pageData.story.id %>/detach"
+                class="source-material-detach"
+                hx-post="/admin/stories/<%= pageData.story.id %>/detach"
+                hx-target="#story-sources" hx-swap="outerHTML show:none"
+                hx-disabled-elt="find button[type='submit']">
+            <input type="hidden" name="articleId" value="<%= article.id %>">
+            <button type="submit" class="outline secondary">Detach</button>
+          </form>
+        </li>
+      <% }); %>
+    </ul>
+  <% } %>
+
+  <details hx-get="/admin/stories/<%= pageData.story.id %>/attach-picker"
+           hx-trigger="toggle once"
+           hx-target="find .article-picker"
+           hx-swap="innerHTML">
+    <summary>Attach another source article</summary>
+    <div class="article-picker"><p class="hint">Loading…</p></div>
+  </details>
+</section>

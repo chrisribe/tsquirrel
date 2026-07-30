@@ -1,0 +1,5 @@
+<output id="save-status"
+	class="admin-save-status<%= pageData.isError ? ' is-error' : '' %><%= pageData.message ? ' has-message' : '' %>"
+	role="<%= pageData.isError ? 'alert' : 'status' %>"
+	<%= pageData.oob ? 'hx-swap-oob="outerHTML"' : '' %>
+	onanimationend="this.textContent = ''; this.classList.remove('has-message')"><%= pageData.message || '' %></output>

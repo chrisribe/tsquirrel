@@ -1,0 +1,33 @@
+<%
+  const seenImages = new Set();
+  const imageCandidates = (pageData.attached || []).filter(function(article) {
+    if (!article.image_url || seenImages.has(article.image_url)) return false;
+    seenImages.add(article.image_url);
+    return true;
+  });
+  const currentImage = pageData.story?.image_url || pageData.prefill?.image_url || null;
+  const currentIsCandidate = currentImage && imageCandidates.some(article => article.image_url === currentImage);
+%>
+<fieldset id="story-image-picker"<%= pageData.oob ? ' hx-swap-oob="outerHTML"' : '' %>>
+  <legend>Story image <small>(hotlinked from a source article, or paste your own)</small></legend>
+  <div class="image-picker">
+    <label class="image-picker-option">
+      <input type="radio" name="image_url" value="" form="story-form" <%= !currentImage ? 'checked' : '' %>>
+      <span class="image-picker-none">No image</span>
+    </label>
+    <% imageCandidates.forEach(function(article) { %>
+      <label class="image-picker-option">
+        <input type="radio" name="image_url" value="<%= article.image_url %>" form="story-form"
+          <%= currentImage === article.image_url ? 'checked' : '' %>>
+        <span class="image-picker-thumb">
+          <img src="<%= article.image_url %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+        </span>
+        <small><%= article.source_name %></small>
+      </label>
+    <% }); %>
+  </div>
+  <label>Or paste a custom image URL <small>(overrides the selection above)</small>
+    <input type="url" name="image_url_manual" form="story-form" placeholder="https://…"
+      value="<%= (!currentIsCandidate && currentImage) ? currentImage : '' %>">
+  </label>
+</fieldset>

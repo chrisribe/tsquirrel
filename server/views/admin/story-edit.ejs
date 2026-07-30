@@ -1,186 +1,80 @@
 <%
   const isEdit = !!pageData.story;
-  const s = pageData.story || {};
-  const pf = pageData.prefill || {};
+  const story = pageData.story || {};
+  const prefill = pageData.prefill || {};
   const cats = ['Technology','World','Business','Science','Politics','Sports','Entertainment','Other'];
-  const attachedIds = pageData.attached.map(a => a.id);
+  const attachedIds = pageData.attached.map(article => article.id);
 %>
-<section class="admin-story-edit">
+<section class="admin-story-edit" id="story-edit-section">
   <a href="/admin/stories" class="admin-back">&larr; Back to Stories</a>
   <h1><%= isEdit ? 'Edit Story' : 'New Story' %></h1>
 
-  <% if (pageData.error) { %>
-    <p style="color:var(--pico-del-color,#b00)"><strong><%= pageData.error %></strong></p>
-  <% } %>
+  <% if (pageData.message) { %><p class="admin-alert" role="status"><%= pageData.message %></p><% } %>
+  <% if (pageData.error) { %><p class="admin-alert" role="alert"><%= pageData.error %></p><% } %>
 
   <% if (isEdit) { %>
-    <p class="admin-meta">
-      Status:
-      <span class="status-pill is-<%= s.status %>">
-        <% if (s.status === 'published') { %>Published
-        <% } else if (s.status === 'draft') { %>Draft
-        <% } else { %>Hidden<% } %>
-      </span>
-      · Heat: <%= s.heat_score %> · Sources: <%= s.source_count %>
-      <% if (s.is_featured) { %> · Featured<% } %>
-    </p>
+    <%- include('partials/_story-meta', { pageData: { story } }) %>
   <% } %>
 
-  <!-- ── Story fields ── -->
-  <form method="POST" action="<%= isEdit ? '/admin/stories/' + s.id : '/admin/stories' %>">
+  <form id="story-form" method="POST"
+        action="<%= isEdit ? '/admin/stories/' + story.id : '/admin/stories' %>"
+        hx-post="<%= isEdit ? '/admin/stories/' + story.id : '/admin/stories' %>"
+        hx-target="<%= isEdit ? '#save-status' : '#story-edit-section' %>"
+        hx-swap="outerHTML show:none"
+        hx-sync="this:replace"
+        hx-disabled-elt="find button[type='submit']">
     <label>Title
-      <input type="text" name="title" required value="<%= s.title || pf.title || '' %>" placeholder="Story headline">
+      <input type="text" name="title" required value="<%= story.title || prefill.title || '' %>" placeholder="Story headline">
     </label>
     <label>Summary
-      <textarea name="summary" rows="4" placeholder="2–3 sentence synthesis"><%= s.summary || pf.summary || '' %></textarea>
+      <textarea name="summary" rows="4" placeholder="2–3 sentence synthesis"><%= story.summary || prefill.summary || '' %></textarea>
     </label>
     <label>Squirrel Take <small>(short editorial one-liner, optional)</small>
-      <input type="text" name="squirrel_take" value="<%= s.squirrel_take || '' %>" placeholder="Punchy opinionated take">
+      <input type="text" name="squirrel_take" value="<%= story.squirrel_take || '' %>" placeholder="Punchy opinionated take">
     </label>
     <div class="grid">
       <label>Category
         <select name="category">
-          <% cats.forEach(function(c) { %>
-            <option value="<%= c %>" <%= (s.category || 'Other') === c ? 'selected' : '' %>><%= catLabel(c) %></option>
+          <% cats.forEach(function(category) { %>
+            <option value="<%= category %>" <%= (story.category || 'Other') === category ? 'selected' : '' %>><%= catLabel(category) %></option>
           <% }); %>
         </select>
       </label>
       <label>Tags <small>(comma-separated)</small>
-        <input type="text" name="tags" value="<%= (s.tags || []).join(', ') %>" placeholder="ai, policy, canada">
+        <input type="text" name="tags" value="<%= (story.tags || []).join(', ') %>" placeholder="ai, policy, canada">
       </label>
     </div>
 
-    <!-- ── Story image picker ── -->
-    <%
-      const seenImages = new Set();
-      const imageCandidates = (pageData.attached || []).filter(function(a) {
-        if (!a.image_url || seenImages.has(a.image_url)) return false;
-        seenImages.add(a.image_url);
-        return true;
-      });
-      const currentImage = s.image_url || pf.image_url || null;
-      const currentIsCandidate = currentImage && imageCandidates.some(function(a) { return a.image_url === currentImage; });
-    %>
-    <fieldset>
-      <legend>Story image <small>(hotlinked from a source article, or paste your own)</small></legend>
-      <div class="image-picker">
-        <label class="image-picker-option">
-          <input type="radio" name="image_url" value="" <%= !currentImage ? 'checked' : '' %>>
-          <span class="image-picker-none">No image</span>
-        </label>
-        <% imageCandidates.forEach(function(a) { %>
-          <label class="image-picker-option">
-            <input type="radio" name="image_url" value="<%= a.image_url %>"
-              <%= currentImage === a.image_url ? 'checked' : '' %>>
-            <span class="image-picker-thumb">
-              <img src="<%= a.image_url %>" alt="" loading="lazy" referrerpolicy="no-referrer">
-            </span>
-            <small><%= a.source_name %></small>
-          </label>
-        <% }); %>
-      </div>
-      <label>Or paste a custom image URL <small>(overrides the selection above)</small>
-        <input type="url" name="image_url_manual" placeholder="https://…"
-          value="<%= (!currentIsCandidate && currentImage) ? currentImage : '' %>">
-      </label>
-    </fieldset>
-
     <% if (!isEdit) { %>
-      <!-- New story: pick source articles inline (become citations on create) -->
       <fieldset>
         <legend>Attach source articles <small>(optional — drives heat score)</small></legend>
         <div class="article-picker">
-          <% pageData.recentArticles.forEach(function(a) { %>
+          <% pageData.recentArticles.forEach(function(article) { %>
             <label class="article-picker-row">
-              <input type="checkbox" name="articleIds" value="<%= a.id %>"
-                <%= attachedIds.indexOf(a.id) !== -1 ? 'checked' : '' %>>
+              <input type="checkbox" name="articleIds" value="<%= article.id %>"
+                <%= attachedIds.indexOf(article.id) !== -1 ? 'checked' : '' %>>
               <span class="article-picker-text">
-                <small class="article-picker-source">[<%= a.source_name %>]</small>
-                <span class="article-picker-title"><%= a.title %></span>
+                <small class="article-picker-source">[<%= article.source_name %>]</small>
+                <span class="article-picker-title"><%= article.title %></span>
               </span>
-              <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="article-picker-view" title="Open article in new tab" onclick="event.stopPropagation()">View ↗</a>
+              <a href="<%= article.url %>" target="_blank" rel="noopener noreferrer" class="article-picker-view"
+                 title="Open article in new tab" onclick="event.stopPropagation()">View ↗</a>
             </label>
           <% }); %>
         </div>
       </fieldset>
     <% } %>
 
-    <button type="submit" class="admin-main-submit"><%= isEdit ? 'Save Changes' : 'Create Draft' %></button>
+    <div class="admin-save-row">
+      <button type="submit" class="admin-main-submit"><%= isEdit ? 'Save Changes' : 'Create Draft' %></button>
+      <output id="save-status" class="admin-save-status" role="status"></output>
+    </div>
   </form>
 
+  <%- include('partials/_image-picker', { pageData: { story: pageData.story, prefill, attached: pageData.attached } }) %>
+
   <% if (isEdit) { %>
-    <!-- ── Attached sources ── -->
-    <h2>Source Material (<%= pageData.attached.length %>)</h2>
-    <% if (pageData.attached.length === 0) { %>
-      <p class="hint">No sources attached yet — attach an article below to pull in reporting to synthesize.</p>
-    <% } else { %>
-      <p class="hint">Reporting from your attached sources. Synthesize these into the Summary above.</p>
-      <ul class="source-material">
-        <% pageData.attached.forEach(function(a) { %>
-          <li class="source-material-item">
-            <% if (a.image_url) { %>
-              <img src="<%= a.image_url %>" alt="" loading="lazy" width="88" referrerpolicy="no-referrer" class="source-material-thumb">
-            <% } %>
-            <div class="source-material-body">
-              <div class="source-material-head">
-                <span class="source-material-source"><%= a.source_name %></span>
-                <% if (a.published_at) { %><span class="source-material-date"><%= new Date(a.published_at).toLocaleDateString() %></span><% } %>
-              </div>
-              <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="source-material-title"><%= a.title %></a>
-              <% if (a.description) { %>
-                <p class="source-material-desc"><%= a.description %></p>
-              <% } %>
-            </div>
-            <form method="POST" action="/admin/stories/<%= s.id %>/detach" class="source-material-detach">
-              <input type="hidden" name="articleId" value="<%= a.id %>">
-              <button type="submit" class="outline secondary">Detach</button>
-            </form>
-          </li>
-        <% }); %>
-      </ul>
-    <% } %>
-
-    <!-- ── Attach more ── -->
-    <details>
-      <summary>Attach another source article</summary>
-      <div class="article-picker">
-        <% pageData.recentArticles.forEach(function(a) { %>
-          <% if (attachedIds.indexOf(a.id) === -1) { %>
-            <div class="article-picker-row">
-              <span class="article-picker-text">
-                <small class="article-picker-source">[<%= a.source_name %>]</small>
-                <span class="article-picker-title"><%= a.title %></span>
-              </span>
-              <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="article-picker-view" title="Open article in new tab">View ↗</a>
-              <form method="POST" action="/admin/stories/<%= s.id %>/attach" style="display:inline">
-                <input type="hidden" name="articleId" value="<%= a.id %>">
-                <button type="submit" class="outline">Attach</button>
-              </form>
-            </div>
-          <% } %>
-        <% }); %>
-      </div>
-    </details>
-
-    <!-- ── Lifecycle ── -->
-    <h2>Actions</h2>
-    <div class="admin-actions">
-      <% if (s.status !== 'published') { %>
-        <form method="POST" action="/admin/stories/<%= s.id %>/publish"><button type="submit">Publish</button></form>
-      <% } else { %>
-        <form method="POST" action="/admin/stories/<%= s.id %>/unpublish"><button type="submit" class="secondary">Unpublish</button></form>
-      <% } %>
-      <% if (s.status !== 'hidden') { %>
-        <form method="POST" action="/admin/stories/<%= s.id %>/hide"><button type="submit" class="outline">Hide</button></form>
-      <% } %>
-      <form method="POST" action="/admin/stories/<%= s.id %>/feature">
-        <input type="hidden" name="featured" value="<%= s.is_featured ? 'false' : 'true' %>">
-        <input type="hidden" name="returnTo" value="/admin/stories/<%= s.id %>/edit">
-        <button type="submit" class="outline"><%= s.is_featured ? 'Unfeature' : 'Feature' %></button>
-      </form>
-      <form method="POST" action="/admin/stories/<%= s.id %>/delete" onsubmit="return confirm('Delete this story permanently?')">
-        <button type="submit" class="outline admin-danger">Delete</button>
-      </form>
-    </div>
+    <%- include('partials/_story-sources', { pageData: { story, attached: pageData.attached } }) %>
+    <%- include('partials/_story-actions', { pageData: { story } }) %>
   <% } %>
 </section>

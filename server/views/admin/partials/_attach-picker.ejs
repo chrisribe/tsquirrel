@@ -1,0 +1,24 @@
+<%
+  // pageData: { storyId, recentArticles, attachedIds }
+  const attachedIds = pageData.attachedIds || [];
+%>
+<% pageData.recentArticles.forEach(function(a) { %>
+  <% if (attachedIds.indexOf(a.id) === -1) { %>
+    <div class="article-picker-row">
+      <span class="article-picker-text">
+        <small class="article-picker-source">[<%= a.source_name %>]</small>
+        <span class="article-picker-title"><%= a.title %></span>
+      </span>
+      <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="article-picker-view" title="Open article in new tab">View ↗</a>
+      <form method="POST" action="/admin/stories/<%= pageData.storyId %>/attach"
+        style="display:inline"
+        hx-post="/admin/stories/<%= pageData.storyId %>/attach"
+        hx-target="#story-sources"
+        hx-swap="outerHTML show:none"
+        hx-disabled-elt="find button[type='submit']">
+        <input type="hidden" name="articleId" value="<%= a.id %>">
+        <button type="submit" class="outline">Attach</button>
+      </form>
+    </div>
+  <% } %>
+<% }); %>

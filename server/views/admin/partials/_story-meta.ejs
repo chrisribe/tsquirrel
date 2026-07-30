@@ -1,0 +1,10 @@
+<p id="story-meta" class="admin-meta"<%= pageData.oob ? ' hx-swap-oob="outerHTML"' : '' %>>
+  Status:
+  <span class="status-pill is-<%= pageData.story.status %>">
+    <% if (pageData.story.status === 'published') { %>Published
+    <% } else if (pageData.story.status === 'draft') { %>Draft
+    <% } else { %>Hidden<% } %>
+  </span>
+  · Heat: <%= pageData.story.heat_score %> · Sources: <%= pageData.story.source_count %>
+  <% if (pageData.story.is_featured) { %> · Featured<% } %>
+</p>

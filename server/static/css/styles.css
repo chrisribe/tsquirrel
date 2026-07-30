@@ -33,6 +33,14 @@
 
 body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bottom: 4.5rem; }
 
+/* Public pages keep a magazine-width column (matches the original mockup at
+   720px) instead of Pico's default, which grows to 1450px on wide desktops —
+   at that width single-column cards and hero text stretched into overly long
+   lines. Capped at 980px, with the feed becoming a 2-column grid below,
+   uses the extra space without losing the tighter proportions. Admin pages
+   opt out via the more specific `.admin-body main.container` rule below. */
+main.container, header.container { max-width: 980px; }
+
 /* Nav */
 .logo { display: flex; align-items: center; gap: .45rem; color: var(--brand) !important; text-decoration: none; }
 .logo-icon { font-size: 1.5rem; line-height: 1; }
@@ -87,7 +95,17 @@ body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bot
 .pill-count { font-size: .75rem; opacity: .7; }
 
 /* Story feed */
-.story-feed { display: flex; flex-direction: column; gap: .75rem; }
+.story-feed {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .85rem;
+  align-items: start;
+}
+@media (min-width: 760px) {
+  .story-feed { grid-template-columns: repeat(2, 1fr); }
+}
+/* "Loading more…" trigger spans both columns instead of squeezing into one */
+#load-more { grid-column: 1 / -1; }
 
 .story-card {
   background: var(--card-bg);
@@ -417,6 +435,23 @@ body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bot
   text-align: center;
 }
 
+/* Standalone action groups (e.g. story-edit "Actions" section) — a single
+   row of buttons, not a column-aligned table grid like .admin-actions. */
+.admin-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+}
+.admin-actions-row form { display: flex; margin: 0; }
+.admin-actions-row button {
+  width: auto;
+  margin: 0;
+  padding: .3rem .8rem;
+  font-size: .85rem;
+  white-space: nowrap;
+}
+
 .signal-sources {
   display: flex;
   flex-wrap: wrap;
@@ -549,6 +584,22 @@ body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bot
   min-width: 8.75rem;
   display: inline-flex;
   justify-content: center;
+}
+.admin-save-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.admin-save-status {
+  color: var(--brand);
+  font-size: .8rem;
+  font-weight: 600;
+}
+.admin-save-status.is-error { color: #b91c1c; }
+.admin-save-status.has-message { animation: admin-status-expire 3s ease forwards; }
+@keyframes admin-status-expire {
+  0%, 85% { opacity: 1; }
+  100% { opacity: 0; }
 }
 .admin-body .admin-danger,
 .admin-body button.admin-danger {

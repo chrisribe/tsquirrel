@@ -7,6 +7,7 @@ const NewsDAO = require('../dao/NewsDAO');
 const ApiTokenDAO = require('../dao/ApiTokenDAO');
 const requireAuth = require('../middleware/authMiddleware');
 const requireAdmin = require('../middleware/adminMiddleware');
+const storyAdminController = require('../controllers/StoryAdminController');
 const { slugify } = require('../lib/slug');
 
 router.use(requireAuth, requireAdmin);
@@ -99,170 +100,19 @@ router.post('/sources/:slug/toggle', async (req, res) => {
 });
 
 // ── Story authoring / moderation ───────────────────────────────────────
-
-// List all stories (drafts first) + moderation actions
-router.get('/stories', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  const status = req.query.status || null;
-  const stories = await dao.getStoriesForAdmin({ status });
-  res.render('layout-main', {
-    template: 'admin/stories',
-    pageTitle: 'Stories — Admin — TSquirrel',
-    noIndex: true,
-    pageData: { stories, activeStatus: status },
-  });
-});
-
-// Compose form — optionally seeded with selected article ids (?articleIds=1,2,3)
-router.get('/stories/new', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  const seedIds = (req.query.articleIds || '')
-    .split(',').map(s => parseInt(s, 10)).filter(Boolean);
-  const [recentArticles, seededArticles] = await Promise.all([
-    dao.getRecentArticles({ limit: 100 }),
-    dao.getArticlesByIds(seedIds),
-  ]);
-  // Ensure seeded articles always appear (and stay checked) in the picker,
-  // even if they aren't in the recent-100 window.
-  const recentIds = new Set(recentArticles.map(a => a.id));
-  const mergedRecent = [
-    ...seededArticles.filter(a => !recentIds.has(a.id)),
-    ...recentArticles,
-  ];
-  // Pre-fill title/summary/image from the first seeded article so authoring
-  // starts from real reporting instead of a blank form.
-  const seed = seededArticles[0];
-  const prefill = seed ? {
-    title: seed.title || '',
-    summary: seed.description || '',
-    image_url: seed.image_url || null,
-  } : null;
-  res.render('layout-main', {
-    template: 'admin/story-edit',
-    pageTitle: 'New Story — Admin — TSquirrel',
-    noIndex: true,
-    pageData: { story: null, attached: seededArticles, recentArticles: mergedRecent, prefill, error: null },
-  });
-});
-
-// Create draft
-router.post('/stories', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  const { title, summary, squirrel_take, category, tags } = req.body;
-  if (!title || !title.trim()) {
-    const recentArticles = await dao.getRecentArticles({ limit: 100 });
-    return res.status(400).render('layout-main', {
-      template: 'admin/story-edit',
-      pageTitle: 'New Story — Admin — TSquirrel',
-      noIndex: true,
-      pageData: { story: null, attached: [], recentArticles, error: 'Title is required.' },
-    });
-  }
-  const tagArr = (tags || '').split(',').map(t => t.trim()).filter(Boolean);
-  const articleIds = [].concat(req.body.articleIds || [])
-    .map(s => parseInt(s, 10)).filter(Boolean);
-  const imageUrl = (req.body.image_url_manual || '').trim() || (req.body.image_url || '').trim() || null;
-
-  const draft = await dao.createDraft({
-    title: title.trim(),
-    slug: slugify(title),
-    summary: (summary || '').trim() || null,
-    squirrelTake: (squirrel_take || '').trim() || null,
-    category: category || 'Other',
-    tags: tagArr,
-    authorType: 'human',
-    authorId: String(req.session.user.id),
-    imageUrl,
-  });
-  for (const articleId of articleIds) {
-    await dao.attachSource(draft.id, articleId);
-  }
-  res.redirect(`/admin/stories/${draft.id}/edit`);
-});
-
-// Edit form
-router.get('/stories/:id/edit', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  const story = await dao.getStoryById(req.params.id);
-  if (!story) {
-    return res.status(404).render('layout-main', {
-      template: 'errors/404', pageTitle: '404 — TSquirrel', noIndex: true, pageData: {},
-    });
-  }
-  const [attached, recentArticles] = await Promise.all([
-    dao.getStoryArticles(story.id),
-    dao.getRecentArticles({ limit: 100 }),
-  ]);
-  res.render('layout-main', {
-    template: 'admin/story-edit',
-    pageTitle: `Edit: ${story.title} — Admin — TSquirrel`,
-    noIndex: true,
-    pageData: { story, attached, recentArticles, error: null },
-  });
-});
-
-// Update draft
-router.post('/stories/:id', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  const { title, summary, squirrel_take, category, tags } = req.body;
-  const tagArr = (tags || '').split(',').map(t => t.trim()).filter(Boolean);
-  const imageUrl = (req.body.image_url_manual || '').trim() || (req.body.image_url || '').trim() || null;
-  await dao.updateDraft(req.params.id, {
-    title: (title || '').trim(),
-    summary: (summary || '').trim() || null,
-    squirrelTake: (squirrel_take || '').trim() || null,
-    category: category || 'Other',
-    tags: tagArr,
-    imageUrl,
-  });
-  res.redirect(`/admin/stories/${req.params.id}/edit`);
-});
-
-// Attach / detach a source article
-router.post('/stories/:id/attach', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  const articleId = parseInt(req.body.articleId, 10);
-  if (articleId) await dao.attachSource(req.params.id, articleId);
-  res.redirect(`/admin/stories/${req.params.id}/edit`);
-});
-
-router.post('/stories/:id/detach', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  const articleId = parseInt(req.body.articleId, 10);
-  if (articleId) await dao.detachSource(req.params.id, articleId);
-  res.redirect(`/admin/stories/${req.params.id}/edit`);
-});
-
-// Lifecycle actions
-router.post('/stories/:id/publish', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  await dao.setStoryStatus(req.params.id, 'published');
-  res.redirect(req.body.returnTo || '/admin/stories');
-});
-
-router.post('/stories/:id/unpublish', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  await dao.setStoryStatus(req.params.id, 'draft');
-  res.redirect(req.body.returnTo || '/admin/stories');
-});
-
-router.post('/stories/:id/hide', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  await dao.setStoryStatus(req.params.id, 'hidden');
-  res.redirect(req.body.returnTo || '/admin/stories');
-});
-
-router.post('/stories/:id/feature', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  await dao.setFeatured(req.params.id, req.body.featured === 'true');
-  res.redirect(req.body.returnTo || '/admin/stories');
-});
-
-router.post('/stories/:id/delete', async (req, res) => {
-  const dao = new NewsDAO(req.app.get('pool'));
-  await dao.deleteStory(req.params.id);
-  res.redirect('/admin/stories');
-});
+router.get('/stories', storyAdminController.list);
+router.get('/stories/new', storyAdminController.newForm);
+router.post('/stories', storyAdminController.create);
+router.get('/stories/:id/edit', storyAdminController.edit);
+router.get('/stories/:id/attach-picker', storyAdminController.attachPicker);
+router.post('/stories/:id', storyAdminController.update);
+router.post('/stories/:id/attach', storyAdminController.attach);
+router.post('/stories/:id/detach', storyAdminController.detach);
+router.post('/stories/:id/publish', storyAdminController.publish);
+router.post('/stories/:id/unpublish', storyAdminController.unpublish);
+router.post('/stories/:id/hide', storyAdminController.hide);
+router.post('/stories/:id/feature', storyAdminController.feature);
+router.post('/stories/:id/delete', storyAdminController.delete);
 
 // ── Radar signals ────────────────────────────────────────────────────────
 
