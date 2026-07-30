@@ -39,17 +39,31 @@ body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bot
    lines. Capped at 980px, with the feed becoming a 2-column grid below,
    uses the extra space without losing the tighter proportions. Admin pages
    opt out via the more specific `.admin-body main.container` rule below. */
-main.container, header.container { max-width: 980px; }
+main.container { max-width: 980px; }
 
 /* Nav */
-.logo { display: flex; align-items: center; gap: .45rem; color: var(--brand) !important; text-decoration: none; }
-.logo-icon { font-size: 1.5rem; line-height: 1; }
-.logo-wrap { display: flex; flex-direction: column; line-height: 1.1; }
-.logo-text { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; }
-.logo-tagline { font-size: .62rem; font-weight: 400; color: var(--muted); letter-spacing: .03em; }
-.nav-right { gap: .5rem; }
-.nav-link-subtle { color: var(--muted); font-size: .9rem; text-decoration: none; }
-.nav-link-subtle:hover { color: var(--brand); }
+.site-header {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 0;
+}
+.site-nav {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: .6rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.admin-body .site-nav { max-width: min(1440px, 96vw); }
+.logo { display: inline-flex; align-items: center; gap: .4rem; color: var(--brand) !important; text-decoration: none; }
+.logo-icon { font-size: 1.6rem; line-height: 1; }
+.logo-wrap { display: flex; flex-direction: column; line-height: 1; }
+.logo-text { font-size: 1.2rem; font-weight: 800; letter-spacing: -.02em; }
+.logo-tagline { display: block; font-size: .65rem; font-weight: 400; color: var(--muted); opacity: .75; letter-spacing: .04em; }
 .nav-count { font-size: .75rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
 
 /* Squirrel intro */
@@ -99,7 +113,7 @@ main.container, header.container { max-width: 980px; }
   display: grid;
   grid-template-columns: 1fr;
   gap: .85rem;
-  align-items: start;
+  align-items: stretch;
 }
 @media (min-width: 760px) {
   .story-feed { grid-template-columns: repeat(2, 1fr); }
@@ -111,7 +125,9 @@ main.container, header.container { max-width: 980px; }
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 1rem;
+  padding: 1rem 1rem 2.6rem;
+  position: relative;
+  height: 100%;
   transition: box-shadow .15s;
 }
 .story-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
@@ -157,13 +173,21 @@ main.container, header.container { max-width: 980px; }
   line-height: 1.5;
   margin: 0 0 .5rem;
 }
-.story-tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+.story-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .45rem; padding-right: 4.5rem; }
 .story-tag {
   font-size: .75rem;
   color: var(--muted);
   background: var(--tag-bg);
   padding: .1rem .4rem;
   border-radius: 4px;
+}
+.story-time {
+  position: absolute;
+  right: 1rem;
+  bottom: .8rem;
+  color: var(--muted);
+  font-size: .75rem;
+  white-space: nowrap;
 }
 
 /* Story detail */
@@ -237,7 +261,6 @@ main.container, header.container { max-width: 980px; }
 /* Mobile tweaks */
 @media (max-width: 600px) {
   .story-title { font-size: .95rem; }
-  nav ul.nav-right { display: none; }
   .nav-count { display: none; }
   .source-item .source-name { display: none; }
   .source-item .source-time { display: none; }

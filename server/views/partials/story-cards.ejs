@@ -21,7 +21,6 @@
           <% if (story.source_count > 1) { %>
             <span class="badge badge-sources"><%= story.source_count %> sources</span>
           <% } %>
-          <span class="story-time"><%= timeAgo(story.updated_at || story.created_at) %></span>
         </div>
         <h2 class="story-title"><%= story.title %></h2>
         <% if (story.squirrel_take) { %>
@@ -36,6 +35,7 @@
             <% }); %>
           </div>
         <% } %>
+        <span class="story-time"><%= timeAgo(story.updated_at || story.created_at) %></span>
       </div>
       <div class="thumb <%= meta.cls %>">
         <% if (story.image_url) { %>
