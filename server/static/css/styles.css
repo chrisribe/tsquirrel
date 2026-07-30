@@ -31,7 +31,8 @@
   --pico-primary-inverse: #fff;
 }
 
-body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bottom: 4.5rem; }
+html { background: var(--page-bg); }
+body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bottom: 4.5rem; min-height: 100vh; }
 
 /* Public pages keep a magazine-width column (matches the original mockup at
    720px) instead of Pico's default, which grows to 1450px on wide desktops —
@@ -39,7 +40,7 @@ body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bot
    lines. Capped at 980px, with the feed becoming a 2-column grid below,
    uses the extra space without losing the tighter proportions. Admin pages
    opt out via the more specific `.admin-body main.container` rule below. */
-main.container { max-width: 980px; }
+main.container, footer.container { max-width: 980px; }
 
 /* Nav */
 .site-header {
@@ -181,10 +182,15 @@ main.container { max-width: 980px; }
   padding: .1rem .4rem;
   border-radius: 4px;
 }
-.story-time {
+.story-card .story-time {
   position: absolute;
   right: 1rem;
   bottom: .8rem;
+  color: var(--muted);
+  font-size: .75rem;
+  white-space: nowrap;
+}
+.story-time {
   color: var(--muted);
   font-size: .75rem;
   white-space: nowrap;
