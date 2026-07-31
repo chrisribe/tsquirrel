@@ -1,11 +1,15 @@
 <%
-  const { stories, categories, activeCategory } = pageData;
-  const featured = !activeCategory && stories.length ? stories[0] : null;
+  const { stories, categories, activeCategory, activeTag } = pageData;
+  const featured = !activeCategory && !activeTag && stories.length ? stories[0] : null;
   const feedStories = featured ? stories.slice(1) : stories;
 %>
 
 <!-- Squirrel intro -->
 <p class="chatter">The internet is a big forest. <strong>We sniff out the good stuff</strong> so you don't have to dig. Updated every 30 minutes. 🌰</p>
+
+<% if (activeTag) { %>
+  <p class="chatter">Showing stories tagged <strong>#<%= activeTag %></strong> — <a href="/">clear filter</a></p>
+<% } %>
 
 <!-- Category filter bar -->
 <section class="category-bar">
@@ -46,7 +50,7 @@
   <!-- HTMX load-more trigger -->
   <% if (stories.length === 30) { %>
   <div id="load-more"
-       hx-get="/api/stories?offset=30<%= activeCategory ? '&category=' + activeCategory : '' %>"
+       hx-get="/api/stories?offset=30<%= activeCategory ? '&category=' + activeCategory : '' %><%= activeTag ? '&tag=' + encodeURIComponent(activeTag) : '' %>"
        hx-trigger="revealed"
        hx-swap="outerHTML"
        hx-target="#load-more">

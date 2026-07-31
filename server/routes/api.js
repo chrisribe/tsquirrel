@@ -39,6 +39,7 @@ router.post('/stories', async (req, res) => {
 
   const summary = (req.body.summary || '').trim() || null;
   const squirrelTake = (req.body.squirrel_take || '').trim() || null;
+  const whyItMatters = (req.body.why_it_matters || '').trim() || null;
   const category = (req.body.category || 'Other').trim() || 'Other';
   const tags = Array.isArray(req.body.tags)
     ? req.body.tags.map(t => String(t).trim()).filter(Boolean)
@@ -53,6 +54,7 @@ router.post('/stories', async (req, res) => {
     slug: slugify(title),
     summary,
     squirrelTake,
+    whyItMatters,
     category,
     tags,
     authorType: 'api-token',
@@ -97,6 +99,7 @@ router.patch('/stories/:id', async (req, res) => {
 
   const summary = has('summary') ? ((b.summary || '').trim() || null) : current.summary;
   const squirrelTake = has('squirrel_take') ? ((b.squirrel_take || '').trim() || null) : current.squirrel_take;
+  const whyItMatters = has('why_it_matters') ? ((b.why_it_matters || '').trim() || null) : current.why_it_matters;
   const category = has('category') ? ((b.category || 'Other').trim() || 'Other') : current.category;
   const tags = has('tags')
     ? (Array.isArray(b.tags)
@@ -105,7 +108,7 @@ router.patch('/stories/:id', async (req, res) => {
     : current.tags;
   const imageUrl = has('image_url') ? ((b.image_url || '').trim() || null) : undefined;
 
-  const story = await dao.updateDraft(id, { title, summary, squirrelTake, category, tags, imageUrl });
+  const story = await dao.updateDraft(id, { title, summary, squirrelTake, whyItMatters, category, tags, imageUrl });
   res.json({ ok: true, story });
 });
 

@@ -115,6 +115,7 @@ class StoryAdminService {
       title: String(input.title || '').trim(),
       summary: String(input.summary || '').trim() || null,
       squirrelTake: String(input.squirrel_take || '').trim() || null,
+      whyItMatters: String(input.why_it_matters || '').trim() || null,
       category: String(input.category || 'Other').trim() || 'Other',
       tags: String(input.tags || '').split(',').map(tag => tag.trim()).filter(Boolean),
       imageUrl: String(input.image_url_manual || '').trim()

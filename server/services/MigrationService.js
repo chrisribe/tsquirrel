@@ -245,6 +245,14 @@ const migrations = [
       console.log('Migration 13: api_tokens.last_used_at + hash/active indexes');
     }
   },
+  {
+    version: 14,
+    description: 'Add stories.why_it_matters — the plus-value one-liner distinct from the summary',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS why_it_matters TEXT`);
+      console.log('Migration 14: stories.why_it_matters added');
+    }
+  },
   // Future migrations go here
 ];
 

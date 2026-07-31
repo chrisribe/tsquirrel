@@ -7,12 +7,17 @@ class NewsDAO {
 
   // ── Stories ──────────────────────────────────────────────────
 
-  async getTopStories({ limit = 20, offset = 0, category = null } = {}) {
+  async getTopStories({ limit = 20, offset = 0, category = null, tag = null } = {}) {
     const params = [limit, offset];
     let categoryClause = '';
     if (category) {
       params.push(category);
       categoryClause = `AND s.category = $${params.length}`;
+    }
+    let tagClause = '';
+    if (tag) {
+      params.push(tag);
+      tagClause = `AND $${params.length} = ANY(s.tags)`;
     }
     const { rows } = await this.pool.query(`
       SELECT s.*,
@@ -21,6 +26,7 @@ class NewsDAO {
       LEFT JOIN story_articles sa ON sa.story_id = s.id
       WHERE s.status = 'published'
       ${categoryClause}
+      ${tagClause}
       GROUP BY s.id
       ORDER BY s.is_featured DESC, s.published_at DESC NULLS LAST, s.heat_score DESC
       LIMIT $1 OFFSET $2
@@ -66,7 +72,7 @@ class NewsDAO {
 
   async getStoryArticles(storyId) {
     const { rows } = await this.pool.query(`
-      SELECT a.*, src.name AS source_name, src.slug AS source_slug
+      SELECT a.*, src.name AS source_name, src.slug AS source_slug, src.type AS source_type
       FROM story_articles sa
       JOIN articles a ON a.id = sa.article_id
       JOIN sources src ON src.id = a.source_id
@@ -86,6 +92,39 @@ class NewsDAO {
       ORDER BY count DESC
     `);
     return rows;
+  }
+
+  // "Keep digging" — related stories surfaced at the end of a story read.
+  // Same category or shared tag first (same beat), topped up with the
+  // highest-convergence recent story overall ("also chattering right now").
+  async getRelatedStories(storyId, { category = null, tags = [], limit = 3 } = {}) {
+    const { rows: beatRows } = await this.pool.query(`
+      SELECT s.*, COUNT(sa.article_id) AS source_count
+      FROM stories s
+      LEFT JOIN story_articles sa ON sa.story_id = s.id
+      WHERE s.status = 'published'
+        AND s.id != $1
+        AND (s.category = $2 OR s.tags && $3)
+      GROUP BY s.id
+      ORDER BY s.published_at DESC NULLS LAST, s.heat_score DESC
+      LIMIT $4
+    `, [storyId, category, tags, limit]);
+
+    if (beatRows.length >= limit) return beatRows;
+
+    const excludeIds = [storyId, ...beatRows.map(r => r.id)];
+    const { rows: chatterRows } = await this.pool.query(`
+      SELECT s.*, COUNT(sa.article_id) AS source_count
+      FROM stories s
+      LEFT JOIN story_articles sa ON sa.story_id = s.id
+      WHERE s.status = 'published'
+        AND NOT (s.id = ANY($1::int[]))
+      GROUP BY s.id
+      ORDER BY s.heat_score DESC, s.published_at DESC NULLS LAST
+      LIMIT $2
+    `, [excludeIds, limit - beatRows.length]);
+
+    return [...beatRows, ...chatterRows];
   }
 
   async upsertStory({ title, slug, summary, category, tags, sentiment, heatScore, imageUrl, squirrelTake = null }) {
@@ -161,28 +200,29 @@ class NewsDAO {
 
   // ── Story authoring / lifecycle (manual publishing flow) ──────
 
-  async createDraft({ title, slug, summary, squirrelTake = null, category = 'Other', tags = [], authorType = 'human', authorId = null, imageUrl = null }) {
+  async createDraft({ title, slug, summary, squirrelTake = null, whyItMatters = null, category = 'Other', tags = [], authorType = 'human', authorId = null, imageUrl = null }) {
     const { rows } = await this.pool.query(`
-      INSERT INTO stories (title, slug, summary, squirrel_take, category, tags, status, author_type, author_id, image_url, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7, $8, $9, NOW())
+      INSERT INTO stories (title, slug, summary, squirrel_take, why_it_matters, category, tags, status, author_type, author_id, image_url, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8, $9, $10, NOW())
       RETURNING *
-    `, [title, slug, summary, squirrelTake, category, tags, authorType, authorId, imageUrl]);
+    `, [title, slug, summary, squirrelTake, whyItMatters, category, tags, authorType, authorId, imageUrl]);
     return rows[0];
   }
 
-  async updateDraft(id, { title, summary, squirrelTake, category, tags, imageUrl = undefined }) {
+  async updateDraft(id, { title, summary, squirrelTake, whyItMatters, category, tags, imageUrl = undefined }) {
     if (imageUrl === undefined) {
       const { rows } = await this.pool.query(`
         UPDATE stories SET
           title = $2,
           summary = $3,
           squirrel_take = $4,
-          category = $5,
-          tags = $6,
+          why_it_matters = $5,
+          category = $6,
+          tags = $7,
           updated_at = NOW()
         WHERE id = $1
         RETURNING *
-      `, [id, title, summary, squirrelTake, category, tags]);
+      `, [id, title, summary, squirrelTake, whyItMatters, category, tags]);
       return rows[0] || null;
     }
     const { rows } = await this.pool.query(`
@@ -190,13 +230,14 @@ class NewsDAO {
         title = $2,
         summary = $3,
         squirrel_take = $4,
-        category = $5,
-        tags = $6,
-        image_url = $7,
+        why_it_matters = $5,
+        category = $6,
+        tags = $7,
+        image_url = $8,
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
-    `, [id, title, summary, squirrelTake, category, tags, imageUrl]);
+    `, [id, title, summary, squirrelTake, whyItMatters, category, tags, imageUrl]);
     return rows[0] || null;
   }
 

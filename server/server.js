@@ -60,9 +60,10 @@ async function startServer() {
   });
 
   // Category display helpers available in every template
-  const { catMeta, catLabel } = require('./lib/display');
+  const { catMeta, catLabel, displaySourceName } = require('./lib/display');
   app.locals.catMeta = catMeta;
   app.locals.catLabel = catLabel;
+  app.locals.displaySourceName = displaySourceName;
 
   // Inject globals into all views
   app.use(async (req, res, next) => {

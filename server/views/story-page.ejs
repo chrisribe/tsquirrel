@@ -1,5 +1,5 @@
 <%
-  const { story, articles } = pageData;
+  const { story, articles, related } = pageData;
   function timeAgo(date) {
     const now = new Date();
     const diff = Math.floor((now - new Date(date)) / 1000);
@@ -20,6 +20,7 @@
 <article class="story-detail">
   <!-- Hero -->
   <div class="story-hero <%= meta.cls %>">
+    <a href="/" class="story-back-link">← Back to trending</a>
     <% if (story.image_url) { %>
       <img src="<%= story.image_url %>" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <span class="thumb-fallback" style="display:none"><%= meta.thumb %></span>
@@ -43,13 +44,20 @@
       </div>
     <% } %>
 
+    <% if (story.why_it_matters) { %>
+      <div class="why-it-matters">
+        <div class="why-it-matters-label">💡 Why it matters</div>
+        <div class="why-it-matters-text"><%= story.why_it_matters %></div>
+      </div>
+    <% } %>
+
     <% if (story.summary) { %>
       <p class="story-summary-large"><%= story.summary %></p>
     <% } %>
     <% if (story.tags && story.tags.length) { %>
       <div class="story-tags">
         <% story.tags.forEach(tag => { %>
-          <span class="story-tag">#<%= tag %></span>
+          <a href="/?tag=<%= encodeURIComponent(tag) %>" class="story-tag">#<%= tag %></a>
         <% }); %>
       </div>
     <% } %>
@@ -76,7 +84,7 @@
       <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="source-row">
         <div class="source-icon">📰</div>
         <div class="source-body">
-          <div class="source-name"><%= a.source_name %></div>
+          <div class="source-name"><%= displaySourceName(a) %></div>
           <div class="source-headline"><%= a.title %></div>
           <div class="source-time"><%= timeAgo(a.published_at) %></div>
         </div>
@@ -86,6 +94,25 @@
   </section>
 </article>
 
-<div style="margin-top:2rem">
+<% if (related && related.length) { %>
+<section class="keep-digging">
+  <div class="keep-digging-label">🐿️ Keep digging</div>
+  <% related.forEach(r => { %>
+    <% const rMeta = catMeta(r.category); %>
+    <a href="/story/<%= r.slug %>" class="keep-digging-row">
+      <span class="keep-digging-icon"><%= rMeta.thumb %></span>
+      <span class="keep-digging-body">
+        <% if (r.squirrel_take) { %>
+          <span class="keep-digging-take">🐿️ <%= r.squirrel_take %></span>
+        <% } %>
+        <span class="keep-digging-title"><%= r.title %></span>
+      </span>
+      <span class="keep-digging-arrow">›</span>
+    </a>
+  <% }); %>
+</section>
+<% } %>
+
+<div class="story-end-nav">
   <a href="/" class="secondary">← Back to trending</a>
 </div>

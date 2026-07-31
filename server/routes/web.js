@@ -40,8 +40,9 @@ router.get('/', async (req, res) => {
   const dao = new NewsDAO(pool);
 
   const category = req.query.category || null;
+  const tag = req.query.tag || null;
   const [stories, categories] = await Promise.all([
-    dao.getTopStories({ limit: 30, category }),
+    dao.getTopStories({ limit: 30, category, tag }),
     dao.getCategories(),
   ]);
 
@@ -50,7 +51,7 @@ router.get('/', async (req, res) => {
     pageTitle: "What's Trending — TSquirrel",
     pageDescription: 'AI-curated news digest. Top stories across sources, summarized.',
     pageUrl: 'https://tsquirrel.com',
-    pageData: { stories, categories, activeCategory: category },
+    pageData: { stories, categories, activeCategory: category, activeTag: tag },
   });
 });
 
@@ -82,12 +83,13 @@ router.get('/story/:slug', async (req, res) => {
   });
 
   const articles = await dao.getStoryArticles(story.id);
+  const related = await dao.getRelatedStories(story.id, { category: story.category, tags: story.tags || [] });
   res.render('layout-main', {
     template: 'story-page',
     pageTitle: `${story.title} — TSquirrel`,
     pageDescription: story.summary || story.title,
     pageUrl: `https://tsquirrel.com/story/${story.slug}`,
-    pageData: { story, articles },
+    pageData: { story, articles, related },
   });
 });
 
@@ -97,7 +99,8 @@ router.get('/api/stories', async (req, res) => {
   const dao = new NewsDAO(pool);
   const offset = parseInt(req.query.offset) || 0;
   const category = req.query.category || null;
-  const stories = await dao.getTopStories({ limit: 10, offset, category });
+  const tag = req.query.tag || null;
+  const stories = await dao.getTopStories({ limit: 10, offset, category, tag });
   res.render('partials/story-cards', { pageData: { stories } });
 });
 
