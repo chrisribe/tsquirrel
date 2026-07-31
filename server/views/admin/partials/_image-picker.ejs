@@ -22,7 +22,7 @@
         <span class="image-picker-thumb">
           <img src="<%= article.image_url %>" alt="" loading="lazy" referrerpolicy="no-referrer">
         </span>
-        <small><%= article.source_name %></small>
+        <small><%= displaySourceName(article) %></small>
       </label>
     <% }); %>
   </div>

@@ -1,0 +1,4 @@
+<%- include('_suggested-sources', { pageData }) %>
+<%- include('_story-sources', { pageData: { story: pageData.story, attached: pageData.attached, oob: true } }) %>
+<%- include('_story-meta', { pageData: { story: pageData.story, oob: true } }) %>
+<%- include('_save-status', { pageData: { message: pageData.message, oob: true } }) %>

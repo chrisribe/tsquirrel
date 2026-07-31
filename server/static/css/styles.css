@@ -957,6 +957,45 @@ a.signal-meta-chip:hover {
   padding: .08rem .42rem;
   white-space: nowrap;
 }
+.story-flag-review {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+.admin-review-banner {
+  font-size: .82rem;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: .5rem .7rem;
+  margin: .5rem 0 0;
+}
+.admin-review-banner.is-hidden { display: none; }
+
+/* ── Suggested sources (Radar-proposed, awaiting editor review) ── */
+.story-suggestions:empty { display: none; }
+.story-suggestions h2 { display: flex; align-items: center; gap: .5rem; }
+.suggestion-count {
+  font-size: .7rem; font-weight: 700; color: #92400e;
+  background: #fef3c7; border: 1px solid #fde68a; border-radius: 99px;
+  padding: .05rem .5rem;
+}
+.suggestion-list { list-style: none; padding: 0; margin: .5rem 0 0; display: flex; flex-direction: column; gap: .6rem; }
+.suggestion-item {
+  display: flex; gap: .7rem; align-items: flex-start;
+  padding: .7rem; border: 1px solid #fde68a; background: #fffbeb; border-radius: 10px;
+}
+.suggestion-thumb { border-radius: 6px; flex-shrink: 0; object-fit: cover; }
+.suggestion-body { flex: 1; min-width: 0; }
+.suggestion-head { display: flex; gap: .5rem; align-items: baseline; font-size: .72rem; color: var(--muted); margin-bottom: .2rem; }
+.suggestion-source { font-weight: 600; }
+.suggestion-title { display: block; font-weight: 600; text-decoration: none; color: var(--brand); }
+.suggestion-desc { font-size: .8rem; color: var(--muted); margin: .3rem 0 0; }
+.suggestion-actions { display: flex; flex-direction: column; gap: .35rem; flex-shrink: 0; }
+.suggestion-actions form { margin: 0; }
+.suggestion-actions button { margin: 0; padding: .3rem .7rem; font-size: .78rem; white-space: nowrap; }
+.suggestion-accept { color: #15803d; border-color: #86efac; }
 
 /* ── Admin: source material (reporting to synthesize in the story editor) ── */
 .source-material {

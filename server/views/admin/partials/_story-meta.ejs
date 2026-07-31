@@ -8,3 +8,10 @@
   · Heat: <%= pageData.story.heat_score %> · Sources: <%= pageData.story.source_count %>
   <% if (pageData.story.is_featured) { %> · Featured<% } %>
 </p>
+<% if (pageData.story.needs_review) { %>
+  <p id="story-review-banner" class="admin-review-banner"<%= pageData.oob ? ' hx-swap-oob="outerHTML"' : '' %>>
+    🔄 Radar found possible follow-up source(s) for this story — review the suggestions below and accept or reject each one.
+  </p>
+<% } else { %>
+  <p id="story-review-banner" class="admin-review-banner is-hidden"<%= pageData.oob ? ' hx-swap-oob="outerHTML"' : '' %>></p>
+<% } %>

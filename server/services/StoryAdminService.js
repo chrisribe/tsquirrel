@@ -1,21 +1,21 @@
 'use strict';
 
-const NewsDAO = require('../dao/NewsDAO');
-const { slugify } = require('../lib/slug');
+const StoryService = require('./StoryService');
+const { normalizeStoryInput } = require('../lib/storyInput');
 
 class StoryAdminService {
   constructor(pool) {
-    this.dao = new NewsDAO(pool);
+    this.stories = new StoryService(pool);
   }
 
   async listStories(status = null) {
-    return this.dao.getStoriesForAdmin({ status });
+    return this.stories.listForAdmin({ status });
   }
 
   async getNewStoryModel(seedIds = []) {
     const [recentArticles, seededArticles] = await Promise.all([
-      this.dao.getRecentArticles({ limit: 100 }),
-      this.dao.getArticlesByIds(seedIds),
+      this.stories.getRecentArticles({ limit: 100 }),
+      this.stories.getArticlesByIds(seedIds),
     ]);
     const recentIds = new Set(recentArticles.map(article => article.id));
     const seed = seededArticles[0];
@@ -37,37 +37,29 @@ class StoryAdminService {
   }
 
   async createDraft(input, authorId) {
-    const values = this.normalizeStoryInput(input);
+    const values = normalizeStoryInput(input);
     if (!values.title) {
       const error = new Error('Title is required.');
       error.status = 400;
       throw error;
     }
-
-    const draft = await this.dao.createDraft({
-      ...values,
-      slug: slugify(values.title),
-      authorType: 'human',
-      authorId: String(authorId),
-    });
-
-    for (const articleId of values.articleIds) {
-      await this.dao.attachSource(draft.id, articleId);
-    }
-    return draft;
+    return this.stories.create(values, { authorType: 'human', authorId });
   }
 
   async getEditorModel(storyId) {
-    const story = await this.dao.getStoryById(storyId);
+    const story = await this.stories.getById(storyId);
     if (!story) return null;
-    const attached = await this.dao.getStoryArticles(story.id);
-    return { story, attached, recentArticles: [], error: null };
+    const [attached, suggestions] = await Promise.all([
+      this.stories.getArticles(story.id),
+      this.stories.getSuggestions(story.id),
+    ]);
+    return { story, attached, suggestions, recentArticles: [], error: null };
   }
 
   async getAttachPickerModel(storyId) {
     const [attached, recentArticles] = await Promise.all([
-      this.dao.getStoryArticles(storyId),
-      this.dao.getRecentArticles({ limit: 100 }),
+      this.stories.getArticles(storyId),
+      this.stories.getRecentArticles({ limit: 100 }),
     ]);
     return {
       storyId,
@@ -77,54 +69,47 @@ class StoryAdminService {
   }
 
   async updateStory(storyId, input) {
-    const values = this.normalizeStoryInput(input);
+    const values = normalizeStoryInput(input);
     if (!values.title) {
       const error = new Error('Title is required.');
       error.status = 400;
       throw error;
     }
-    return this.dao.updateDraft(storyId, values);
+    return this.stories.update(storyId, values);
   }
 
   async attachSource(storyId, articleId) {
-    if (Number.isFinite(articleId)) await this.dao.attachSource(storyId, articleId);
+    await this.stories.attach(storyId, articleId);
+    return this.getEditorModel(storyId);
+  }
+
+  async acceptSuggestion(storyId, articleId) {
+    await this.stories.acceptSuggestion(storyId, articleId);
+    return this.getEditorModel(storyId);
+  }
+
+  async rejectSuggestion(storyId, articleId) {
+    await this.stories.rejectSuggestion(storyId, articleId);
     return this.getEditorModel(storyId);
   }
 
   async detachSource(storyId, articleId) {
-    if (Number.isFinite(articleId)) await this.dao.detachSource(storyId, articleId);
+    await this.stories.detach(storyId, articleId);
     return this.getEditorModel(storyId);
   }
 
   async setStatus(storyId, status) {
-    await this.dao.setStoryStatus(storyId, status);
+    await this.stories.setStatus(storyId, status);
     return this.getEditorModel(storyId);
   }
 
   async setFeatured(storyId, featured) {
-    await this.dao.setFeatured(storyId, featured);
+    await this.stories.setFeatured(storyId, featured);
     return this.getEditorModel(storyId);
   }
 
   async deleteStory(storyId) {
-    return this.dao.deleteStory(storyId);
-  }
-
-  normalizeStoryInput(input) {
-    return {
-      title: String(input.title || '').trim(),
-      summary: String(input.summary || '').trim() || null,
-      squirrelTake: String(input.squirrel_take || '').trim() || null,
-      whyItMatters: String(input.why_it_matters || '').trim() || null,
-      category: String(input.category || 'Other').trim() || 'Other',
-      tags: String(input.tags || '').split(',').map(tag => tag.trim()).filter(Boolean),
-      imageUrl: String(input.image_url_manual || '').trim()
-        || String(input.image_url || '').trim()
-        || null,
-      articleIds: [].concat(input.articleIds || [])
-        .map(value => parseInt(value, 10))
-        .filter(Number.isFinite),
-    };
+    return this.stories.delete(storyId);
   }
 }
 

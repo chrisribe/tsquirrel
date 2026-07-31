@@ -6,7 +6,7 @@
   <% if (attachedIds.indexOf(a.id) === -1) { %>
     <div class="article-picker-row">
       <span class="article-picker-text">
-        <small class="article-picker-source">[<%= a.source_name %>]</small>
+        <small class="article-picker-source">[<%= displaySourceName(a) %>]</small>
         <span class="article-picker-title"><%= a.title %></span>
       </span>
       <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="article-picker-view" title="Open article in new tab">View ↗</a>

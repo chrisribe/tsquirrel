@@ -38,6 +38,7 @@
             <td class="story-title-cell">
               <a href="/admin/stories/<%= s.id %>/edit"><%= s.title %></a>
               <% if (s.is_featured) { %><span class="story-flag">Featured</span><% } %>
+              <% if (s.pending_suggestions > 0) { %><span class="story-flag story-flag-review">🔄 <%= s.pending_suggestions %> to review</span><% } %>
             </td>
             <td class="nowrap">
               <% if (s.status === 'published') { %>

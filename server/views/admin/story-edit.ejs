@@ -54,7 +54,7 @@
               <input type="checkbox" name="articleIds" value="<%= article.id %>"
                 <%= attachedIds.indexOf(article.id) !== -1 ? 'checked' : '' %>>
               <span class="article-picker-text">
-                <small class="article-picker-source">[<%= article.source_name %>]</small>
+                <small class="article-picker-source">[<%= displaySourceName(article) %>]</small>
                 <span class="article-picker-title"><%= article.title %></span>
               </span>
               <a href="<%= article.url %>" target="_blank" rel="noopener noreferrer" class="article-picker-view"
@@ -74,6 +74,7 @@
   <%- include('partials/_image-picker', { pageData: { story: pageData.story, prefill, attached: pageData.attached } }) %>
 
   <% if (isEdit) { %>
+    <%- include('partials/_suggested-sources', { pageData: { story, suggestions: pageData.suggestions } }) %>
     <%- include('partials/_story-sources', { pageData: { story, attached: pageData.attached } }) %>
     <%- include('partials/_story-actions', { pageData: { story } }) %>
   <% } %>

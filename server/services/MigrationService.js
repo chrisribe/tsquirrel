@@ -253,6 +253,35 @@ const migrations = [
       console.log('Migration 14: stories.why_it_matters added');
     }
   },
+  {
+    version: 15,
+    description: 'Add stories.needs_review — flags a published story when Radar auto-attaches new follow-up sources',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS needs_review BOOLEAN DEFAULT FALSE`);
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS needs_review_at TIMESTAMP`);
+      console.log('Migration 15: stories.needs_review + needs_review_at added');
+    }
+  },
+  {
+    version: 16,
+    description: 'Add story_source_suggestions — Radar proposes follow-up sources for editor review instead of auto-attaching',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_source_suggestions (
+          id SERIAL PRIMARY KEY,
+          story_id INTEGER REFERENCES stories(id) ON DELETE CASCADE,
+          article_id INTEGER REFERENCES articles(id) ON DELETE CASCADE,
+          reason TEXT,
+          status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending | accepted | rejected
+          created_at TIMESTAMP DEFAULT NOW(),
+          resolved_at TIMESTAMP,
+          UNIQUE (story_id, article_id)
+        )
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_suggestions_story_status ON story_source_suggestions(story_id, status)`);
+      console.log('Migration 16: story_source_suggestions table created');
+    }
+  },
   // Future migrations go here
 ];
 

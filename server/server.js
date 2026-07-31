@@ -37,6 +37,14 @@ async function startServer() {
   app.set('pool', pool);
   const StoryAdminService = require('./services/StoryAdminService');
   app.set('storyAdminService', new StoryAdminService(pool));
+  const SourceAdminService = require('./services/SourceAdminService');
+  app.set('sourceAdminService', new SourceAdminService(pool));
+  const TokenService = require('./services/TokenService');
+  app.set('tokenService', new TokenService(pool));
+  const SignalService = require('./services/SignalService');
+  app.set('signalService', new SignalService(pool));
+  const ApiStoryService = require('./services/ApiStoryService');
+  app.set('apiStoryService', new ApiStoryService(pool));
 
   // Auth/session services
   const authService = require('./services/authService');

@@ -1,0 +1,38 @@
+<section id="story-suggestions" class="story-suggestions"<%= pageData.oob ? ' hx-swap-oob="outerHTML"' : '' %>>
+  <% const suggestions = pageData.suggestions || []; %>
+  <% if (suggestions.length > 0) { %>
+    <h2>🔄 Suggested sources <span class="suggestion-count"><%= suggestions.length %></span></h2>
+    <p class="hint">Radar spotted these as possible follow-up coverage. Review each — <strong>accept</strong> to attach it as a source, or <strong>reject</strong> to dismiss it (it won't be suggested again).</p>
+    <ul class="suggestion-list">
+      <% suggestions.forEach(function(article) { %>
+        <li class="suggestion-item">
+          <% if (article.image_url) { %>
+            <img src="<%= article.image_url %>" alt="" loading="lazy" width="72" referrerpolicy="no-referrer" class="suggestion-thumb">
+          <% } %>
+          <div class="suggestion-body">
+            <div class="suggestion-head">
+              <span class="suggestion-source"><%= displaySourceName(article) %></span>
+              <% if (article.published_at) { %><span class="suggestion-date"><%= new Date(article.published_at).toLocaleDateString() %></span><% } %>
+            </div>
+            <a href="<%= article.url %>" target="_blank" rel="noopener noreferrer" class="suggestion-title"><%= article.title %></a>
+            <% if (article.description) { %><p class="suggestion-desc"><%= article.description %></p><% } %>
+          </div>
+          <div class="suggestion-actions">
+            <form method="POST" action="/admin/stories/<%= pageData.story.id %>/suggestions/<%= article.id %>/accept"
+                  hx-post="/admin/stories/<%= pageData.story.id %>/suggestions/<%= article.id %>/accept"
+                  hx-target="#story-suggestions" hx-swap="outerHTML show:none"
+                  hx-disabled-elt="find button">
+              <button type="submit" class="outline suggestion-accept">✓ Accept</button>
+            </form>
+            <form method="POST" action="/admin/stories/<%= pageData.story.id %>/suggestions/<%= article.id %>/reject"
+                  hx-post="/admin/stories/<%= pageData.story.id %>/suggestions/<%= article.id %>/reject"
+                  hx-target="#story-suggestions" hx-swap="outerHTML show:none"
+                  hx-disabled-elt="find button">
+              <button type="submit" class="outline secondary suggestion-reject">✕ Reject</button>
+            </form>
+          </div>
+        </li>
+      <% }); %>
+    </ul>
+  <% } %>
+</section>

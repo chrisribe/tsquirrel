@@ -23,7 +23,27 @@ async function radarScan(pool) {
   }
 
   let created = 0;
+  let suggested = 0;
   for (const hit of hits) {
+    // If this convergence topic overlaps a story we've already published, it's
+    // likely follow-up coverage. We do NOT attach it automatically — a noisy
+    // convergence match (e.g. a generic "spider man" bigram) could poison a
+    // good story. Instead we record the new article(s) as PENDING suggestions
+    // for an editor/agent to review and accept or reject.
+    const existingStory = await dao.findStoryForArticles(hit.article_ids);
+    if (existingStory) {
+      const attachedIds = new Set(existingStory.attached_ids || []);
+      const newIds = hit.article_ids.filter(id => !attachedIds.has(id));
+      if (newIds.length > 0) {
+        const n = await dao.suggestSources(existingStory.id, newIds, `radar:${hit.topic}`);
+        if (n > 0) {
+          suggested += n;
+          console.log(`[Radar] suggested ${n} follow-up source(s) for review on story #${existingStory.id} "${existingStory.title}" (topic: ${hit.topic})`);
+        }
+      }
+      continue;
+    }
+
     const alreadyFired = await dao.hasRecentSignal(hit.topic);
     if (alreadyFired) continue;
 
@@ -42,7 +62,7 @@ async function radarScan(pool) {
     created++;
   }
 
-  console.log(`[Radar] ${hits.length} convergence hits, ${created} new signals created`);
+  console.log(`[Radar] ${hits.length} convergence hits, ${created} new signals created, ${suggested} source(s) suggested for review`);
   return created;
 }
 

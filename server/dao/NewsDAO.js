@@ -180,7 +180,7 @@ class NewsDAO {
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const { rows } = await this.pool.query(`
       SELECT a.id, a.title, a.description, a.url, a.published_at,
-             src.name AS source_name, src.slug AS source_slug
+             src.name AS source_name, src.slug AS source_slug, src.type AS source_type
       FROM articles a
       JOIN sources src ON src.id = a.source_id
       ${where}
@@ -255,6 +255,98 @@ class NewsDAO {
     await this.recomputeHeatScore(storyId);
   }
 
+  // Find a published story that already has at least one of the given articles
+  // attached (used by Radar to merge follow-up coverage instead of spawning a
+  // duplicate draft). Returns the story plus the full set of article ids it
+  // already has attached, so the caller can diff against new evidence.
+  async findStoryForArticles(articleIds) {
+    if (!articleIds || articleIds.length === 0) return null;
+    const { rows } = await this.pool.query(`
+      SELECT s.*, array_agg(DISTINCT sa2.article_id) AS attached_ids
+      FROM story_articles sa
+      JOIN stories s ON s.id = sa.story_id
+      LEFT JOIN story_articles sa2 ON sa2.story_id = s.id
+      WHERE sa.article_id = ANY($1::int[]) AND s.status = 'published'
+      GROUP BY s.id
+      ORDER BY s.heat_score DESC
+      LIMIT 1
+    `, [articleIds]);
+    return rows[0] || null;
+  }
+
+  // ── Suggested sources (Radar proposes, editor reviews) ────────
+  // Radar records follow-up articles as PENDING suggestions rather than
+  // attaching them directly, so a bad convergence match can never poison a
+  // good story. Articles already attached, or already suggested/resolved
+  // (accepted OR rejected), are skipped — a rejected suggestion never nags again.
+  async suggestSources(storyId, articleIds, reason = null) {
+    if (!articleIds || articleIds.length === 0) return 0;
+    const { rows } = await this.pool.query(`
+      INSERT INTO story_source_suggestions (story_id, article_id, reason)
+      SELECT $1, a_id, $3
+      FROM unnest($2::int[]) AS a_id
+      WHERE NOT EXISTS (
+        SELECT 1 FROM story_articles sa WHERE sa.story_id = $1 AND sa.article_id = a_id
+      )
+      ON CONFLICT (story_id, article_id) DO NOTHING
+      RETURNING id
+    `, [storyId, articleIds, reason]);
+    if (rows.length > 0) await this.refreshReviewFlag(storyId);
+    return rows.length;
+  }
+
+  async getSuggestedSources(storyId) {
+    const { rows } = await this.pool.query(`
+      SELECT ss.id AS suggestion_id, ss.reason, ss.created_at AS suggested_at,
+             a.id, a.title, a.url, a.published_at, a.image_url, a.description,
+             src.name AS source_name, src.slug AS source_slug, src.type AS source_type
+      FROM story_source_suggestions ss
+      JOIN articles a ON a.id = ss.article_id
+      JOIN sources src ON src.id = a.source_id
+      WHERE ss.story_id = $1 AND ss.status = 'pending'
+      ORDER BY a.published_at DESC NULLS LAST
+    `, [storyId]);
+    return rows;
+  }
+
+  async acceptSuggestion(storyId, articleId) {
+    const { rowCount } = await this.pool.query(`
+      UPDATE story_source_suggestions
+      SET status = 'accepted', resolved_at = NOW()
+      WHERE story_id = $1 AND article_id = $2 AND status = 'pending'
+    `, [storyId, articleId]);
+    if (rowCount === 0) return false;
+    await this.linkArticleToStory(storyId, articleId);
+    await this.recomputeHeatScore(storyId);
+    await this.refreshReviewFlag(storyId);
+    return true;
+  }
+
+  async rejectSuggestion(storyId, articleId) {
+    const { rowCount } = await this.pool.query(`
+      UPDATE story_source_suggestions
+      SET status = 'rejected', resolved_at = NOW()
+      WHERE story_id = $1 AND article_id = $2 AND status = 'pending'
+    `, [storyId, articleId]);
+    if (rowCount === 0) return false;
+    await this.refreshReviewFlag(storyId);
+    return true;
+  }
+
+  // needs_review mirrors "has ≥1 pending suggested source".
+  async refreshReviewFlag(storyId) {
+    await this.pool.query(`
+      UPDATE stories s SET
+        needs_review = (pending.cnt > 0),
+        needs_review_at = CASE WHEN pending.cnt > 0 THEN COALESCE(s.needs_review_at, NOW()) ELSE NULL END
+      FROM (
+        SELECT COUNT(*) AS cnt FROM story_source_suggestions
+        WHERE story_id = $1 AND status = 'pending'
+      ) AS pending
+      WHERE s.id = $1
+    `, [storyId]);
+  }
+
   async detachSource(storyId, articleId) {
     await this.pool.query(
       'DELETE FROM story_articles WHERE story_id = $1 AND article_id = $2',
@@ -285,19 +377,26 @@ class NewsDAO {
     await this.pool.query('DELETE FROM stories WHERE id = $1', [id]);
   }
 
-  async getStoriesForAdmin({ status = null } = {}) {
+  async getStoriesForAdmin({ status = null, needsReview = null } = {}) {
     const params = [];
-    let statusClause = '';
+    const clauses = [];
     if (status) {
       params.push(status);
-      statusClause = `WHERE s.status = $1`;
+      clauses.push(`s.status = $${params.length}`);
     }
+    if (needsReview !== null) {
+      params.push(needsReview);
+      clauses.push(`s.needs_review = $${params.length}`);
+    }
+    const whereClause = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const { rows } = await this.pool.query(`
       SELECT s.*,
-             COUNT(sa.article_id) AS source_count
+             COUNT(sa.article_id) AS source_count,
+             (SELECT COUNT(*) FROM story_source_suggestions ss
+              WHERE ss.story_id = s.id AND ss.status = 'pending') AS pending_suggestions
       FROM stories s
       LEFT JOIN story_articles sa ON sa.story_id = s.id
-      ${statusClause}
+      ${whereClause}
       GROUP BY s.id
       ORDER BY
         CASE s.status WHEN 'draft' THEN 0 WHEN 'published' THEN 1 ELSE 2 END,
@@ -309,7 +408,7 @@ class NewsDAO {
   async getRecentArticles({ limit = 100 } = {}) {
     const { rows } = await this.pool.query(`
       SELECT a.id, a.title, a.url, a.published_at, a.fetched_at,
-             src.name AS source_name, src.slug AS source_slug
+             src.name AS source_name, src.slug AS source_slug, src.type AS source_type
       FROM articles a
       JOIN sources src ON src.id = a.source_id
       ORDER BY a.fetched_at DESC
@@ -322,7 +421,7 @@ class NewsDAO {
     if (!ids || ids.length === 0) return [];
     const { rows } = await this.pool.query(`
       SELECT a.id, a.title, a.url, a.published_at, a.image_url, a.description,
-             src.name AS source_name, src.slug AS source_slug
+             src.name AS source_name, src.slug AS source_slug, src.type AS source_type
       FROM articles a
       JOIN sources src ON src.id = a.source_id
       WHERE a.id = ANY($1::int[])

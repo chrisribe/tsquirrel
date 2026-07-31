@@ -1,4 +1,5 @@
 <%- include('_story-sources', { pageData }) %>
+<%- include('_suggested-sources', { pageData: { story: pageData.story, suggestions: pageData.suggestions, oob: true } }) %>
 <%- include('_image-picker', { pageData: { story: pageData.story, attached: pageData.attached, oob: true } }) %>
 <%- include('_story-meta', { pageData: { story: pageData.story, oob: true } }) %>
 <%- include('_save-status', { pageData: { message: pageData.message, oob: true } }) %>

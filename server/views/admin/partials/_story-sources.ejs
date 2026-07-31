@@ -1,4 +1,4 @@
-<section id="story-sources">
+<section id="story-sources"<%= pageData.oob ? ' hx-swap-oob="outerHTML"' : '' %>>
   <h2>Source Material (<%= pageData.attached.length %>)</h2>
   <% if (pageData.attached.length === 0) { %>
     <p class="hint">No sources attached yet — attach an article below to pull in reporting to synthesize.</p>
@@ -12,7 +12,7 @@
           <% } %>
           <div class="source-material-body">
             <div class="source-material-head">
-              <span class="source-material-source"><%= article.source_name %></span>
+              <span class="source-material-source"><%= displaySourceName(article) %></span>
               <% if (article.published_at) { %><span class="source-material-date"><%= new Date(article.published_at).toLocaleDateString() %></span><% } %>
             </div>
             <a href="<%= article.url %>" target="_blank" rel="noopener noreferrer" class="source-material-title"><%= article.title %></a>

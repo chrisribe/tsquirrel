@@ -131,6 +131,34 @@ const StoryAdminController = {
     } catch (error) { return next(error); }
   },
 
+  async acceptSuggestion(req, res, next) {
+    try {
+      const pageData = await serviceFor(req).acceptSuggestion(req.params.id, parseInt(req.params.articleId, 10));
+      if (!pageData) return notFound(res);
+      const url = `/admin/stories/${req.params.id}/edit`;
+      return res.renderFragmentOrRedirect(
+        'admin/partials/_story-review',
+        { ...pageData, message: 'Suggested source accepted.' },
+        url,
+        { replaceUrl: url }
+      );
+    } catch (error) { return next(error); }
+  },
+
+  async rejectSuggestion(req, res, next) {
+    try {
+      const pageData = await serviceFor(req).rejectSuggestion(req.params.id, parseInt(req.params.articleId, 10));
+      if (!pageData) return notFound(res);
+      const url = `/admin/stories/${req.params.id}/edit`;
+      return res.renderFragmentOrRedirect(
+        'admin/partials/_story-review',
+        { ...pageData, message: 'Suggestion dismissed.' },
+        url,
+        { replaceUrl: url }
+      );
+    } catch (error) { return next(error); }
+  },
+
   async publish(req, res, next) {
     return StoryAdminController.changeStatus(req, res, next, 'published', 'Story published.');
   },

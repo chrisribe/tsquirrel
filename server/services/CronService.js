@@ -1,7 +1,9 @@
 'use strict';
 
 // Minimal cron scheduler — no external deps
-// Runs feed ingestion every 30 min, LLM summarization every hour
+// Runs feed ingestion + radar scan on INGEST_INTERVAL_MS (default 6h).
+// This only refreshes raw feed data; published stories are curated/authored
+// separately and go live via an explicit editorial publish.
 
 function schedule(intervalMs, fn, label) {
   // Run once on startup after a short delay, then on interval
