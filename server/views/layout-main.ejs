@@ -28,8 +28,9 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', '<%= googleAnalyticsId %>');
+    gtag('config', '<%= googleAnalyticsId %>', { send_page_view: false, anonymize_ip: true });
   </script>
+  <script src="/static/js/analytics.js?v=<%= assetVersion %>"></script>
   <% } %>
 
   <link rel="stylesheet" href="/static/css/pico.min.css?v=<%= assetVersion %>">

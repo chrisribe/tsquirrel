@@ -15,7 +15,7 @@
 
 <section class="archive-list">
   <% articles.forEach(a => { %>
-    <a href="/<%= a.slug %>" class="card archive">
+    <a href="/<%= a.slug %>" class="card archive" data-ga-event="legacy_story_open" data-ga-story-slug="<%= a.slug %>" data-ga-location="archive_list">
       <div class="archive-badge-row">
         <span class="badge-archive">🌰 Buried</span>
       </div>
@@ -28,5 +28,5 @@
 </section>
 
 <div style="margin-top:2rem">
-  <a href="/" class="secondary">← Back to trending</a>
+  <a href="/" class="secondary" data-ga-event="back_to_feed" data-ga-location="archive_bottom">← Back to trending</a>
 </div>
