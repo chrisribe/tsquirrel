@@ -55,6 +55,8 @@ Docs: `docs/article-regrouping-tooling.md`.
 
 See `.env.example`.
 
+- `GOOGLE_ANALYTICS_ID` enables GA4 page tracking via gtag in the shared layout.
+
 ## API auth for agents
 
 LLM/agent clients should not log in via `/auth/login`.
