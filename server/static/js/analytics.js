@@ -19,7 +19,7 @@
     return 'other';
   }
 
-  function track(eventName, params) {
+  function emit(eventName, params) {
     try {
       window.gtag('event', eventName, params || {});
     } catch (_) {
@@ -27,15 +27,109 @@
     }
   }
 
+  function mapToGa4(eventName, params) {
+    const p = params || {};
+
+    switch (eventName) {
+      case 'story_view':
+      case 'legacy_story_view':
+        return {
+          event: 'view_item',
+          params: {
+            item_id: p.story_slug || p.story_id || undefined,
+            item_name: p.story_slug || undefined,
+            item_category: p.category || (eventName === 'legacy_story_view' ? 'legacy' : undefined),
+            source_count: p.source_count,
+            tsq_origin_event: eventName,
+          },
+        };
+
+      case 'story_open':
+      case 'related_story_open':
+      case 'legacy_story_open':
+        return {
+          event: 'select_item',
+          params: {
+            item_id: p.story_slug || p.story_id || undefined,
+            item_name: p.story_slug || undefined,
+            item_category: p.category || (eventName === 'legacy_story_open' ? 'legacy' : undefined),
+            item_list_name: p.location || undefined,
+            tsq_origin_event: eventName,
+          },
+        };
+
+      case 'category_select':
+      case 'tag_select':
+      case 'tag_clear':
+        return {
+          event: 'select_content',
+          params: {
+            content_type: 'filter',
+            item_category: p.category || undefined,
+            item_variant: p.tag || undefined,
+            method: eventName,
+            location: p.location || undefined,
+            tsq_origin_event: eventName,
+          },
+        };
+
+      case 'source_open':
+      case 'legacy_source_open':
+      case 'outbound_click':
+        return {
+          event: 'select_content',
+          params: {
+            content_type: 'outbound_link',
+            item_id: p.link_url || p.story_slug || undefined,
+            item_name: p.source_name || p.link_domain || undefined,
+            link_url: p.link_url || undefined,
+            link_domain: p.link_domain || undefined,
+            link_text: p.link_text || undefined,
+            tsq_origin_event: eventName,
+          },
+        };
+
+      case 'back_to_feed':
+        return {
+          event: 'select_content',
+          params: {
+            content_type: 'navigation',
+            item_name: 'back_to_feed',
+            location: p.location || undefined,
+            tsq_origin_event: eventName,
+          },
+        };
+
+      case 'feed_load_more':
+        return {
+          event: 'view_item_list',
+          params: {
+            item_list_name: 'story_feed',
+            item_list_id: 'home_feed',
+            stories_loaded: p.stories_loaded || 0,
+            request_path: p.request_path || undefined,
+            tsq_origin_event: eventName,
+          },
+        };
+
+      default:
+        return { event: eventName, params: p };
+    }
+  }
+
+  function track(eventName, params) {
+    const mapped = mapToGa4(eventName, params);
+    emit(mapped.event, mapped.params);
+  }
+
   function trackPageView(extra) {
-    const params = {
+    emit('page_view', {
       page_location: window.location.href,
       page_path: `${window.location.pathname}${window.location.search}`,
       page_title: document.title,
       page_type: pageTypeFromPath(window.location.pathname),
       ...(extra || {}),
-    };
-    track('page_view', params);
+    });
   }
 
   window.tsqTrack = track;
