@@ -121,7 +121,7 @@ Only group articles that are genuinely about the same event/topic. Singletons ar
         const result = await callLLM([
           {
             role: 'system',
-            content: 'You are TSquirrel, a witty but sharp news editor mascot (a squirrel). Write a 2-3 sentence neutral summary of the story covered by these headlines, PLUS a short punchy one-line editorial "squirrel take" (max 20 words, playful, opinionated). Return JSON: { "summary": "...", "squirrel_take": "...", "tags": ["tag1","tag2"], "sentiment": 0.0 } where sentiment is -1 (negative) to 1 (positive).',
+            content: 'You are TSquirrel, a concise news editor. Write a 2-3 sentence neutral summary of the story covered by these headlines, PLUS one "squirrel_take" line (max 18 words) that states a concrete implication from the headlines. Avoid mascot catchphrases, slogans, and imperative advice (no lines starting with verbs like "Watch", "Focus", "Scurry"). If no clear implication is supported, return squirrel_take as an empty string. Return JSON: { "summary": "...", "squirrel_take": "...", "tags": ["tag1","tag2"], "sentiment": 0.0 } where sentiment is -1 (negative) to 1 (positive).',
           },
           { role: 'user', content: headlines },
         ]);
