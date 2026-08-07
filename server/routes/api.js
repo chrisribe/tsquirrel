@@ -30,5 +30,16 @@ router.post('/stories/:id/feature', apiStoryController.feature);
 router.post('/stories/:id/publish', apiStoryController.publish);
 router.post('/stories/:id/unpublish', apiStoryController.unpublish);
 
-module.exports = router;
+// ── Articles access (avoids attach/detach probe workflows) ─────────────────
+router.get('/articles/recent', apiStoryController.listRecentArticles);
+router.get('/articles/:articleId', apiStoryController.getArticle);
 
+// ── Radar signals access (client-first API) ─────────────────────────────────
+router.get('/radar/convergence', apiStoryController.previewConvergence);
+router.get('/radar/signals', apiStoryController.listRadarSignals);
+router.get('/radar/signals/:signalId', apiStoryController.getRadarSignal);
+router.post('/radar/signals/scan', apiStoryController.scanRadarSignals);
+router.post('/radar/signals/:signalId/create-story', apiStoryController.createStoryFromSignal);
+router.post('/radar/signals/:signalId/dismiss', apiStoryController.dismissSignal);
+
+module.exports = router;
