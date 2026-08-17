@@ -182,7 +182,22 @@ const StoryAdminController = {
         fallback,
         { replaceUrl: `/admin/stories/${req.params.id}/edit` }
       );
-    } catch (error) { return next(error); }
+    } catch (error) {
+      if (error.status === 400) {
+        if (req.isHtmx) {
+          return res.status(200).render('admin/partials/_save-status', {
+            pageData: { message: error.message, isError: true, oob: true },
+          });
+        }
+        const pageData = await serviceFor(req).getEditorModel(req.params.id);
+        if (!pageData) return notFound(res);
+        return res.renderPage('admin/story-edit', { ...pageData, error: error.message }, {
+          pageTitle: `Edit: ${pageData.story.title} — Admin — TSquirrel`,
+          status: 400,
+        });
+      }
+      return next(error);
+    }
   },
 
   async feature(req, res, next) {

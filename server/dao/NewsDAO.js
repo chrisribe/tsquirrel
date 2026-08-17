@@ -348,6 +348,16 @@ class NewsDAO {
     `, [storyId]);
   }
 
+  async setNeedsReview(storyId, needsReview = true) {
+    await this.pool.query(`
+      UPDATE stories
+      SET needs_review = $2,
+          needs_review_at = CASE WHEN $2 THEN COALESCE(needs_review_at, NOW()) ELSE NULL END,
+          updated_at = NOW()
+      WHERE id = $1
+    `, [storyId, !!needsReview]);
+  }
+
   async detachSource(storyId, articleId) {
     await this.pool.query(
       'DELETE FROM story_articles WHERE story_id = $1 AND article_id = $2',
