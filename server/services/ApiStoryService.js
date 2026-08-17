@@ -1,6 +1,8 @@
 'use strict';
 
 const StoryService = require('./StoryService');
+const SignalService = require('./SignalService');
+const NewsDAO = require('../dao/NewsDAO');
 const { normalizeStoryInput } = require('../lib/storyInput');
 
 // Story service for the JSON API. Shares the core StoryService (DAO access,
@@ -9,6 +11,8 @@ const { normalizeStoryInput } = require('../lib/storyInput');
 class ApiStoryService {
   constructor(pool) {
     this.stories = new StoryService(pool);
+    this.signals = new SignalService(pool);
+    this.dao = new NewsDAO(pool);
   }
 
   async listStories({ status = null, needsReview = null, limit = 30 } = {}) {
@@ -94,6 +98,90 @@ class ApiStoryService {
 
   async setStatus(storyId, status) {
     return this.stories.setStatus(storyId, status);
+  }
+
+  // ── Missing API surface: articles ───────────────────────────────────────
+
+  async listRecentArticles({ limit = 100 } = {}) {
+    return this.stories.getRecentArticles({ limit });
+  }
+
+  async getArticle(articleId) {
+    const rows = await this.stories.getArticlesByIds([articleId]);
+    return rows[0] || null;
+  }
+
+  // ── Missing API surface: radar signals ──────────────────────────────────
+
+  _parseEvidence(raw) {
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+    try {
+      return JSON.parse(raw);
+    } catch (_) {
+      return {};
+    }
+  }
+
+  async listRadarSignals({ status = 'active', limit = 50 } = {}) {
+    const signals = await this.dao.getSignals({ status, limit });
+    const normalized = signals.map(signal => ({
+      ...signal,
+      evidence: this._parseEvidence(signal.evidence),
+    }));
+
+    const allArticleIds = new Set();
+    normalized.forEach(signal => {
+      (signal.evidence.article_ids || []).forEach(id => allArticleIds.add(id));
+    });
+
+    const evidenceArticles = await this.dao.getArticlesByIds([...allArticleIds]);
+    const articleMap = {};
+    evidenceArticles.forEach(article => {
+      articleMap[article.id] = article;
+    });
+
+    return {
+      count: normalized.length,
+      signals: normalized,
+      evidence_articles: articleMap,
+    };
+  }
+
+  async getRadarSignal(signalId) {
+    const signal = await this.dao.getSignalById(signalId);
+    if (!signal) return null;
+
+    const evidence = this._parseEvidence(signal.evidence);
+    const articleIds = evidence.article_ids || [];
+    const evidenceArticles = await this.dao.getArticlesByIds(articleIds);
+
+    return {
+      signal: {
+        ...signal,
+        evidence,
+      },
+      evidence_articles: evidenceArticles,
+    };
+  }
+
+  async scanRadarSignals() {
+    const created = await this.signals.scan();
+    return { created };
+  }
+
+  async createStoryFromSignal(signalId) {
+    const draft = await this.signals.createStoryFromSignal(signalId);
+    if (!draft) return null;
+    return this.stories.getById(draft.id);
+  }
+
+  async dismissSignal(signalId) {
+    return this.signals.dismiss(signalId);
+  }
+
+  async previewConvergence({ windowHours = 48, minSources = 2, limit = 30 } = {}) {
+    return this.dao.detectConvergence({ windowHours, minSources, limit });
   }
 }
 

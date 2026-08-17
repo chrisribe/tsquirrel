@@ -2,6 +2,7 @@
 
 const NewsDAO = require('../dao/NewsDAO');
 const { slugify } = require('../lib/slug');
+const { isLowQualityImage, fetchOgImage } = require('./IngestionService');
 
 // Core story domain service. Owns all NewsDAO access for stories and returns
 // raw domain data (stories, articles, suggestions, booleans). Presentation
@@ -48,6 +49,7 @@ class StoryService {
     });
     for (const articleId of values.articleIds || []) {
       await this.dao.attachSource(draft.id, articleId);
+      await this._upgradeImageIfNeeded(articleId);
     }
     return draft;
   }
@@ -57,21 +59,41 @@ class StoryService {
   }
 
   async attach(storyId, articleId) {
-    if (Number.isFinite(articleId)) await this.dao.attachSource(storyId, articleId);
+    if (!Number.isFinite(articleId)) return;
+    await this.dao.attachSource(storyId, articleId);
+    await this._upgradeImageIfNeeded(articleId);
   }
 
   async detach(storyId, articleId) {
     if (Number.isFinite(articleId)) await this.dao.detachSource(storyId, articleId);
   }
 
-  acceptSuggestion(storyId, articleId) {
+  async acceptSuggestion(storyId, articleId) {
     if (!Number.isFinite(articleId)) return false;
-    return this.dao.acceptSuggestion(storyId, articleId);
+    const result = await this.dao.acceptSuggestion(storyId, articleId);
+    await this._upgradeImageIfNeeded(articleId);
+    return result;
   }
 
   rejectSuggestion(storyId, articleId) {
     if (!Number.isFinite(articleId)) return false;
     return this.dao.rejectSuggestion(storyId, articleId);
+  }
+
+  // Lazily fetch a real og:image for an article only at the moment it's
+  // actually attached to a story — this is the only point where an article
+  // graduates from "raw ingested noise" to "something a reader will see", so
+  // it's the only point worth paying for an extra HTTP request per article.
+  async _upgradeImageIfNeeded(articleId) {
+    try {
+      const [article] = await this.dao.getArticlesByIds([articleId]);
+      if (!article) return;
+      if (!isLowQualityImage(article.image_url)) return;
+      const ogImage = await fetchOgImage(article.url);
+      if (ogImage) await this.dao.updateArticleImage(articleId, ogImage);
+    } catch (err) {
+      console.warn(`[StoryService] og:image upgrade failed for article #${articleId}:`, err.message);
+    }
   }
 
   setStatus(storyId, status) {

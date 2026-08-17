@@ -8,16 +8,20 @@ const http = require('http');
 const { URL } = require('url');
 const crypto = require('crypto');
 
-function fetchUrl(rawUrl) {
+function fetchUrl(rawUrl, { timeoutMs } = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(rawUrl);
     const mod = parsed.protocol === 'https:' ? https : http;
-    let body = '';
-    mod.get(rawUrl, { headers: { 'User-Agent': 'TSquirrel/1.0 (+https://tsquirrel.com)' } }, (res) => {
+    const req = mod.get(rawUrl, { headers: { 'User-Agent': 'TSquirrel/1.0 (+https://tsquirrel.com)' } }, (res) => {
+      let body = '';
       res.setEncoding('utf8');
       res.on('data', chunk => body += chunk);
       res.on('end', () => resolve(body));
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    if (timeoutMs) {
+      req.setTimeout(timeoutMs, () => req.destroy(new Error(`Timed out fetching ${rawUrl}`)));
+    }
   });
 }
 
@@ -58,8 +62,10 @@ function stripTags(html) {
 }
 
 // Pull the first usable image URL out of an RSS/Atom item block.
-// Priority: media:thumbnail > media:content (image-typed) > enclosure > itunes:image
+// Priority: media:content (image-typed) > media:thumbnail > enclosure > itunes:image
 // > <image><url> > first <img src> in content:encoded/description.
+// media:content is preferred because feeds typically put their largest/full-size
+// image there and reserve media:thumbnail for a small preview variant.
 // No extra HTTP requests — everything comes from the feed XML we already have.
 function extractImage(inner) {
   const attrUrl = (tag) => {
@@ -68,15 +74,97 @@ function extractImage(inner) {
   };
   const mediaContent = inner.match(/<media:content\b[^>]*\burl\s*=\s*["']([^"']+)["'][^>]*>/i);
   const img =
-    attrUrl('media:thumbnail') ||
     (mediaContent && /image|jpg|jpeg|png|gif|webp/i.test(mediaContent[0]) ? mediaContent[1] : null) ||
+    attrUrl('media:thumbnail') ||
     attrUrl('enclosure') ||
     attrUrl('itunes:image');
-  if (img) return decodeEntities(img);
+  if (img) return upscaleImage(decodeEntities(img));
   const imageTag = inner.match(/<image\b[^>]*>[\s\S]*?<url>([\s\S]*?)<\/url>[\s\S]*?<\/image>/i);
-  if (imageTag) return decodeEntities(imageTag[1].trim());
+  if (imageTag) return upscaleImage(decodeEntities(imageTag[1].trim()));
   const imgTag = inner.match(/<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/i);
-  if (imgTag) return decodeEntities(imgTag[1]);
+  if (imgTag) return upscaleImage(decodeEntities(imgTag[1]));
+  return null;
+}
+
+// Per-source image URL upscalers, keyed by hostname pattern. Each rewrites a
+// low-res thumb variant to a higher-res one served from the same CDN/image id.
+// To support a new source, add one entry here — no changes needed elsewhere.
+const IMAGE_UPSCALERS = [
+  {
+    // BBC: ".../standard/240/..." -> ".../standard/1024/..." (same image id, higher res)
+    host: /bbci?\.co\.uk/i,
+    rewrite: (url) => url.replace(/\/standard\/(\d+)\//i, (match, width) => (
+      Number(width) < 1024 ? '/standard/1024/' : match
+    )),
+  },
+  {
+    // Ars Technica (WordPress): "...name-1152x648.jpg" is a generated resize of
+    // "...name.jpg" — stripping the "-WIDTHxHEIGHT" suffix recovers the original,
+    // usually much larger, upload. Falls back harmlessly if the original 404s
+    // (thumb <img onerror> already swaps in the category fallback icon).
+    host: /arstechnica\.net/i,
+    rewrite: (url) => url.replace(/-(\d+)x(\d+)(?=\.(?:jpe?g|png|webp|gif)(?:$|\?))/i, (match, width) => (
+      Number(width) < 1600 ? '' : match
+    )),
+  },
+];
+
+function upscaleImage(url) {
+  if (!url) return url;
+  const rule = IMAGE_UPSCALERS.find(({ host }) => host.test(url));
+  return rule ? rule.rewrite(url) : url;
+}
+
+// Some feed-provided images are too small/opaque to upscale in place:
+// - Google Trends: opaque encrypted-tbn token, no resizable URL param at all.
+// - Guardian: the ?width= param is covered by a server-side signature (s=),
+//   so rewriting width invalidates the signature and 404s/401s — the only
+//   fix is fetching a fresh (larger) image URL from the article itself.
+// Treat these (and any missing image) as "low quality" and try a real
+// og:image from the article page instead.
+function isLowQualityImage(url) {
+  if (!url) return true;
+  if (/encrypted-tbn\d*\.gstatic\.com/i.test(url)) return true;
+  if (/\bi\.guim\.co\.uk\b/i.test(url)) {
+    const m = url.match(/[?&]width=(\d+)/i);
+    if (m && Number(m[1]) < 300) return true;
+  }
+  return false;
+}
+
+// Best-effort fetch of an article page's og:image (falls back to twitter:image)
+// for sources whose feed payload has no usable image. Called lazily by
+// StoryService when an article is actually attached to a story — not during
+// bulk ingestion — so we only ever pay for it on articles that matter.
+async function fetchOgImage(pageUrl) {
+  try {
+    const html = await fetchUrl(pageUrl, { timeoutMs: 5000 });
+    const patterns = [
+      /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i,
+      /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
+    ];
+    for (const re of patterns) {
+      const m = html.match(re);
+      if (m) {
+        // og:image content is occasionally a root-relative path (e.g. a site
+        // logo/placeholder SVG) rather than an absolute URL — resolve it
+        // against the article's own origin, since a relative path is
+        // meaningless once stored standalone in our DB.
+        let resolved;
+        try {
+          resolved = new URL(decodeEntities(m[1]), pageUrl).toString();
+        } catch (_) {
+          continue;
+        }
+        if (!/^https?:\/\//i.test(resolved)) continue;
+        return upscaleImage(resolved);
+      }
+    }
+  } catch (err) {
+    console.warn(`[IngestionService] og:image fetch failed for ${pageUrl}: ${err.message}`);
+  }
   return null;
 }
 
@@ -178,6 +266,12 @@ async function ingestAll(pool) {
 
       for (const item of items) {
         const externalId = item.externalId || urlHash(item.url);
+
+        // No og:image fetch here — ingestion just stores whatever the feed
+        // gives us for the ~25k articles that pile up, most of which never
+        // become a story. Fetching a better image is deferred until an
+        // article is actually attached to a story (see StoryService), so we
+        // only ever pay for it on the handful of articles that matter.
         const article = await dao.upsertArticle({
           sourceId: source.id,
           externalId,
@@ -199,4 +293,4 @@ async function ingestAll(pool) {
   return newCount;
 }
 
-module.exports = { ingestAll, fetchHN, fetchRss, fetchGoogleTrends, urlHash };
+module.exports = { ingestAll, fetchHN, fetchRss, fetchGoogleTrends, urlHash, upscaleImage, fetchOgImage, isLowQualityImage };

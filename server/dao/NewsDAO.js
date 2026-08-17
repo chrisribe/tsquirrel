@@ -157,6 +157,7 @@ class NewsDAO {
     return rows[0] || null; // null = already existed
   }
 
+
   // Search articles for the admin "attach source" picker — title + description match,
   // optional source filter, excludes articles already attached to the story being edited.
   async searchAvailableArticles({ q = '', sourceSlug = null, excludeIds = [], limit = 20 } = {}) {
@@ -430,6 +431,10 @@ class NewsDAO {
     return rows;
   }
 
+  async updateArticleImage(articleId, imageUrl) {
+    await this.pool.query(`UPDATE articles SET image_url = $1 WHERE id = $2`, [imageUrl, articleId]);
+  }
+
   // ── Sources ──────────────────────────────────────────────────
 
   async getActiveSources(type = null) {
@@ -491,7 +496,7 @@ class NewsDAO {
 
   async getLegacyArticles() {
     const { rows } = await this.pool.query(`
-      SELECT id, slug, title, description, source_url, created_at
+      SELECT id, slug, title, description, source_url, image_url, image_status, created_at
       FROM legacy_articles
       ORDER BY id ASC
     `);
