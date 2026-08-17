@@ -16,7 +16,7 @@
   <% if (article.source_url) { %>
   <div class="source-list">
     <h3>Original Source</h3>
-    <a href="<%= article.source_url %>" target="_blank" rel="noopener noreferrer" class="source-item">
+    <a href="<%= article.source_url %>" target="_blank" rel="noopener noreferrer" class="source-item" data-ga-event="legacy_source_open" data-ga-story-slug="<%= article.slug %>">
       <span class="source-name">Source</span>
       <span class="source-title"><%= article.source_url.replace(/^https?:\/\/(?:www\.)?/, '').split('/')[0] %></span>
       <span class="source-arrow">↗ Read original article</span>
@@ -27,11 +27,21 @@
   <div style="margin-top:2rem; padding:1rem; background:#f9fafb; border-radius:10px; border:1px solid #e5e7eb;">
     <p style="margin:0; font-size:.9rem; color:#6b7280;">
       🐿️ <strong>TSquirrel is back.</strong> We're now an AI-powered news aggregator — 
-      <a href="/">see what's trending today →</a>
+      <a href="/" data-ga-event="back_to_feed" data-ga-location="legacy_callout">see what's trending today →</a>
     </p>
   </div>
 
   <div style="margin-top:1.5rem">
-    <a href="/" class="secondary">← Back to trending</a>
+    <a href="/" class="secondary" data-ga-event="back_to_feed" data-ga-location="legacy_bottom">← Back to trending</a>
   </div>
 </article>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.tsqTrack) {
+      window.tsqTrack('legacy_story_view', {
+        story_slug: '<%= article.slug %>',
+      });
+    }
+  });
+</script>

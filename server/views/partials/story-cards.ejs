@@ -14,7 +14,7 @@
 <% const recentHrs = (Date.now() - new Date(story.published_at || story.updated_at || story.created_at)) / 3600000; %>
 <% const isBlowingUp = story.heat_score >= 30 && recentHrs <= 3; %>
 <article class="story-card">
-  <a href="/story/<%= story.slug %>" class="story-link">
+  <a href="/story/<%= story.slug %>" class="story-link" data-ga-event="story_open" data-ga-story-id="<%= story.id %>" data-ga-story-slug="<%= story.slug %>" data-ga-category="<%= story.category %>" data-ga-location="feed_card">
     <div class="card-inner">
       <div class="card-body">
         <div class="story-meta">
@@ -38,7 +38,7 @@
           <% if (story.tags && story.tags.length) { %>
             <div class="story-tags">
               <% story.tags.slice(0,4).forEach(tag => { %>
-                <span class="story-tag" onclick="event.preventDefault(); event.stopPropagation(); location.href='/?tag=<%= encodeURIComponent(tag) %>'"><%= '#' + tag %></span>
+                <span class="story-tag" data-ga-event="tag_select" data-ga-tag="<%= tag %>" data-ga-location="feed_card" onclick="event.preventDefault(); event.stopPropagation(); location.href='/?tag=<%= encodeURIComponent(tag) %>'"><%= '#' + tag %></span>
               <% }); %>
             </div>
           <% } %>

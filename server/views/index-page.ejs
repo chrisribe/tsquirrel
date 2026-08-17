@@ -8,16 +8,16 @@
 <p class="chatter">The internet is a big forest. <strong>We sniff out the good stuff</strong> so you don't have to dig. Hand-picked, not auto-generated. 🌰</p>
 
 <% if (activeTag) { %>
-  <p class="chatter">Showing stories tagged <strong>#<%= activeTag %></strong> — <a href="/">clear filter</a></p>
+  <p class="chatter">Showing stories tagged <strong>#<%= activeTag %></strong> — <a href="/" data-ga-event="tag_clear" data-ga-tag="<%= activeTag %>">clear filter</a></p>
 <% } %>
 
 <!-- Category filter bar -->
 <section class="category-bar">
   <div class="category-scroll">
-    <a href="/" class="category-pill <%= !activeCategory ? 'active' : '' %>">🌰 All</a>
+    <a href="/" class="category-pill <%= !activeCategory ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="all" data-ga-location="top_bar">🌰 All</a>
     <% categories.forEach(c => { %>
       <a href="/?category=<%= c.category %>"
-         class="category-pill <%= activeCategory === c.category ? 'active' : '' %>">
+         class="category-pill <%= activeCategory === c.category ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="<%= c.category %>" data-ga-location="top_bar">
         <%= catLabel(c.category) %> <span class="pill-count"><%= c.count %></span>
       </a>
     <% }); %>
@@ -26,7 +26,7 @@
 
 <!-- Featured strip -->
 <% if (featured) { %>
-  <a href="/story/<%= featured.slug %>" class="card-featured<%= featured.image_url ? ' has-image' : '' %>"
+  <a href="/story/<%= featured.slug %>" class="card-featured<%= featured.image_url ? ' has-image' : '' %>" data-ga-event="story_open" data-ga-story-id="<%= featured.id %>" data-ga-story-slug="<%= featured.slug %>" data-ga-location="featured"
      <% if (featured.image_url) { %>style="background-image:url('<%= featured.image_url %>')"<% } %>>
     <div class="featured-eyebrow">🔥 Everyone's chattering about this</div>
     <div class="featured-title"><%= featured.title %></div>

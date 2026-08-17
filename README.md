@@ -55,6 +55,15 @@ Docs: `docs/article-regrouping-tooling.md`.
 
 See `.env.example`.
 
+- `GOOGLE_ANALYTICS_ID` enables GA4 page tracking via gtag in the shared layout.
+
+GA4 events emitted (recommended naming):
+- `page_view`
+- `view_item` (story / legacy story views)
+- `select_item` (story opens from feed, featured, related, archive)
+- `select_content` (filters, back navigation, source/outbound link clicks)
+- `view_item_list` (feed load-more via HTMX)
+
 ## API auth for agents
 
 LLM/agent clients should not log in via `/auth/login`.

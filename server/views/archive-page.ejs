@@ -15,7 +15,7 @@
 
 <section class="archive-list">
   <% articles.forEach(a => { %>
-    <a href="/<%= a.slug %>" class="card archive">
+    <a href="/<%= a.slug %>" class="card archive" data-ga-event="legacy_story_open" data-ga-story-slug="<%= a.slug %>" data-ga-location="archive_list">
       <div class="archive-media">
         <% if (a.image_url) { %>
           <img src="<%= a.image_url %>" alt="<%= a.title %>" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.archive-media').classList.add('no-image'); this.remove();">
@@ -35,5 +35,5 @@
 </section>
 
 <div style="margin-top:2rem">
-  <a href="/" class="secondary">← Back to trending</a>
+  <a href="/" class="secondary" data-ga-event="back_to_feed" data-ga-location="archive_bottom">← Back to trending</a>
 </div>

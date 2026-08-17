@@ -78,6 +78,7 @@ async function startServer() {
     res.locals.assetVersion = process.env.NODE_ENV === 'development'
       ? Date.now().toString()
       : ASSET_VERSION;
+    res.locals.googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID || '';
     res.locals.nutsToday = 0;
     if (!req.path.startsWith('/api') && !req.path.startsWith('/static')) {
       try {
