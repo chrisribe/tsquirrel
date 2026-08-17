@@ -1145,6 +1145,27 @@ a.signal-meta-chip:hover {
   padding: .85rem 1rem; text-decoration: none; color: inherit; transition: box-shadow .15s;
 }
 .card.archive:hover { box-shadow: 0 3px 14px rgba(0,0,0,.06); }
+.archive-media {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: .55rem;
+  background: #f1e8dc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.archive-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.archive-media-fallback {
+  font-size: 1.5rem;
+  opacity: .7;
+}
 .archive-badge-row { margin-bottom: .35rem; }
 .badge-archive { background: #f3e8d8; color: var(--acorn); font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: .1rem .38rem; border-radius: 4px; }
 .card.archive .archive-item-title { display: block; font-size: .9rem; font-weight: 700; color: #1a1612; line-height: 1.35; margin-bottom: .2rem; }

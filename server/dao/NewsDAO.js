@@ -496,7 +496,7 @@ class NewsDAO {
 
   async getLegacyArticles() {
     const { rows } = await this.pool.query(`
-      SELECT id, slug, title, description, source_url, created_at
+      SELECT id, slug, title, description, source_url, image_url, image_status, created_at
       FROM legacy_articles
       ORDER BY id ASC
     `);

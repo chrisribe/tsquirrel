@@ -282,6 +282,16 @@ const migrations = [
       console.log('Migration 16: story_source_suggestions table created');
     }
   },
+  {
+    version: 17,
+    description: 'Legacy archive images — add legacy_articles.image_url + image_status',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE legacy_articles ADD COLUMN IF NOT EXISTS image_url TEXT`);
+      await pool.query(`ALTER TABLE legacy_articles ADD COLUMN IF NOT EXISTS image_status VARCHAR(20) DEFAULT 'pending'`);
+      await pool.query(`UPDATE legacy_articles SET image_status = 'pending' WHERE image_status IS NULL`);
+      console.log('Migration 17: legacy_articles.image_url + image_status added');
+    }
+  },
   // Future migrations go here
 ];
 
