@@ -36,11 +36,15 @@ class StoryService {
   _deriveFallbackTags(story) {
     const stop = new Set([
       'the', 'and', 'for', 'with', 'from', 'into', 'over', 'under', 'after', 'before',
-      'amid', 'amidst', 'over', 'about', 'that', 'this', 'are', 'was', 'were', 'will',
-      'new', 'says', 'say', 'today', 'news'
+      'amid', 'amidst', 'about', 'that', 'this', 'these', 'those',
+      'are', 'was', 'were', 'will', 'have', 'has', 'had', 'been', 'being',
+      'new', 'news', 'says', 'said', 'just', 'more', 'less', 'several',
+      'they', 'them', 'their', 'there', 'here', 'when', 'where', 'while',
+      'what', 'who', 'whom', 'whose', 'which', 'into', 'onto', 'than'
     ]);
     const words = String(story?.title || '')
       .toLowerCase()
+      .replace(/\b[a-z]+\'/g, (m) => m.slice(0, -1))
       .match(/[a-z0-9]+/g) || [];
     const tags = [];
     for (const w of words) {
