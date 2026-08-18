@@ -139,6 +139,24 @@ class StoryService {
     }
   }
 
+  async _ensureStoryImageQuality(storyId, story = null) {
+    const current = story || await this.dao.getStoryById(storyId);
+    if (!current) return;
+    if (current.image_url && !isLowQualityImage(current.image_url)) return;
+
+    const articles = await this.dao.getStoryArticles(storyId);
+    for (const a of articles) {
+      if (isLowQualityImage(a.image_url) && a.url) {
+        const ogImage = await fetchOgImage(a.url);
+        if (ogImage) await this.dao.updateArticleImage(a.id, ogImage);
+      }
+    }
+
+    const refreshed = await this.dao.getStoryArticles(storyId);
+    const best = refreshed.map((a) => a.image_url).find((u) => u && !isLowQualityImage(u)) || null;
+    await this.dao.setStoryImage(storyId, best);
+  }
+
   async setStatus(storyId, status) {
     if (status === 'published') {
       const story = await this.dao.getStoryById(storyId);
@@ -150,6 +168,7 @@ class StoryService {
         const fallbackTags = this._deriveFallbackTags(story);
         if (fallbackTags.length > 0) await this.dao.setTags(storyId, fallbackTags);
       }
+      await this._ensureStoryImageQuality(storyId, story);
 
       const issues = await this._getPublishBlockers(storyId);
       if (issues.length > 0) {

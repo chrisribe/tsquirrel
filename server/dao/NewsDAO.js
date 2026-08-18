@@ -390,6 +390,13 @@ class NewsDAO {
     );
   }
 
+  async setStoryImage(id, imageUrl = null) {
+    await this.pool.query(
+      'UPDATE stories SET image_url = $2, updated_at = NOW() WHERE id = $1',
+      [id, imageUrl]
+    );
+  }
+
   async setFeatured(id, featured) {
     const { rows } = await this.pool.query(
       'UPDATE stories SET is_featured = $2, updated_at = NOW() WHERE id = $1 RETURNING *',
