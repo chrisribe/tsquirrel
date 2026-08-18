@@ -16,6 +16,11 @@ const BOILERPLATE_PATTERNS = [
   /it remains to be seen/i,
   /broadly speaking/i,
   /this could have significant implications/i,
+  /source mix:/i,
+  /operational and legal risk/i,
+  /map the next (one|two|three) decision checkpoints/i,
+  /do not break timelines/i,
+  /the next official moves will likely set the pace/i,
 ];
 
 // Core story domain service. Owns all NewsDAO access for stories and returns

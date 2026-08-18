@@ -25,6 +25,8 @@ def _heuristics(story, sources):
         issues.append("why_it_matters too short/generic")
     if re.search(r"\b(in conclusion|important to note|as we move forward)\b", f"{take} {wim}", re.I):
         issues.append("boilerplate phrasing detected")
+    if re.search(r"source mix:|operational and legal risk|map the next (one|two|three) decision checkpoints|do not break timelines|the next official moves will likely set the pace", f"{take} {wim}", re.I):
+        issues.append("template/prompt-like phrasing detected")
     return issues
 
 
