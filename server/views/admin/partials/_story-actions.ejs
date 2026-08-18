@@ -2,6 +2,7 @@
   const story = pageData.story;
   const baseUrl = `/admin/stories/${story.id}`;
   const editUrl = `${baseUrl}/edit`;
+  const returnTo = pageData.returnTo || '/admin/stories';
 %>
 <section id="story-actions">
   <h2>Actions</h2>
@@ -34,6 +35,7 @@
     <form method="POST" action="<%= baseUrl %>/delete"
           hx-post="<%= baseUrl %>/delete"
           hx-confirm="Delete this story permanently?">
+      <input type="hidden" name="returnTo" value="<%= returnTo %>">
       <button type="submit" class="outline admin-danger">Delete</button>
     </form>
   </div>

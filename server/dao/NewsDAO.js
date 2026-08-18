@@ -447,7 +447,7 @@ class NewsDAO {
     await this.pool.query('DELETE FROM stories WHERE id = $1', [id]);
   }
 
-  async getStoriesForAdmin({ status = null, needsReview = null } = {}) {
+  async getStoriesForAdmin({ status = null, needsReview = null, limit = 50, offset = 0, page = 1, perPage = 50 } = {}) {
     const params = [];
     const clauses = [];
     if (status) {
@@ -459,6 +459,12 @@ class NewsDAO {
       clauses.push(`s.needs_review = $${params.length}`);
     }
     const whereClause = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+    const countQuery = `SELECT COUNT(*)::int AS total FROM stories s ${whereClause}`;
+    const countResult = await this.pool.query(countQuery, params);
+    const total = countResult.rows[0]?.total || 0;
+
+    const listParams = [...params, limit, offset];
     const { rows } = await this.pool.query(`
       SELECT s.*,
              COUNT(sa.article_id) AS source_count,
@@ -471,8 +477,21 @@ class NewsDAO {
       ORDER BY
         CASE s.status WHEN 'draft' THEN 0 WHEN 'published' THEN 1 ELSE 2 END,
         s.updated_at DESC
-    `, params);
-    return rows;
+      LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
+    `, listParams);
+
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    return {
+      stories: rows,
+      pagination: {
+        total,
+        page,
+        perPage,
+        totalPages,
+        hasPrev: page > 1,
+        hasNext: page < totalPages,
+      },
+    };
   }
 
   async getRecentArticles({ limit = 100 } = {}) {

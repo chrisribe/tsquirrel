@@ -6,7 +6,7 @@
   const attachedIds = pageData.attached.map(article => article.id);
 %>
 <section class="admin-story-edit" id="story-edit-section">
-  <a href="/admin/stories" class="admin-back">&larr; Back to Stories</a>
+  <a href="<%= pageData.returnTo || '/admin/stories' %>" class="admin-back">&larr; Back to Stories</a>
   <h1><%= isEdit ? 'Edit Story' : 'New Story' %></h1>
 
   <% if (pageData.message) { %><p class="admin-alert" role="status"><%= pageData.message %></p><% } %>
@@ -76,6 +76,6 @@
   <% if (isEdit) { %>
     <%- include('partials/_suggested-sources', { pageData: { story, suggestions: pageData.suggestions } }) %>
     <%- include('partials/_story-sources', { pageData: { story, attached: pageData.attached } }) %>
-    <%- include('partials/_story-actions', { pageData: { story } }) %>
+    <%- include('partials/_story-actions', { pageData: { story, returnTo: pageData.returnTo } }) %>
   <% } %>
 </section>

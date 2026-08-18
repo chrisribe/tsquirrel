@@ -1,3 +1,13 @@
+<%
+  const returnTo = pageData.returnTo || '/admin/stories';
+  const statusParam = pageData.activeStatus ? `status=${encodeURIComponent(pageData.activeStatus)}` : '';
+  const pageHref = (page) => {
+    const parts = [];
+    if (statusParam) parts.push(statusParam);
+    if (page > 1) parts.push(`page=${page}`);
+    return `/admin/stories${parts.length ? '?' + parts.join('&') : ''}`;
+  };
+%>
 <section class="admin-stories">
   <a href="/admin" class="admin-back">&larr; Back to Admin Dashboard</a>
   <div class="admin-toolbar">
@@ -36,7 +46,7 @@
               <% } %>
             </td>
             <td class="story-title-cell">
-              <a href="/admin/stories/<%= s.id %>/edit"><%= s.title %></a>
+              <a href="/admin/stories/<%= s.id %>/edit?returnTo=<%= encodeURIComponent(returnTo) %>"><%= s.title %></a>
               <% if (s.is_featured) { %><span class="story-flag">Featured</span><% } %>
               <% if (s.pending_suggestions > 0) { %><span class="story-flag story-flag-review">🔄 <%= s.pending_suggestions %> to review</span><% } %>
             </td>
@@ -55,18 +65,18 @@
               <div class="admin-actions">
                 <% if (s.status !== 'published') { %>
                   <form method="POST" action="/admin/stories/<%= s.id %>/publish">
-                    <input type="hidden" name="returnTo" value="/admin/stories<%= pageData.activeStatus ? '?status=' + pageData.activeStatus : '' %>">
+                    <input type="hidden" name="returnTo" value="<%= returnTo %>">
                     <button type="submit" class="outline">Publish</button>
                   </form>
                 <% } else { %>
                   <form method="POST" action="/admin/stories/<%= s.id %>/unpublish">
-                    <input type="hidden" name="returnTo" value="/admin/stories<%= pageData.activeStatus ? '?status=' + pageData.activeStatus : '' %>">
+                    <input type="hidden" name="returnTo" value="<%= returnTo %>">
                     <button type="submit" class="outline secondary">Unpublish</button>
                   </form>
                 <% } %>
                 <form method="POST" action="/admin/stories/<%= s.id %>/feature">
                   <input type="hidden" name="featured" value="<%= s.is_featured ? 'false' : 'true' %>">
-                  <input type="hidden" name="returnTo" value="/admin/stories<%= pageData.activeStatus ? '?status=' + pageData.activeStatus : '' %>">
+                  <input type="hidden" name="returnTo" value="<%= returnTo %>">
                   <button type="submit" class="outline"><%= s.is_featured ? 'Unfeature' : 'Feature' %></button>
                 </form>
               </div>
@@ -76,6 +86,22 @@
       </tbody>
     </table>
     </div>
+
+    <% if (pageData.pagination && pageData.pagination.totalPages > 1) { %>
+      <nav class="admin-pager" aria-label="Story list pages">
+        <% if (pageData.pagination.hasPrev) { %>
+          <a href="<%= pageHref(pageData.pagination.page - 1) %>" role="button" class="outline">← Prev</a>
+        <% } else { %>
+          <span class="outline" aria-disabled="true">← Prev</span>
+        <% } %>
+        <span class="hint">Page <strong><%= pageData.pagination.page %></strong> of <strong><%= pageData.pagination.totalPages %></strong> (<%= pageData.pagination.total %> stories)</span>
+        <% if (pageData.pagination.hasNext) { %>
+          <a href="<%= pageHref(pageData.pagination.page + 1) %>" role="button" class="outline">Next →</a>
+        <% } else { %>
+          <span class="outline" aria-disabled="true">Next →</span>
+        <% } %>
+      </nav>
+    <% } %>
   <% } %>
   <p class="hint">Stories are authored manually here (or via the API later). Nothing is live until <strong>Published</strong>. Existing auto-generated stories were set to <em>hidden</em> on migration — review and publish the good ones.</p>
 </section>

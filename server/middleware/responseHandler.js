@@ -46,7 +46,7 @@ module.exports = (req, res, next) => {
   // Use only when the successful mutation genuinely navigates elsewhere.
   res.redirectForRequest = (url) => {
     if (req.isHtmx) {
-      res.set('HX-Location', url);
+      res.set('HX-Redirect', url);
       return res.status(200).send('');
     }
     return res.redirect(303, url);

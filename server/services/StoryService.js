@@ -58,8 +58,8 @@ class StoryService {
   }
 
   // ── Reads ────────────────────────────────────────────────────────────────
-  listForAdmin({ status = null, needsReview = null } = {}) {
-    return this.dao.getStoriesForAdmin({ status, needsReview });
+  listForAdmin({ status = null, needsReview = null, limit = 50, offset = 0, page = 1, perPage = 50 } = {}) {
+    return this.dao.getStoriesForAdmin({ status, needsReview, limit, offset, page, perPage });
   }
 
   getById(storyId) {

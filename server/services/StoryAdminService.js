@@ -8,8 +8,11 @@ class StoryAdminService {
     this.stories = new StoryService(pool);
   }
 
-  async listStories(status = null) {
-    return this.stories.listForAdmin({ status });
+  async listStories({ status = null, page = 1, perPage = 50 } = {}) {
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const safePerPage = Number.isFinite(perPage) && perPage > 0 ? perPage : 50;
+    const offset = (safePage - 1) * safePerPage;
+    return this.stories.listForAdmin({ status, limit: safePerPage, offset, page: safePage, perPage: safePerPage });
   }
 
   async getNewStoryModel(seedIds = []) {
@@ -46,14 +49,14 @@ class StoryAdminService {
     return this.stories.create(values, { authorType: 'human', authorId });
   }
 
-  async getEditorModel(storyId) {
+  async getEditorModel(storyId, { returnTo = '/admin/stories' } = {}) {
     const story = await this.stories.getById(storyId);
     if (!story) return null;
     const [attached, suggestions] = await Promise.all([
       this.stories.getArticles(story.id),
       this.stories.getSuggestions(story.id),
     ]);
-    return { story, attached, suggestions, recentArticles: [], error: null };
+    return { story, attached, suggestions, recentArticles: [], returnTo, error: null };
   }
 
   async getAttachPickerModel(storyId) {

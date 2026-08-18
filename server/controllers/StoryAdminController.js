@@ -17,12 +17,26 @@ function notFound(res) {
   });
 }
 
+function parsePositiveInt(value, fallback) {
+  const n = parseInt(value, 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function safeAdminStoriesReturnTo(value) {
+  const s = String(value || '');
+  return s.startsWith('/admin/stories') ? s : '/admin/stories';
+}
+
 const StoryAdminController = {
   async list(req, res, next) {
     try {
       const activeStatus = req.query.status || null;
-      const stories = await serviceFor(req).listStories(activeStatus);
-      return res.renderPage('admin/stories', { stories, activeStatus }, {
+      const page = parsePositiveInt(req.query.page, 1);
+      const perPage = 50;
+      const pageData = await serviceFor(req).listStories({ status: activeStatus, page, perPage });
+      pageData.activeStatus = activeStatus;
+      pageData.returnTo = safeAdminStoriesReturnTo(req.originalUrl);
+      return res.renderPage('admin/stories', pageData, {
         pageTitle: 'Stories — Admin — TSquirrel',
       });
     } catch (error) { return next(error); }
@@ -62,7 +76,8 @@ const StoryAdminController = {
 
   async edit(req, res, next) {
     try {
-      const pageData = await serviceFor(req).getEditorModel(req.params.id);
+      const returnTo = safeAdminStoriesReturnTo(req.query.returnTo || '/admin/stories');
+      const pageData = await serviceFor(req).getEditorModel(req.params.id, { returnTo });
       if (!pageData) return notFound(res);
       return res.renderPage('admin/story-edit', pageData, {
         pageTitle: `Edit: ${pageData.story.title} — Admin — TSquirrel`,
@@ -175,7 +190,7 @@ const StoryAdminController = {
     try {
       const pageData = await serviceFor(req).setStatus(req.params.id, status);
       if (!pageData) return notFound(res);
-      const fallback = req.body.returnTo || '/admin/stories';
+      const fallback = safeAdminStoriesReturnTo(req.body.returnTo || '/admin/stories');
       return res.renderFragmentOrRedirect(
         'admin/partials/_story-lifecycle',
         { ...pageData, message },
@@ -205,7 +220,7 @@ const StoryAdminController = {
       const featured = req.body.featured === 'true';
       const pageData = await serviceFor(req).setFeatured(req.params.id, featured);
       if (!pageData) return notFound(res);
-      const fallback = req.body.returnTo || '/admin/stories';
+      const fallback = safeAdminStoriesReturnTo(req.body.returnTo || '/admin/stories');
       return res.renderFragmentOrRedirect(
         'admin/partials/_story-lifecycle',
         { ...pageData, message: featured ? 'Story featured.' : 'Story unfeatured.' },
@@ -218,7 +233,8 @@ const StoryAdminController = {
   async delete(req, res, next) {
     try {
       await serviceFor(req).deleteStory(req.params.id);
-      return res.redirectForRequest('/admin/stories');
+      const fallback = safeAdminStoriesReturnTo(req.body.returnTo || '/admin/stories');
+      return res.redirectForRequest(fallback);
     } catch (error) { return next(error); }
   },
 };
