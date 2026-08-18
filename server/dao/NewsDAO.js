@@ -275,6 +275,44 @@ class NewsDAO {
     return rows[0] || null;
   }
 
+  // Duplicate guard at publish-time: if a story shares most of its evidence
+  // with an already published story, treat it as a duplicate candidate.
+  async findPublishedStoryDuplicates(storyId, { minShared = 2, minOverlap = 0.6, limit = 5 } = {}) {
+    const { rows } = await this.pool.query(`
+      WITH target AS (
+        SELECT COUNT(*)::int AS target_cnt
+        FROM story_articles
+        WHERE story_id = $1
+      ),
+      shared AS (
+        SELECT sa_other.story_id AS other_id, COUNT(*)::int AS shared_cnt
+        FROM story_articles sa_self
+        JOIN story_articles sa_other
+          ON sa_other.article_id = sa_self.article_id
+         AND sa_other.story_id <> sa_self.story_id
+        WHERE sa_self.story_id = $1
+        GROUP BY sa_other.story_id
+      ),
+      other_counts AS (
+        SELECT s.id, s.title, COUNT(sa.article_id)::int AS other_cnt
+        FROM stories s
+        LEFT JOIN story_articles sa ON sa.story_id = s.id
+        WHERE s.status = 'published' AND s.id <> $1
+        GROUP BY s.id, s.title
+      )
+      SELECT oc.id, oc.title, sh.shared_cnt, oc.other_cnt, t.target_cnt,
+             (sh.shared_cnt::float / GREATEST(1, LEAST(oc.other_cnt, t.target_cnt))) AS overlap_ratio
+      FROM shared sh
+      JOIN other_counts oc ON oc.id = sh.other_id
+      CROSS JOIN target t
+      WHERE sh.shared_cnt >= $2
+         OR (sh.shared_cnt >= 1 AND (sh.shared_cnt::float / GREATEST(1, LEAST(oc.other_cnt, t.target_cnt))) >= $3)
+      ORDER BY overlap_ratio DESC, sh.shared_cnt DESC, oc.id DESC
+      LIMIT $4
+    `, [storyId, minShared, minOverlap, limit]);
+    return rows;
+  }
+
   // ── Suggested sources (Radar proposes, editor reviews) ────────
   // Radar records follow-up articles as PENDING suggestions rather than
   // attaching them directly, so a bad convergence match can never poison a

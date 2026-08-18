@@ -202,6 +202,12 @@ class StoryService {
       issues.push('attached sources are not topically coherent (cluster mismatch)');
     }
 
+    const dupes = await this.dao.findPublishedStoryDuplicates(storyId);
+    if (dupes.length > 0) {
+      const refs = dupes.slice(0, 3).map((d) => `#${d.id}`).join(', ');
+      issues.push(`likely duplicate of published story (${refs})`);
+    }
+
     return issues;
   }
 
