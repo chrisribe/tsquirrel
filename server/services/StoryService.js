@@ -33,6 +33,26 @@ class StoryService {
     this.dao = new NewsDAO(pool);
   }
 
+  _deriveFallbackTags(story) {
+    const stop = new Set([
+      'the', 'and', 'for', 'with', 'from', 'into', 'over', 'under', 'after', 'before',
+      'amid', 'amidst', 'over', 'about', 'that', 'this', 'are', 'was', 'were', 'will',
+      'new', 'says', 'say', 'today', 'news'
+    ]);
+    const words = String(story?.title || '')
+      .toLowerCase()
+      .match(/[a-z0-9]+/g) || [];
+    const tags = [];
+    for (const w of words) {
+      if (w.length < 4 || stop.has(w)) continue;
+      if (!tags.includes(w)) tags.push(w);
+      if (tags.length >= 3) break;
+    }
+    const category = String(story?.category || '').toLowerCase().trim();
+    if (category && category !== 'other' && !tags.includes(category)) tags.unshift(category);
+    return tags.slice(0, 4);
+  }
+
   // ── Reads ────────────────────────────────────────────────────────────────
   listForAdmin({ status = null, needsReview = null } = {}) {
     return this.dao.getStoriesForAdmin({ status, needsReview });
@@ -121,6 +141,10 @@ class StoryService {
       if (story && this._looksBoilerplate(story.why_it_matters)) {
         // Prefer hiding weak filler over publishing obvious template text.
         await this.dao.setWhyItMatters(storyId, null);
+      }
+      if (story && (!Array.isArray(story.tags) || story.tags.length === 0)) {
+        const fallbackTags = this._deriveFallbackTags(story);
+        if (fallbackTags.length > 0) await this.dao.setTags(storyId, fallbackTags);
       }
 
       const issues = await this._getPublishBlockers(storyId);

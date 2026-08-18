@@ -383,6 +383,13 @@ class NewsDAO {
     );
   }
 
+  async setTags(id, tags = []) {
+    await this.pool.query(
+      'UPDATE stories SET tags = $2, updated_at = NOW() WHERE id = $1',
+      [id, tags]
+    );
+  }
+
   async setFeatured(id, featured) {
     const { rows } = await this.pool.query(
       'UPDATE stories SET is_featured = $2, updated_at = NOW() WHERE id = $1 RETURNING *',
