@@ -644,6 +644,24 @@ class NewsDAO {
     return rows.length > 0;
   }
 
+  // True if any recent signal already covers the same article evidence.
+  async hasRecentSignalForArticles(articleIds, { windowHours = 48, minShared = 2 } = {}) {
+    if (!articleIds || articleIds.length === 0) return false;
+    const { rows } = await this.pool.query(`
+      SELECT s.id
+      FROM signals s
+      WHERE s.status != 'dismissed'
+        AND s.fired_at > NOW() - ($3 || ' hours')::interval
+        AND (
+          SELECT COUNT(*)
+          FROM jsonb_array_elements_text(COALESCE((s.evidence::jsonb)->'article_ids', '[]'::jsonb)) AS e(val)
+          WHERE (e.val)::int = ANY($1::int[])
+        ) >= $2
+      LIMIT 1
+    `, [articleIds, minShared, String(windowHours)]);
+    return rows.length > 0;
+  }
+
   async createSignal({ detector, topic, strength, evidence, expiresInHours = 48 }) {
     const { rows } = await this.pool.query(`
       INSERT INTO signals (detector, topic, strength, evidence, status, fired_at, expires_at)

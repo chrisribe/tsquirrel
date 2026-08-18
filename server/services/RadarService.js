@@ -47,6 +47,9 @@ async function radarScan(pool) {
     const alreadyFired = await dao.hasRecentSignal(hit.topic);
     if (alreadyFired) continue;
 
+    const evidenceCovered = await dao.hasRecentSignalForArticles(hit.article_ids, { windowHours: 48, minShared: 2 });
+    if (evidenceCovered) continue;
+
     const strength = hit.source_count * hit.article_count;
     await dao.createSignal({
       detector: 'convergence',
