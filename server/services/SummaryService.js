@@ -6,6 +6,52 @@
 const https = require('https');
 const crypto = require('crypto');
 
+const TITLE_STOPWORDS = new Set([
+  'a','an','and','are','as','at','be','by','for','from','has','have','in','into','is','it','its','of','on','or','that','the','their','to','was','were','with',
+  'year','years','old','new','latest','today','after','before','over','under','amid','about','says','say','found'
+]);
+
+function titleTokenSet(title) {
+  const tokens = String(title || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 3 && !TITLE_STOPWORDS.has(t) && !/^\d+$/.test(t));
+  return new Set(tokens);
+}
+
+function isClusterCoherent(articles) {
+  if (!articles || articles.length < 2) return true;
+
+  const tokenSets = articles.map((a) => titleTokenSet(a.title));
+  let pairs = 0;
+  let overlapPairs = 0;
+  let totalBestJaccard = 0;
+
+  for (let i = 0; i < tokenSets.length; i++) {
+    let best = 0;
+    for (let j = 0; j < tokenSets.length; j++) {
+      if (i === j) continue;
+      const a = tokenSets[i];
+      const b = tokenSets[j];
+      const inter = [...a].filter((t) => b.has(t)).length;
+      const union = new Set([...a, ...b]).size;
+      const jacc = union === 0 ? 0 : inter / union;
+      if (jacc > best) best = jacc;
+      if (j > i) {
+        pairs += 1;
+        if (inter > 0) overlapPairs += 1;
+      }
+    }
+    totalBestJaccard += best;
+  }
+
+  const overlapRatio = pairs === 0 ? 1 : overlapPairs / pairs;
+  const avgBestJaccard = totalBestJaccard / tokenSets.length;
+
+  return overlapRatio >= 0.34 || avgBestJaccard >= 0.2;
+}
+
 function slugify(text) {
   return text
     .toLowerCase()
@@ -113,47 +159,64 @@ Only group articles that are genuinely about the same event/topic. Singletons ar
     const clusterArticles = (cluster.indices || []).map(i => articles[i]).filter(Boolean);
     if (clusterArticles.length === 0) continue;
 
-    // Generate summary for multi-source stories
-    let summary = null;
-    if (clusterArticles.length > 1) {
-      try {
-        const headlines = clusterArticles.map(a => `- [${a.source_name}] ${a.title}`).join('\n');
-        const result = await callLLM([
-          {
-            role: 'system',
-            content: 'You are TSquirrel, a concise news editor. Write a 2-3 sentence neutral summary of the story covered by these headlines, PLUS one "squirrel_take" line (max 18 words) that states a concrete implication from the headlines. Avoid mascot catchphrases, slogans, and imperative advice (no lines starting with verbs like "Watch", "Focus", "Scurry"). If no clear implication is supported, return squirrel_take as an empty string. Return JSON: { "summary": "...", "squirrel_take": "...", "tags": ["tag1","tag2"], "sentiment": 0.0 } where sentiment is -1 (negative) to 1 (positive).',
-          },
-          { role: 'user', content: headlines },
-        ]);
-        summary = result.summary || null;
-        cluster.squirrelTake = result.squirrel_take || null;
-        cluster.tags = result.tags || [];
-        cluster.sentiment = result.sentiment || 0;
-      } catch (err) {
-        console.error('[SummaryService] Summary error:', err.message);
+    // Coherence gate: if a multi-article cluster is topically mixed,
+    // split into singletons so bad merges never get persisted.
+    const clusterUnits = (!isClusterCoherent(clusterArticles) && clusterArticles.length > 1)
+      ? clusterArticles.map((a) => [a])
+      : [clusterArticles];
+
+    if (clusterUnits.length > 1) {
+      console.warn(`[SummaryService] Split incoherent cluster (${clusterArticles.length} → ${clusterUnits.length}) title="${cluster.title || 'untitled'}"`);
+    }
+
+    for (const unitArticles of clusterUnits) {
+      // Generate summary for multi-source stories
+      let summary = null;
+      let squirrelTake = null;
+      let tags = [];
+      let sentiment = 0;
+
+      if (unitArticles.length > 1) {
+        try {
+          const headlines = unitArticles.map(a => `- [${a.source_name}] ${a.title}`).join('\n');
+          const result = await callLLM([
+            {
+              role: 'system',
+              content: 'You are TSquirrel, a concise news editor. Write a 2-3 sentence neutral summary of the story covered by these headlines, PLUS one "squirrel_take" line (max 18 words) that states a concrete implication from the headlines. Avoid mascot catchphrases, slogans, and imperative advice (no lines starting with verbs like "Watch", "Focus", "Scurry"). If no clear implication is supported, return squirrel_take as an empty string. Return JSON: { "summary": "...", "squirrel_take": "...", "tags": ["tag1","tag2"], "sentiment": 0.0 } where sentiment is -1 (negative) to 1 (positive).',
+            },
+            { role: 'user', content: headlines },
+          ]);
+          summary = result.summary || null;
+          squirrelTake = result.squirrel_take || null;
+          tags = result.tags || [];
+          sentiment = result.sentiment || 0;
+        } catch (err) {
+          console.error('[SummaryService] Summary error:', err.message);
+        }
       }
+
+      // Heat score: source count × recency bonus
+      const heatScore = unitArticles.length * 10;
+      const primaryTitle = (unitArticles[0] && unitArticles[0].title) || cluster.title || 'Story';
+
+      const story = await dao.upsertStory({
+        title: unitArticles.length > 1 ? (cluster.title || primaryTitle) : primaryTitle,
+        slug: slugify(unitArticles.length > 1 ? (cluster.title || primaryTitle) : primaryTitle),
+        summary,
+        category: cluster.category || 'Other',
+        tags,
+        sentiment,
+        heatScore,
+        imageUrl: null,
+        squirrelTake,
+      });
+
+      for (const article of unitArticles) {
+        await dao.linkArticleToStory(story.id, article.id);
+      }
+
+      storiesCreated++;
     }
-
-    // Heat score: source count × recency bonus
-    const heatScore = clusterArticles.length * 10;
-
-    const story = await dao.upsertStory({
-      title: cluster.title,
-      slug: slugify(cluster.title),
-      summary,
-      category: cluster.category || 'Other',
-      tags: cluster.tags || [],
-      sentiment: cluster.sentiment || 0,
-      heatScore,
-      imageUrl: null,
-      squirrelTake: cluster.squirrelTake || null,
-    });
-
-    for (const article of clusterArticles) {
-      await dao.linkArticleToStory(story.id, article.id);
-    }
-
-    storiesCreated++;
   }
 
   console.log(`[SummaryService] Created/updated ${storiesCreated} stories`);

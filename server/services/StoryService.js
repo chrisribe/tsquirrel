@@ -4,6 +4,20 @@ const NewsDAO = require('../dao/NewsDAO');
 const { slugify } = require('../lib/slug');
 const { isLowQualityImage, fetchOgImage } = require('./IngestionService');
 
+const TITLE_STOPWORDS = new Set([
+  'a','an','and','are','as','at','be','by','for','from','has','have','in','into','is','it','its','of','on','or','that','the','their','to','was','were','with',
+  'year','years','old','new','latest','today','after','before','over','under','amid','about','says','say','found'
+]);
+
+const BOILERPLATE_PATTERNS = [
+  /this (story|article|development) (highlights|underscores|shows|demonstrates)/i,
+  /in (today'?s|the current) (world|landscape)/i,
+  /important reminder/i,
+  /it remains to be seen/i,
+  /broadly speaking/i,
+  /this could have significant implications/i,
+];
+
 // Core story domain service. Owns all NewsDAO access for stories and returns
 // raw domain data (stories, articles, suggestions, booleans). Presentation
 // shaping — admin page-view models vs JSON payloads — lives in the wrapping
@@ -96,8 +110,90 @@ class StoryService {
     }
   }
 
-  setStatus(storyId, status) {
+  async setStatus(storyId, status) {
+    if (status === 'published') {
+      const issues = await this._getPublishBlockers(storyId);
+      if (issues.length > 0) {
+        await this.dao.setNeedsReview(storyId, true);
+        const error = new Error(`Publish blocked: ${issues.join('; ')}`);
+        error.status = 400;
+        throw error;
+      }
+    }
     return this.dao.setStoryStatus(storyId, status);
+  }
+
+  async _getPublishBlockers(storyId) {
+    const story = await this.dao.getStoryById(storyId);
+    if (!story) return [];
+
+    const issues = [];
+
+    const titleWords = String(story.title || '').trim().split(/\s+/).filter(Boolean);
+    if (titleWords.length < 4) issues.push('title must be at least 4 words');
+
+    if (this._looksBoilerplate(story.squirrel_take)) {
+      issues.push('squirrel_take looks generic/boilerplate');
+    }
+    if (this._looksBoilerplate(story.why_it_matters)) {
+      issues.push('why_it_matters looks generic/boilerplate');
+    }
+
+    const articles = await this.dao.getStoryArticles(storyId);
+    if (articles.length > 1 && !this._isClusterCoherent(articles)) {
+      issues.push('attached sources are not topically coherent (cluster mismatch)');
+    }
+
+    return issues;
+  }
+
+  _looksBoilerplate(text) {
+    const value = String(text || '').trim();
+    if (!value) return false;
+    const words = value.split(/\s+/).filter(Boolean);
+    if (words.length < 7) return true;
+    return BOILERPLATE_PATTERNS.some((rx) => rx.test(value));
+  }
+
+  _titleTokenSet(title) {
+    const tokens = String(title || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .split(/\s+/)
+      .filter((t) => t.length >= 3 && !TITLE_STOPWORDS.has(t) && !/^\d+$/.test(t));
+    return new Set(tokens);
+  }
+
+  _isClusterCoherent(articles) {
+    if (!articles || articles.length < 2) return true;
+
+    const tokenSets = articles.map((a) => this._titleTokenSet(a.title));
+    let pairs = 0;
+    let overlapPairs = 0;
+    let totalBestJaccard = 0;
+
+    for (let i = 0; i < tokenSets.length; i++) {
+      let best = 0;
+      for (let j = 0; j < tokenSets.length; j++) {
+        if (i === j) continue;
+        const a = tokenSets[i];
+        const b = tokenSets[j];
+        const inter = [...a].filter((t) => b.has(t)).length;
+        const union = new Set([...a, ...b]).size;
+        const jacc = union === 0 ? 0 : inter / union;
+        if (jacc > best) best = jacc;
+        if (j > i) {
+          pairs += 1;
+          if (inter > 0) overlapPairs += 1;
+        }
+      }
+      totalBestJaccard += best;
+    }
+
+    const overlapRatio = pairs === 0 ? 1 : overlapPairs / pairs;
+    const avgBestJaccard = totalBestJaccard / tokenSets.length;
+
+    return overlapRatio >= 0.34 || avgBestJaccard >= 0.2;
   }
 
   setFeatured(storyId, featured) {

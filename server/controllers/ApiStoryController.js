@@ -148,7 +148,10 @@ const ApiStoryController = {
       const story = await serviceFor(req).setStatus(id, 'published');
       if (!story) return res.status(404).json({ error: 'story not found' });
       return res.json({ ok: true, story });
-    } catch (error) { return next(error); }
+    } catch (error) {
+      if (error.status !== 400) return next(error);
+      return res.status(400).json({ error: error.message, code: 'publish_blocked' });
+    }
   },
 
   async unpublish(req, res, next) {
