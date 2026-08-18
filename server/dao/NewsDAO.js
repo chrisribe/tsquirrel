@@ -376,6 +376,13 @@ class NewsDAO {
     return rows[0] || null;
   }
 
+  async setWhyItMatters(id, whyItMatters = null) {
+    await this.pool.query(
+      'UPDATE stories SET why_it_matters = $2, updated_at = NOW() WHERE id = $1',
+      [id, whyItMatters]
+    );
+  }
+
   async setFeatured(id, featured) {
     const { rows } = await this.pool.query(
       'UPDATE stories SET is_featured = $2, updated_at = NOW() WHERE id = $1 RETURNING *',

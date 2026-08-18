@@ -117,6 +117,12 @@ class StoryService {
 
   async setStatus(storyId, status) {
     if (status === 'published') {
+      const story = await this.dao.getStoryById(storyId);
+      if (story && this._looksBoilerplate(story.why_it_matters)) {
+        // Prefer hiding weak filler over publishing obvious template text.
+        await this.dao.setWhyItMatters(storyId, null);
+      }
+
       const issues = await this._getPublishBlockers(storyId);
       if (issues.length > 0) {
         await this.dao.setNeedsReview(storyId, true);
