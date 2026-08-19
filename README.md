@@ -75,8 +75,12 @@ curl -H "Authorization: Bearer tsq_..." http://127.0.0.1:3000/api/v1/me
 
 Available token-auth endpoints:
 - `GET /api/v1/me`
-- `GET /api/v1/stories?status=draft|published|hidden`
+- `GET /api/v1/stories?status=draft|published|hidden&needs_review=true|false&page=1&per_page=30&sort=updated_at|created_at|published_at|heat_score|title|status&order=asc|desc`
 - `POST /api/v1/stories`
+- `PATCH /api/v1/stories/:id`
+- `DELETE /api/v1/stories/:id`
+- `POST /api/v1/stories/bulk` (`action`: publish|unpublish|hide|feature|unfeature|delete)
 - `POST /api/v1/stories/:id/publish`
 - `POST /api/v1/stories/:id/unpublish`
+- `POST /api/v1/stories/:id/hide`
 

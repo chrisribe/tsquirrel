@@ -15,15 +15,30 @@ function parseBoundedInt(value, fallback, { min = 1, max = 100 } = {}) {
   return Math.max(min, Math.min(max, n));
 }
 
+function parseIdList(value) {
+  const raw = Array.isArray(value) ? value : [value];
+  const out = [];
+  for (const entry of raw) {
+    const s = String(entry || '').trim();
+    if (!s) continue;
+    if (s.includes(',')) out.push(...s.split(','));
+    else out.push(s);
+  }
+  return Array.from(new Set(out.map(v => parseInt(v, 10)).filter(Number.isFinite)));
+}
+
 const ApiStoryController = {
   async list(req, res, next) {
     try {
       const status = req.query.status || null;
-      const limit = parseBoundedInt(req.query.limit, 30, { min: 1, max: 100 });
       const needsReview = req.query.needs_review === undefined ? null : req.query.needs_review === 'true';
+      const page = parseBoundedInt(req.query.page, 1, { min: 1, max: 1000000 });
+      const perPage = parseBoundedInt(req.query.per_page || req.query.limit, 30, { min: 1, max: 100 });
+      const sort = req.query.sort || null;
+      const order = String(req.query.order || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
 
-      const { count, stories } = await serviceFor(req).listStories({ status, needsReview, limit });
-      return res.json({ ok: true, count, stories });
+      const payload = await serviceFor(req).listStories({ status, needsReview, page, perPage, sort, order });
+      return res.json({ ok: true, ...payload });
     } catch (error) { return next(error); }
   },
 
@@ -163,6 +178,40 @@ const ApiStoryController = {
       if (!story) return res.status(404).json({ error: 'story not found' });
       return res.json({ ok: true, story });
     } catch (error) { return next(error); }
+  },
+
+  async hide(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+
+      const story = await serviceFor(req).setStatus(id, 'hidden');
+      if (!story) return res.status(404).json({ error: 'story not found' });
+      return res.json({ ok: true, story });
+    } catch (error) { return next(error); }
+  },
+
+  async delete(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+
+      const result = await serviceFor(req).deleteStory(id);
+      if (!result) return res.status(404).json({ error: 'story not found' });
+      return res.json({ ok: true, ...result });
+    } catch (error) { return next(error); }
+  },
+
+  async bulkAction(req, res, next) {
+    try {
+      const ids = parseIdList(req.body.ids || req.body.story_ids || req.body.storyIds);
+      const action = String(req.body.action || '').trim();
+      const result = await serviceFor(req).bulkAction({ ids, action });
+      return res.json({ ok: true, ...result });
+    } catch (error) {
+      if (error.status === 400) return res.status(400).json({ error: error.message });
+      return next(error);
+    }
   },
 
   // ── Articles API (for client and automation) ────────────────────────────

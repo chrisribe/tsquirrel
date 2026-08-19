@@ -447,7 +447,16 @@ class NewsDAO {
     await this.pool.query('DELETE FROM stories WHERE id = $1', [id]);
   }
 
-  async getStoriesForAdmin({ status = null, needsReview = null, limit = 50, offset = 0, page = 1, perPage = 50 } = {}) {
+  async getStoriesForAdmin({
+    status = null,
+    needsReview = null,
+    limit = 50,
+    offset = 0,
+    page = 1,
+    perPage = 50,
+    sort = null,
+    order = 'desc',
+  } = {}) {
     const params = [];
     const clauses = [];
     if (status) {
@@ -464,6 +473,20 @@ class NewsDAO {
     const countResult = await this.pool.query(countQuery, params);
     const total = countResult.rows[0]?.total || 0;
 
+    const sortColumns = {
+      updated_at: 's.updated_at',
+      created_at: 's.created_at',
+      published_at: 's.published_at',
+      heat_score: 's.heat_score',
+      title: 's.title',
+      status: 's.status',
+    };
+    const sortColumn = sortColumns[sort] || null;
+    const sortOrder = String(order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    const orderBy = sortColumn
+      ? `${sortColumn} ${sortOrder}`
+      : `CASE s.status WHEN 'draft' THEN 0 WHEN 'published' THEN 1 ELSE 2 END, s.updated_at DESC`;
+
     const listParams = [...params, limit, offset];
     const { rows } = await this.pool.query(`
       SELECT s.*,
@@ -474,9 +497,7 @@ class NewsDAO {
       LEFT JOIN story_articles sa ON sa.story_id = s.id
       ${whereClause}
       GROUP BY s.id
-      ORDER BY
-        CASE s.status WHEN 'draft' THEN 0 WHEN 'published' THEN 1 ELSE 2 END,
-        s.updated_at DESC
+      ORDER BY ${orderBy}
       LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
     `, listParams);
 

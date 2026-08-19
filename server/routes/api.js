@@ -16,8 +16,10 @@ router.get('/me', async (req, res) => {
 
 router.get('/stories', apiStoryController.list);
 router.post('/stories', apiStoryController.create);
+router.post('/stories/bulk', apiStoryController.bulkAction);
 router.get('/stories/:id', apiStoryController.get);
 router.patch('/stories/:id', apiStoryController.patch);
+router.delete('/stories/:id', apiStoryController.delete);
 router.post('/stories/:id/sources', apiStoryController.addSource);
 router.delete('/stories/:id/sources/:articleId', apiStoryController.removeSource);
 
@@ -29,6 +31,7 @@ router.post('/stories/:id/suggestions/:articleId/reject', apiStoryController.rej
 router.post('/stories/:id/feature', apiStoryController.feature);
 router.post('/stories/:id/publish', apiStoryController.publish);
 router.post('/stories/:id/unpublish', apiStoryController.unpublish);
+router.post('/stories/:id/hide', apiStoryController.hide);
 
 // ── Articles access (avoids attach/detach probe workflows) ─────────────────
 router.get('/articles/recent', apiStoryController.listRecentArticles);

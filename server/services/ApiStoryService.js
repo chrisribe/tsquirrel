@@ -15,9 +15,25 @@ class ApiStoryService {
     this.dao = new NewsDAO(pool);
   }
 
-  async listStories({ status = null, needsReview = null, limit = 30 } = {}) {
-    const stories = await this.stories.listForAdmin({ status, needsReview });
-    return { count: Math.min(stories.length, limit), stories: stories.slice(0, limit) };
+  async listStories({ status = null, needsReview = null, page = 1, perPage = 30, sort = null, order = 'desc' } = {}) {
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const safePerPage = Number.isFinite(perPage) && perPage > 0 ? perPage : 30;
+    const offset = (safePage - 1) * safePerPage;
+    const payload = await this.stories.listForAdmin({
+      status,
+      needsReview,
+      limit: safePerPage,
+      offset,
+      page: safePage,
+      perPage: safePerPage,
+      sort,
+      order,
+    });
+    return {
+      count: payload.pagination?.total || payload.stories.length,
+      stories: payload.stories,
+      pagination: payload.pagination,
+    };
   }
 
   async createStory(input, authorId) {
@@ -98,6 +114,41 @@ class ApiStoryService {
 
   async setStatus(storyId, status) {
     return this.stories.setStatus(storyId, status);
+  }
+
+  async deleteStory(storyId) {
+    const story = await this.stories.getById(storyId);
+    if (!story) return null;
+    await this.stories.delete(storyId);
+    return { id: storyId, deleted: true };
+  }
+
+  async bulkAction({ ids = [], action = '' } = {}) {
+    const storyIds = Array.from(new Set((ids || []).map(id => parseInt(id, 10)).filter(Number.isFinite)));
+    if (storyIds.length === 0) {
+      const error = new Error('ids is required');
+      error.status = 400;
+      throw error;
+    }
+
+    const normalized = String(action || '').trim();
+    const allowed = new Set(['publish', 'unpublish', 'hide', 'feature', 'unfeature', 'delete']);
+    if (!allowed.has(normalized)) {
+      const error = new Error('invalid bulk action');
+      error.status = 400;
+      throw error;
+    }
+
+    for (const id of storyIds) {
+      if (normalized === 'publish') await this.stories.setStatus(id, 'published');
+      else if (normalized === 'unpublish') await this.stories.setStatus(id, 'draft');
+      else if (normalized === 'hide') await this.stories.setStatus(id, 'hidden');
+      else if (normalized === 'feature') await this.stories.setFeatured(id, true);
+      else if (normalized === 'unfeature') await this.stories.setFeatured(id, false);
+      else if (normalized === 'delete') await this.stories.delete(id);
+    }
+
+    return { action: normalized, count: storyIds.length, ids: storyIds };
   }
 
   // ── Missing API surface: articles ───────────────────────────────────────
