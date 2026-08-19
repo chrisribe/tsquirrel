@@ -105,10 +105,19 @@ async function startServer() {
   // Error handlers
   app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).render('layout-main', {
+
+    if (req.path.startsWith('/api/')) {
+      const status = err.status || err.statusCode || 500;
+      return res.status(status).json({ error: err.message || 'internal server error' });
+    }
+
+    return res.status(500).render('layout-main', {
       template: 'errors/general-error',
       pageTitle: 'Error — TSquirrel',
       pageData: { error: 'Something went wrong' },
+      googleAnalyticsId: '',
+      assetVersion: ASSET_VERSION,
+      nutsToday: 0,
     });
   });
   app.use((req, res) => {
