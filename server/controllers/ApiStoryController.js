@@ -155,6 +155,17 @@ const ApiStoryController = {
     } catch (error) { return next(error); }
   },
 
+  async publishPreflight(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+
+      const preflight = await serviceFor(req).getPublishPreflight(id);
+      if (!preflight) return res.status(404).json({ error: 'story not found' });
+      return res.json({ ok: true, ...preflight });
+    } catch (error) { return next(error); }
+  },
+
   async publish(req, res, next) {
     try {
       const id = parseId(req.params.id);

@@ -3,9 +3,11 @@
 const express = require('express');
 const router = express.Router();
 const apiTokenAuth = require('../middleware/apiTokenAuthMiddleware');
+const apiIdempotency = require('../middleware/apiIdempotencyMiddleware');
 const apiStoryController = require('../controllers/ApiStoryController');
 
 router.use(apiTokenAuth);
+router.use(apiIdempotency);
 
 router.get('/me', async (req, res) => {
   res.json({
@@ -29,6 +31,7 @@ router.post('/stories/:id/suggestions/:articleId/accept', apiStoryController.acc
 router.post('/stories/:id/suggestions/:articleId/reject', apiStoryController.rejectSuggestion);
 
 router.post('/stories/:id/feature', apiStoryController.feature);
+router.get('/stories/:id/publish-preflight', apiStoryController.publishPreflight);
 router.post('/stories/:id/publish', apiStoryController.publish);
 router.post('/stories/:id/unpublish', apiStoryController.unpublish);
 router.post('/stories/:id/hide', apiStoryController.hide);

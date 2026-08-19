@@ -166,6 +166,17 @@ class StoryService {
     await this.dao.setStoryImage(storyId, best);
   }
 
+  async getPublishPreflight(storyId) {
+    const story = await this.dao.getStoryById(storyId);
+    if (!story) return null;
+    const blockers = await this._getPublishBlockers(storyId);
+    return {
+      story_id: storyId,
+      can_publish: blockers.length === 0,
+      blockers,
+    };
+  }
+
   async setStatus(storyId, status) {
     if (status === 'published') {
       const story = await this.dao.getStoryById(storyId);
@@ -199,12 +210,13 @@ class StoryService {
     const titleWords = String(story.title || '').trim().split(/\s+/).filter(Boolean);
     if (titleWords.length < 4) issues.push('title must be at least 4 words');
 
-    if (this._looksBoilerplate(story.squirrel_take)) {
-      issues.push('squirrel_take looks generic/boilerplate');
-    }
-    if (this._looksBoilerplate(story.why_it_matters)) {
-      issues.push('why_it_matters looks generic/boilerplate');
-    }
+    const squirrelTake = String(story.squirrel_take || '').trim();
+    if (!squirrelTake) issues.push('squirrel_take is required');
+    else if (this._looksBoilerplate(squirrelTake)) issues.push('squirrel_take looks generic/boilerplate');
+
+    const whyItMatters = String(story.why_it_matters || '').trim();
+    if (!whyItMatters) issues.push('why_it_matters is required');
+    else if (this._looksBoilerplate(whyItMatters)) issues.push('why_it_matters looks generic/boilerplate');
 
     const articles = await this.dao.getStoryArticles(storyId);
     if (articles.length > 1 && !this._isClusterCoherent(articles)) {

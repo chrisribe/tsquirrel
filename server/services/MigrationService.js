@@ -292,6 +292,28 @@ const migrations = [
       console.log('Migration 17: legacy_articles.image_url + image_status added');
     }
   },
+  {
+    version: 18,
+    description: 'API idempotency ledger for mutation request replay safety',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS api_request_idempotency (
+          id SERIAL PRIMARY KEY,
+          request_fingerprint TEXT NOT NULL UNIQUE,
+          token_id INTEGER REFERENCES api_tokens(id) ON DELETE SET NULL,
+          method VARCHAR(10) NOT NULL,
+          route_path TEXT NOT NULL,
+          idempotency_key TEXT NOT NULL,
+          response_status INTEGER NOT NULL,
+          response_body JSONB,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_api_request_idempotency_created_at ON api_request_idempotency(created_at DESC)`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_api_request_idempotency_token_id ON api_request_idempotency(token_id)`);
+      console.log('Migration 18: api_request_idempotency ledger created');
+    }
+  },
   // Future migrations go here
 ];
 

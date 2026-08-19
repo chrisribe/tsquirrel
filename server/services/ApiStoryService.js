@@ -112,6 +112,12 @@ class ApiStoryService {
     return this.stories.setFeatured(storyId, featured);
   }
 
+  async getPublishPreflight(storyId) {
+    const story = await this.stories.getById(storyId);
+    if (!story) return null;
+    return this.stories.getPublishPreflight(storyId);
+  }
+
   async setStatus(storyId, status) {
     return this.stories.setStatus(storyId, status);
   }
