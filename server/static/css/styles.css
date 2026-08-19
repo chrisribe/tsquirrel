@@ -520,6 +520,33 @@ main.container, footer.container { max-width: 980px; }
   text-align: center;
 }
 
+/* Bulk action bar on stories page: flex row, wraps cleanly on narrow screens.
+   Keep separate from .admin-actions table-cell grid to avoid clipped selects
+   and overlapping count text. */
+.admin-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem .6rem;
+  align-items: center;
+  margin: .75rem 0;
+}
+.admin-bulk-actions label,
+.admin-bulk-actions .hint {
+  margin: 0;
+}
+.admin-bulk-actions #bulk-action-select,
+.admin-bulk-actions #bulk-apply-btn {
+  width: auto;
+  margin: 0;
+}
+.admin-bulk-actions #bulk-action-select {
+  min-width: 14rem;
+  max-width: 100%;
+}
+.admin-bulk-actions #bulk-selected-count {
+  white-space: nowrap;
+}
+
 /* Standalone action groups (e.g. story-edit "Actions" section) — a single
    row of buttons, not a column-aligned table grid like .admin-actions. */
 .admin-actions-row {
