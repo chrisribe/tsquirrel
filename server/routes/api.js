@@ -3,11 +3,9 @@
 const express = require('express');
 const router = express.Router();
 const apiTokenAuth = require('../middleware/apiTokenAuthMiddleware');
-const apiIdempotency = require('../middleware/apiIdempotencyMiddleware');
 const apiStoryController = require('../controllers/ApiStoryController');
 
 router.use(apiTokenAuth);
-router.use(apiIdempotency);
 
 router.get('/me', async (req, res) => {
   res.json({
