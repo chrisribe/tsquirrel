@@ -25,10 +25,27 @@
   <% if (pageData.stories.length === 0) { %>
     <p class="hint">No stories<%= pageData.activeStatus ? ' with status ' + pageData.activeStatus : '' %> yet.</p>
   <% } else { %>
+    <form id="bulk-stories-form" method="POST" action="/admin/stories/bulk" class="admin-actions" style="margin: 12px 0; gap: 8px; align-items: center;">
+      <input type="hidden" name="returnTo" value="<%= returnTo %>">
+      <label class="nowrap" for="bulk-action-select" style="margin:0">Bulk action</label>
+      <select id="bulk-action-select" name="action" required>
+        <option value="">Choose…</option>
+        <option value="publish">Publish</option>
+        <option value="unpublish">Unpublish (to draft)</option>
+        <option value="hide">Hide</option>
+        <option value="feature">Feature</option>
+        <option value="unfeature">Unfeature</option>
+        <option value="delete">Delete permanently</option>
+      </select>
+      <button type="submit" class="outline" id="bulk-apply-btn" disabled>Apply to selected</button>
+      <span class="hint" id="bulk-selected-count">0 selected</span>
+    </form>
+
     <div class="table-scroll">
     <table>
       <thead>
         <tr>
+          <th class="nowrap"><input type="checkbox" id="stories-select-all" aria-label="Select all stories on this page"></th>
           <th></th>
           <th>Title</th>
           <th class="nowrap">Status</th>
@@ -40,6 +57,9 @@
       <tbody>
         <% pageData.stories.forEach(function(s) { %>
           <tr>
+            <td class="nowrap">
+              <input type="checkbox" name="storyIds" value="<%= s.id %>" form="bulk-stories-form" class="story-select-box" aria-label="Select story <%= s.title %>">
+            </td>
             <td>
               <% if (s.image_url) { %>
                 <img src="<%= s.image_url %>" alt="" loading="lazy" width="40" referrerpolicy="no-referrer" style="border-radius:4px;display:block">
@@ -102,6 +122,49 @@
         <% } %>
       </nav>
     <% } %>
+
+    <script>
+      (() => {
+        const form = document.getElementById('bulk-stories-form');
+        if (!form) return;
+        const selectAll = document.getElementById('stories-select-all');
+        const checkboxes = Array.from(document.querySelectorAll('.story-select-box'));
+        const actionSelect = document.getElementById('bulk-action-select');
+        const applyBtn = document.getElementById('bulk-apply-btn');
+        const countEl = document.getElementById('bulk-selected-count');
+
+        const refresh = () => {
+          const selected = checkboxes.filter((cb) => cb.checked).length;
+          if (countEl) countEl.textContent = `${selected} selected`;
+          if (applyBtn) applyBtn.disabled = selected === 0 || !actionSelect.value;
+          if (selectAll) {
+            selectAll.checked = selected > 0 && selected === checkboxes.length;
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+          }
+        };
+
+        if (selectAll) {
+          selectAll.addEventListener('change', () => {
+            for (const cb of checkboxes) cb.checked = selectAll.checked;
+            refresh();
+          });
+        }
+
+        for (const cb of checkboxes) cb.addEventListener('change', refresh);
+        actionSelect.addEventListener('change', refresh);
+
+        form.addEventListener('submit', (event) => {
+          if (actionSelect.value === 'delete') {
+            const selected = checkboxes.filter((cb) => cb.checked).length;
+            if (!window.confirm(`Delete ${selected} selected stor${selected === 1 ? 'y' : 'ies'} permanently?`)) {
+              event.preventDefault();
+            }
+          }
+        });
+
+        refresh();
+      })();
+    </script>
   <% } %>
   <p class="hint">Stories are authored manually here (or via the API later). Nothing is live until <strong>Published</strong>. Existing auto-generated stories were set to <em>hidden</em> on migration — review and publish the good ones.</p>
 </section>

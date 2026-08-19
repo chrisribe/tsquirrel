@@ -114,6 +114,30 @@ class StoryAdminService {
   async deleteStory(storyId) {
     return this.stories.delete(storyId);
   }
+
+  async bulkAction(storyIds = [], action = '') {
+    const ids = Array.from(new Set((storyIds || []).map(id => parseInt(id, 10)).filter(Number.isFinite)));
+    if (ids.length === 0) return { count: 0, action: null };
+
+    const normalized = String(action || '').trim();
+    const allowed = new Set(['publish', 'unpublish', 'hide', 'feature', 'unfeature', 'delete']);
+    if (!allowed.has(normalized)) {
+      const error = new Error('Invalid bulk action.');
+      error.status = 400;
+      throw error;
+    }
+
+    for (const id of ids) {
+      if (normalized === 'publish') await this.stories.setStatus(id, 'published');
+      else if (normalized === 'unpublish') await this.stories.setStatus(id, 'draft');
+      else if (normalized === 'hide') await this.stories.setStatus(id, 'hidden');
+      else if (normalized === 'feature') await this.stories.setFeatured(id, true);
+      else if (normalized === 'unfeature') await this.stories.setFeatured(id, false);
+      else if (normalized === 'delete') await this.stories.delete(id);
+    }
+
+    return { count: ids.length, action: normalized };
+  }
 }
 
 module.exports = StoryAdminService;

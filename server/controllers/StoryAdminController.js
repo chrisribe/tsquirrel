@@ -27,6 +27,18 @@ function safeAdminStoriesReturnTo(value) {
   return s.startsWith('/admin/stories') ? s : '/admin/stories';
 }
 
+function parseStoryIdList(value) {
+  const raw = Array.isArray(value) ? value : [value];
+  const parts = [];
+  for (const entry of raw) {
+    const s = String(entry || '').trim();
+    if (!s) continue;
+    if (s.includes(',')) parts.push(...s.split(','));
+    else parts.push(s);
+  }
+  return Array.from(new Set(parts.map(id => parseInt(id, 10)).filter(Number.isFinite)));
+}
+
 const StoryAdminController = {
   async list(req, res, next) {
     try {
@@ -236,6 +248,21 @@ const StoryAdminController = {
       const fallback = safeAdminStoriesReturnTo(req.body.returnTo || '/admin/stories');
       return res.redirectForRequest(fallback);
     } catch (error) { return next(error); }
+  },
+
+  async bulkAction(req, res, next) {
+    try {
+      const ids = parseStoryIdList(req.body.storyIds);
+      const action = String(req.body.action || '').trim();
+      const fallback = safeAdminStoriesReturnTo(req.body.returnTo || '/admin/stories');
+      await serviceFor(req).bulkAction(ids, action);
+      return res.redirectForRequest(fallback);
+    } catch (error) {
+      if (error.status === 400) {
+        return res.status(400).send(error.message);
+      }
+      return next(error);
+    }
   },
 };
 

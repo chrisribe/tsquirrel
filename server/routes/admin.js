@@ -24,6 +24,7 @@ router.post('/sources/:slug/toggle', sourceAdminController.toggleSource);
 router.get('/stories', storyAdminController.list);
 router.get('/stories/new', storyAdminController.newForm);
 router.post('/stories', storyAdminController.create);
+router.post('/stories/bulk', storyAdminController.bulkAction);
 router.get('/stories/:id/edit', storyAdminController.edit);
 router.get('/stories/:id/attach-picker', storyAdminController.attachPicker);
 router.post('/stories/:id', storyAdminController.update);
