@@ -4,7 +4,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
 
-const ASSET_VERSION = '1.1.1';
+const ASSET_VERSION = '1.1.2';
 
 async function startServer() {
   const app = express();
@@ -68,10 +68,11 @@ async function startServer() {
   });
 
   // Category display helpers available in every template
-  const { catMeta, catLabel, displaySourceName } = require('./lib/display');
+  const { catMeta, catLabel, displaySourceName, secureUrl } = require('./lib/display');
   app.locals.catMeta = catMeta;
   app.locals.catLabel = catLabel;
   app.locals.displaySourceName = displaySourceName;
+  app.locals.secureUrl = secureUrl;
 
   // Inject globals into all views
   app.use(async (req, res, next) => {

@@ -17,10 +17,10 @@
     </label>
     <% imageCandidates.forEach(function(article) { %>
       <label class="image-picker-option">
-        <input type="radio" name="image_url" value="<%= article.image_url %>" form="story-form"
-          <%= currentImage === article.image_url ? 'checked' : '' %>>
+        <input type="radio" name="image_url" value="<%= secureUrl(article.image_url) %>" form="story-form"
+          <%= secureUrl(currentImage) === secureUrl(article.image_url) ? 'checked' : '' %>>
         <span class="image-picker-thumb">
-          <img src="<%= article.image_url %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+          <img src="<%= secureUrl(article.image_url) %>" alt="" loading="lazy" referrerpolicy="no-referrer">
         </span>
         <small><%= displaySourceName(article) %></small>
       </label>

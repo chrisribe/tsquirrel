@@ -37,4 +37,9 @@ function displaySourceName(article) {
   }
 }
 
-module.exports = { CATEGORY_META, catMeta, catLabel, displaySourceName };
+function secureUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  return url.replace(/^http:\/\//i, 'https://');
+}
+
+module.exports = { CATEGORY_META, catMeta, catLabel, displaySourceName, secureUrl };

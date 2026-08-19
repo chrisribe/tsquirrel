@@ -8,7 +8,7 @@
       <% pageData.attached.forEach(function(article) { %>
         <li class="source-material-item">
           <% if (article.image_url) { %>
-            <img src="<%= article.image_url %>" alt="" loading="lazy" width="88" referrerpolicy="no-referrer" class="source-material-thumb">
+            <img src="<%= secureUrl(article.image_url) %>" alt="" loading="lazy" width="88" referrerpolicy="no-referrer" class="source-material-thumb">
           <% } %>
           <div class="source-material-body">
             <div class="source-material-head">

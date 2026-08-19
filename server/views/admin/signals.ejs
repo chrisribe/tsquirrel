@@ -87,7 +87,7 @@
                   if (art) { %>
                 <div class="signal-evidence-row">
                   <% if (art.image_url) { %>
-                    <img src="<%= art.image_url %>" alt="" loading="lazy" width="72" referrerpolicy="no-referrer" class="signal-evidence-thumb">
+                    <img src="<%= secureUrl(art.image_url) %>" alt="" loading="lazy" width="72" referrerpolicy="no-referrer" class="signal-evidence-thumb">
                   <% } %>
                   <span class="signal-evidence-source"><%= displaySourceName(art) %></span>
                   <a href="<%= art.url %>" target="_blank" rel="noopener"><%= art.title %></a>

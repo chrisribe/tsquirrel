@@ -62,7 +62,7 @@
             </td>
             <td>
               <% if (s.image_url) { %>
-                <img src="<%= s.image_url %>" alt="" loading="lazy" width="40" referrerpolicy="no-referrer" style="border-radius:4px;display:block">
+                <img src="<%= secureUrl(s.image_url) %>" alt="" loading="lazy" width="40" referrerpolicy="no-referrer" style="border-radius:4px;display:block">
               <% } %>
             </td>
             <td class="story-title-cell">

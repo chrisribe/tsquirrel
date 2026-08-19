@@ -18,7 +18,7 @@
     <a href="/<%= a.slug %>" class="card archive" data-ga-event="legacy_story_open" data-ga-story-slug="<%= a.slug %>" data-ga-location="archive_list">
       <div class="archive-media">
         <% if (a.image_url) { %>
-          <img src="<%= a.image_url %>" alt="<%= a.title %>" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.archive-media').classList.add('no-image'); this.remove();">
+          <img src="<%= secureUrl(a.image_url) %>" alt="<%= a.title %>" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.archive-media').classList.add('no-image'); this.remove();">
         <% } else { %>
           <span class="archive-media-fallback" aria-hidden="true">🌰</span>
         <% } %>

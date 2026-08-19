@@ -7,7 +7,7 @@
       <% suggestions.forEach(function(article) { %>
         <li class="suggestion-item">
           <% if (article.image_url) { %>
-            <img src="<%= article.image_url %>" alt="" loading="lazy" width="72" referrerpolicy="no-referrer" class="suggestion-thumb">
+            <img src="<%= secureUrl(article.image_url) %>" alt="" loading="lazy" width="72" referrerpolicy="no-referrer" class="suggestion-thumb">
           <% } %>
           <div class="suggestion-body">
             <div class="suggestion-head">

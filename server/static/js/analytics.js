@@ -139,7 +139,7 @@
     trackPageView();
   });
 
-  document.body.addEventListener('click', function (event) {
+  document.addEventListener('click', function (event) {
     const tracked = event.target.closest('[data-ga-event]');
     if (tracked) {
       const params = {};
@@ -172,7 +172,7 @@
     }
   }, true);
 
-  document.body.addEventListener('htmx:afterRequest', function (event) {
+  document.addEventListener('htmx:afterRequest', function (event) {
     const path = event?.detail?.pathInfo?.requestPath || '';
     if (!path.startsWith('/api/stories')) return;
 
