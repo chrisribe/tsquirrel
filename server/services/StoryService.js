@@ -169,7 +169,7 @@ class StoryService {
   async getPublishPreflight(storyId) {
     const story = await this.dao.getStoryById(storyId);
     if (!story) return null;
-    const blockers = await this._getPublishBlockers(storyId);
+    const blockers = await this._getPublishBlockers(storyId, { story });
     return {
       story_id: storyId,
       can_publish: blockers.length === 0,
@@ -180,6 +180,7 @@ class StoryService {
   async setStatus(storyId, status) {
     if (status === 'published') {
       const story = await this.dao.getStoryById(storyId);
+      if (story && String(story.status || '').toLowerCase() === 'published') return story;
       if (story && this._looksBoilerplate(story.why_it_matters)) {
         // Prefer hiding weak filler over publishing obvious template text.
         await this.dao.setWhyItMatters(storyId, null);
@@ -201,20 +202,23 @@ class StoryService {
     return this.dao.setStoryStatus(storyId, status);
   }
 
-  async _getPublishBlockers(storyId) {
-    const story = await this.dao.getStoryById(storyId);
-    if (!story) return [];
+  async _getPublishBlockers(storyId, { story = null } = {}) {
+    const currentStory = story || await this.dao.getStoryById(storyId);
+    if (!currentStory) return [];
 
     const issues = [];
+    if (String(currentStory.status || '').toLowerCase() === 'published') {
+      return ['story is already published'];
+    }
 
-    const titleWords = String(story.title || '').trim().split(/\s+/).filter(Boolean);
+    const titleWords = String(currentStory.title || '').trim().split(/\s+/).filter(Boolean);
     if (titleWords.length < 4) issues.push('title must be at least 4 words');
 
-    const squirrelTake = String(story.squirrel_take || '').trim();
+    const squirrelTake = String(currentStory.squirrel_take || '').trim();
     if (!squirrelTake) issues.push('squirrel_take is required');
     else if (this._looksBoilerplate(squirrelTake)) issues.push('squirrel_take looks generic/boilerplate');
 
-    const whyItMatters = String(story.why_it_matters || '').trim();
+    const whyItMatters = String(currentStory.why_it_matters || '').trim();
     if (!whyItMatters) issues.push('why_it_matters is required');
     else if (this._looksBoilerplate(whyItMatters)) issues.push('why_it_matters looks generic/boilerplate');
 
