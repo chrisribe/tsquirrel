@@ -4,6 +4,9 @@ const crypto = require('crypto');
 
 const MUTATION_METHODS = new Set(['POST', 'PATCH', 'DELETE']);
 const MAX_STORED_BODY_BYTES = 256 * 1024;
+const RETENTION_DAYS = 30;
+const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+let lastPruneAt = 0;
 
 function canonicalize(value) {
   if (value === null || value === undefined) return null;
@@ -58,6 +61,16 @@ async function persistResult(pool, record) {
   );
 }
 
+async function pruneExpired(pool, nowMs) {
+  if ((nowMs - lastPruneAt) < PRUNE_INTERVAL_MS) return;
+  lastPruneAt = nowMs;
+  await pool.query(
+    `DELETE FROM api_request_idempotency
+      WHERE created_at < NOW() - ($1::int * INTERVAL '1 day')`,
+    [RETENTION_DAYS]
+  );
+}
+
 module.exports = async function apiIdempotencyMiddleware(req, res, next) {
   if (!MUTATION_METHODS.has(req.method)) return next();
 
@@ -70,6 +83,7 @@ module.exports = async function apiIdempotencyMiddleware(req, res, next) {
   const fingerprint = fingerprintFor(req, idempotencyKey);
 
   try {
+    await pruneExpired(pool, Date.now());
     const prior = await loadHit(pool, fingerprint);
     if (prior) {
       res.set('X-Idempotent-Replay', '1');
