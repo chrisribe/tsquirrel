@@ -16,7 +16,7 @@ def run_all(dry_run=False, limit=50):
     save_state(state)
 
     step1_ingest.run()
-    step2_candidates.run(limit=limit)
+    step2_candidates.run(limit=limit, dry_run=dry_run)
     step3_quality_gate.run()
     step4_publish.run(dry_run=dry_run)
     step5_report.run()
