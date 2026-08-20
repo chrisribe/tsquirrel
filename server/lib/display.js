@@ -37,9 +37,31 @@ function displaySourceName(article) {
   }
 }
 
+const TAKE_BANNED_RE = /(multiple outlets are converging on the same facts|reinforcing the direction of this story|delivery and governance risk|review cadence|signal changes|staffing and legal controls|operational and legal risk)/i;
+
+function wordCount(text) {
+  return String(text || '').trim().split(/\s+/).filter(Boolean).length;
+}
+
+function isTitleParrot(take, title) {
+  const t = String(take || '').trim().toLowerCase();
+  const s = String(title || '').trim().toLowerCase();
+  return t && s && t.startsWith(s);
+}
+
+function hasStrongTake(item) {
+  const take = String((item && item.squirrel_take) || '').trim();
+  const title = String((item && item.title) || '').trim();
+  if (!take) return false;
+  if (wordCount(take) < 8) return false;
+  if (TAKE_BANNED_RE.test(take)) return false;
+  if (isTitleParrot(take, title)) return false;
+  return true;
+}
+
 function secureUrl(url) {
   if (!url || typeof url !== 'string') return url;
   return url.replace(/^http:\/\//i, 'https://');
 }
 
-module.exports = { CATEGORY_META, catMeta, catLabel, displaySourceName, secureUrl };
+module.exports = { CATEGORY_META, catMeta, catLabel, displaySourceName, hasStrongTake, secureUrl };
