@@ -127,10 +127,10 @@ class NewsDAO {
     return [...beatRows, ...chatterRows];
   }
 
-  async upsertStory({ title, slug, summary, category, tags, sentiment, heatScore, imageUrl, squirrelTake = null }) {
+  async upsertStory({ title, slug, summary, category, tags, sentiment, heatScore, imageUrl, squirrelTake = null, whyItMatters = null }) {
     const { rows } = await this.pool.query(`
-      INSERT INTO stories (title, slug, summary, category, tags, sentiment, heat_score, image_url, squirrel_take, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      INSERT INTO stories (title, slug, summary, category, tags, sentiment, heat_score, image_url, squirrel_take, why_it_matters, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
       ON CONFLICT (slug) DO UPDATE SET
         summary = EXCLUDED.summary,
         category = EXCLUDED.category,
@@ -139,9 +139,10 @@ class NewsDAO {
         heat_score = EXCLUDED.heat_score,
         image_url = COALESCE(EXCLUDED.image_url, stories.image_url),
         squirrel_take = COALESCE(EXCLUDED.squirrel_take, stories.squirrel_take),
+        why_it_matters = COALESCE(EXCLUDED.why_it_matters, stories.why_it_matters),
         updated_at = NOW()
       RETURNING *
-    `, [title, slug, summary, category, tags, sentiment, heatScore, imageUrl, squirrelTake]);
+    `, [title, slug, summary, category, tags, sentiment, heatScore, imageUrl, squirrelTake, whyItMatters]);
     return rows[0];
   }
 
