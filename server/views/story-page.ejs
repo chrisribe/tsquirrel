@@ -99,7 +99,7 @@
   <div class="keep-digging-label">🐿️ Keep digging</div>
   <% related.forEach(r => { %>
     <% const rMeta = catMeta(r.category); %>
-    <% const rShowTake = hasStrongTake(r); %>
+    <% const rShowTake = !!String(r.squirrel_take || '').trim(); %>
     <a href="/story/<%= r.slug %>" class="keep-digging-row" data-ga-event="related_story_open" data-ga-story-id="<%= r.id %>" data-ga-story-slug="<%= r.slug %>" data-ga-location="keep_digging">
       <span class="keep-digging-icon"><%= rMeta.thumb %></span>
       <span class="keep-digging-body">

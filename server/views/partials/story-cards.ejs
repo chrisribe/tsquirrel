@@ -14,7 +14,7 @@
 <% const meta = catMeta(story.category); %>
 <% const recentHrs = (Date.now() - new Date(story.published_at || story.updated_at || story.created_at)) / 3600000; %>
 <% const isBlowingUp = story.heat_score >= 30 && recentHrs <= 3; %>
-<% const showTake = hasStrongTake(story); %>
+<% const showTake = !!String(story.squirrel_take || '').trim(); %>
 <article class="story-card">
   <a href="/story/<%= story.slug %>" class="story-link" data-ga-event="story_open" data-ga-story-id="<%= story.id %>" data-ga-story-slug="<%= story.slug %>" data-ga-category="<%= story.category %>" data-ga-location="feed_card">
     <div class="card-inner">

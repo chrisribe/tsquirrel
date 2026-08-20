@@ -68,11 +68,10 @@ async function startServer() {
   });
 
   // Category display helpers available in every template
-  const { catMeta, catLabel, displaySourceName, hasStrongTake, secureUrl } = require('./lib/display');
+  const { catMeta, catLabel, displaySourceName, secureUrl } = require('./lib/display');
   app.locals.catMeta = catMeta;
   app.locals.catLabel = catLabel;
   app.locals.displaySourceName = displaySourceName;
-  app.locals.hasStrongTake = hasStrongTake;
   app.locals.secureUrl = secureUrl;
 
   // Inject globals into all views
