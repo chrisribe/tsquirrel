@@ -21,6 +21,12 @@ const BOILERPLATE_PATTERNS = [
   /map the next (one|two|three) decision checkpoints/i,
   /do not break timelines/i,
   /the next official moves will likely set the pace/i,
+  /multiple outlets are converging on the same facts/i,
+  /reinforcing the direction of this story/i,
+  /delivery and governance risk/i,
+  /review cadence/i,
+  /signal changes/i,
+  /staffing and legal controls/i,
 ];
 
 // Core story domain service. Owns all NewsDAO access for stories and returns
@@ -169,11 +175,12 @@ class StoryService {
   async getPublishPreflight(storyId) {
     const story = await this.dao.getStoryById(storyId);
     if (!story) return null;
-    const blockers = await this._getPublishBlockers(storyId, { story });
+    const blockerDetails = await this._getPublishBlockers(storyId, { story });
     return {
       story_id: storyId,
-      can_publish: blockers.length === 0,
-      blockers,
+      can_publish: blockerDetails.length === 0,
+      blockers: blockerDetails.map((b) => b.message),
+      blocker_details: blockerDetails,
     };
   }
 
@@ -189,13 +196,19 @@ class StoryService {
         const fallbackTags = this._deriveFallbackTags(story);
         if (fallbackTags.length > 0) await this.dao.setTags(storyId, fallbackTags);
       }
+
+      // Keep source list clean at publish time. If duplicate URLs are attached,
+      // retain the newest article per URL and detach the rest.
+      await this._dedupeStorySources(storyId);
       await this._ensureStoryImageQuality(storyId, story);
 
-      const issues = await this._getPublishBlockers(storyId);
-      if (issues.length > 0) {
+      const blockers = await this._getPublishBlockers(storyId);
+      if (blockers.length > 0) {
         await this.dao.setNeedsReview(storyId, true);
-        const error = new Error(`Publish blocked: ${issues.join('; ')}`);
+        const error = new Error(`Publish blocked: ${blockers.map((b) => b.message).join('; ')}`);
         error.status = 400;
+        error.code = 'publish_blocked';
+        error.blockers = blockers;
         throw error;
       }
     }
@@ -206,34 +219,149 @@ class StoryService {
     const currentStory = story || await this.dao.getStoryById(storyId);
     if (!currentStory) return [];
 
-    const issues = [];
+    const blockers = [];
     if (String(currentStory.status || '').toLowerCase() === 'published') {
-      return ['story is already published'];
+      return [this._buildBlocker('already_published', 'story is already published')];
     }
 
-    const titleWords = String(currentStory.title || '').trim().split(/\s+/).filter(Boolean);
-    if (titleWords.length < 4) issues.push('title must be at least 4 words');
+    const title = String(currentStory.title || '').trim();
+    const titleWords = title.split(/\s+/).filter(Boolean);
+    if (titleWords.length < 4) {
+      blockers.push(this._buildBlocker('title_too_short', 'title must be at least 4 words', { field: 'title' }));
+    }
+
+    const summary = String(currentStory.summary || '').trim();
+    if (!summary) {
+      blockers.push(this._buildBlocker('summary_required', 'summary is required', { field: 'summary' }));
+    } else if (this._isTitleParrot(summary, title)) {
+      blockers.push(this._buildBlocker('summary_duplicates_title', 'summary should add facts beyond the title', { field: 'summary' }));
+    }
 
     const squirrelTake = String(currentStory.squirrel_take || '').trim();
-    if (!squirrelTake) issues.push('squirrel_take is required');
-    else if (this._looksBoilerplate(squirrelTake)) issues.push('squirrel_take looks generic/boilerplate');
+    if (!squirrelTake) {
+      blockers.push(this._buildBlocker('squirrel_take_required', 'squirrel_take is required', { field: 'squirrel_take' }));
+    } else {
+      if (this._looksBoilerplate(squirrelTake)) {
+        blockers.push(this._buildBlocker('squirrel_take_boilerplate', 'squirrel_take looks generic/boilerplate', { field: 'squirrel_take' }));
+      }
+      if (this._isTitleParrot(squirrelTake, title)) {
+        blockers.push(this._buildBlocker('squirrel_take_title_parrot', 'squirrel_take should not restate the title', { field: 'squirrel_take' }));
+      }
+    }
 
     const whyItMatters = String(currentStory.why_it_matters || '').trim();
-    if (!whyItMatters) issues.push('why_it_matters is required');
-    else if (this._looksBoilerplate(whyItMatters)) issues.push('why_it_matters looks generic/boilerplate');
+    if (!whyItMatters) {
+      blockers.push(this._buildBlocker('why_it_matters_required', 'why_it_matters is required', { field: 'why_it_matters' }));
+    } else if (this._looksBoilerplate(whyItMatters)) {
+      blockers.push(this._buildBlocker('why_it_matters_boilerplate', 'why_it_matters looks generic/boilerplate', { field: 'why_it_matters' }));
+    }
 
     const articles = await this.dao.getStoryArticles(storyId);
+    const duplicateSources = this._findDuplicateSourceUrls(articles);
+    if (duplicateSources.length > 0) {
+      blockers.push(this._buildBlocker(
+        'duplicate_source_urls',
+        `story has duplicate source URLs (${duplicateSources.length})`,
+        { field: 'sources', meta: { duplicate_urls: duplicateSources } }
+      ));
+    }
     if (articles.length > 1 && !this._isClusterCoherent(articles)) {
-      issues.push('attached sources are not topically coherent (cluster mismatch)');
+      blockers.push(this._buildBlocker(
+        'sources_cluster_mismatch',
+        'attached sources are not topically coherent (cluster mismatch)',
+        { field: 'sources' }
+      ));
     }
 
     const dupes = await this.dao.findPublishedStoryDuplicates(storyId);
     if (dupes.length > 0) {
       const refs = dupes.slice(0, 3).map((d) => `#${d.id}`).join(', ');
-      issues.push(`likely duplicate of published story (${refs})`);
+      blockers.push(this._buildBlocker(
+        'duplicate_published_story',
+        `likely duplicate of published story (${refs})`,
+        { field: 'story', meta: { candidate_ids: dupes.slice(0, 3).map((d) => d.id) } }
+      ));
     }
 
-    return issues;
+    return blockers;
+  }
+
+  _buildBlocker(code, message, { field = null, meta = null } = {}) {
+    const out = { code, message };
+    if (field) out.field = field;
+    if (meta && typeof meta === 'object' && Object.keys(meta).length > 0) out.meta = meta;
+    return out;
+  }
+
+  _normalizeUrlForDedup(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    try {
+      const parsed = new URL(raw);
+      parsed.hash = '';
+      parsed.search = '';
+      const path = parsed.pathname.replace(/\/+$/, '') || '/';
+      return `${parsed.hostname.toLowerCase()}${path.toLowerCase()}`;
+    } catch (_) {
+      return raw.toLowerCase().replace(/\?.*$/, '').replace(/#.*$/, '').replace(/\/+$/, '');
+    }
+  }
+
+  _findDuplicateSourceUrls(articles = []) {
+    const seen = new Set();
+    const duplicates = new Set();
+    for (const article of articles) {
+      const key = this._normalizeUrlForDedup(article?.url);
+      if (!key) continue;
+      if (seen.has(key)) duplicates.add(key);
+      else seen.add(key);
+    }
+    return [...duplicates];
+  }
+
+  async _dedupeStorySources(storyId, articles = null) {
+    const rows = Array.isArray(articles) ? articles : await this.dao.getStoryArticles(storyId);
+    if (rows.length < 2) return 0;
+
+    const keepByUrl = new Set();
+    const removeIds = [];
+    for (const article of rows) {
+      const key = this._normalizeUrlForDedup(article?.url);
+      if (!key) continue;
+      if (keepByUrl.has(key)) {
+        if (Number.isFinite(article.id)) removeIds.push(article.id);
+        continue;
+      }
+      keepByUrl.add(key);
+    }
+
+    for (const articleId of removeIds) {
+      await this.dao.detachSource(storyId, articleId);
+    }
+    return removeIds.length;
+  }
+
+  _isTitleParrot(candidate, title) {
+    const c = String(candidate || '').trim();
+    const t = String(title || '').trim();
+    if (!c || !t) return false;
+
+    const norm = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const cNorm = norm(c);
+    const tNorm = norm(t);
+
+    if (cNorm === tNorm) return true;
+    if (cNorm.startsWith(tNorm)) return true;
+
+    const cTokens = this._titleTokenSet(cNorm);
+    const tTokens = this._titleTokenSet(tNorm);
+    if (tTokens.size === 0 || cTokens.size === 0) return false;
+
+    let overlap = 0;
+    for (const token of tTokens) {
+      if (cTokens.has(token)) overlap += 1;
+    }
+    return (overlap / tTokens.size) >= 0.85;
   }
 
   _looksBoilerplate(text) {

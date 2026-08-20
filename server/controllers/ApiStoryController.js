@@ -176,7 +176,9 @@ const ApiStoryController = {
       return res.json({ ok: true, story });
     } catch (error) {
       if (error.status !== 400) return next(error);
-      return res.status(400).json({ error: error.message, code: 'publish_blocked' });
+      const payload = { error: error.message, code: error.code || 'publish_blocked' };
+      if (Array.isArray(error.blockers)) payload.blocker_details = error.blockers;
+      return res.status(400).json(payload);
     }
   },
 
