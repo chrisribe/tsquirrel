@@ -1,5 +1,6 @@
 <%
   const { stories } = pageData;
+
   function timeAgo(date) {
     const now = new Date();
     const diff = Math.floor((now - new Date(date)) / 1000);
@@ -13,6 +14,7 @@
 <% const meta = catMeta(story.category); %>
 <% const recentHrs = (Date.now() - new Date(story.published_at || story.updated_at || story.created_at)) / 3600000; %>
 <% const isBlowingUp = story.heat_score >= 30 && recentHrs <= 3; %>
+<% const showTake = !!String(story.squirrel_take || '').trim(); %>
 <article class="story-card">
   <a href="/story/<%= story.slug %>" class="story-link" data-ga-event="story_open" data-ga-story-id="<%= story.id %>" data-ga-story-slug="<%= story.slug %>" data-ga-category="<%= story.category %>" data-ga-location="feed_card">
     <div class="card-inner">
@@ -25,15 +27,17 @@
             <span class="badge badge-sources"><%= story.source_count %> sources</span>
           <% } %>
         </div>
-        <% if (story.squirrel_take) { %>
-          <p class="card-take-hook">“<%= story.squirrel_take %>”<span class="card-take-attr">— the Squirrel</span></p>
-          <h2 class="story-title story-title-secondary"><%= story.title %></h2>
-        <% } else { %>
-          <h2 class="story-title"><%= story.title %></h2>
-          <% if (story.summary) { %>
-            <p class="story-summary"><%= story.summary %></p>
-          <% } %>
+
+        <h2 class="story-title"><%= story.title %></h2>
+
+        <% if (story.summary) { %>
+          <p class="story-summary"><%= story.summary %></p>
         <% } %>
+
+        <% if (showTake) { %>
+          <p class="card-take-note">🐿️ <%= story.squirrel_take %></p>
+        <% } %>
+
         <div class="story-footer">
           <% if (story.tags && story.tags.length) { %>
             <div class="story-tags">

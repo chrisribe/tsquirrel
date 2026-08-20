@@ -166,6 +166,17 @@ const ApiStoryController = {
     } catch (error) { return next(error); }
   },
 
+  async editorialAudit(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+
+      const audit = await serviceFor(req).getEditorialAudit(id);
+      if (!audit) return res.status(404).json({ error: 'story not found' });
+      return res.json({ ok: true, ...audit });
+    } catch (error) { return next(error); }
+  },
+
   async publish(req, res, next) {
     try {
       const id = parseId(req.params.id);
@@ -176,7 +187,9 @@ const ApiStoryController = {
       return res.json({ ok: true, story });
     } catch (error) {
       if (error.status !== 400) return next(error);
-      return res.status(400).json({ error: error.message, code: 'publish_blocked' });
+      const payload = { error: error.message, code: error.code || 'publish_blocked' };
+      if (Array.isArray(error.blockers)) payload.blocker_details = error.blockers;
+      return res.status(400).json(payload);
     }
   },
 

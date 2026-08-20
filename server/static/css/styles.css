@@ -342,9 +342,11 @@ main.container, footer.container { max-width: 980px; }
 .badge-sources { background: var(--accent-pale); color: var(--accent); }
 .badge-hot { background: #fee2e2; color: #b91c1c; }
 
-.card-editorial {
-  font-size: .82rem; color: var(--brand-mid); font-style: italic;
-  line-height: 1.45; margin: 0 0 .35rem;
+.card-take-note {
+  font-size: .82rem;
+  color: var(--brand-mid);
+  line-height: 1.45;
+  margin: -.1rem 0 .45rem;
 }
 
 /* ── Take-led card hook (Prototype A) ── */

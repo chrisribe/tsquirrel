@@ -118,6 +118,12 @@ class ApiStoryService {
     return this.stories.getPublishPreflight(storyId);
   }
 
+  async getEditorialAudit(storyId) {
+    const story = await this.stories.getById(storyId);
+    if (!story) return null;
+    return this.stories.getEditorialAudit(storyId);
+  }
+
   async setStatus(storyId, status) {
     return this.stories.setStatus(storyId, status);
   }
