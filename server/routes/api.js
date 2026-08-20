@@ -30,6 +30,7 @@ router.post('/stories/:id/suggestions/:articleId/reject', apiStoryController.rej
 
 router.post('/stories/:id/feature', apiStoryController.feature);
 router.get('/stories/:id/publish-preflight', apiStoryController.publishPreflight);
+router.get('/stories/:id/editorial-audit', apiStoryController.editorialAudit);
 router.post('/stories/:id/publish', apiStoryController.publish);
 router.post('/stories/:id/unpublish', apiStoryController.unpublish);
 router.post('/stories/:id/hide', apiStoryController.hide);

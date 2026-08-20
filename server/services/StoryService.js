@@ -175,10 +175,23 @@ class StoryService {
   async getPublishPreflight(storyId) {
     const story = await this.dao.getStoryById(storyId);
     if (!story) return null;
-    const blockerDetails = await this._getPublishBlockers(storyId, { story });
+    const blockerDetails = await this._getPublishBlockers(storyId, { story, includeAlreadyPublished: true });
     return {
       story_id: storyId,
       can_publish: blockerDetails.length === 0,
+      blockers: blockerDetails.map((b) => b.message),
+      blocker_details: blockerDetails,
+    };
+  }
+
+  async getEditorialAudit(storyId) {
+    const story = await this.dao.getStoryById(storyId);
+    if (!story) return null;
+    const blockerDetails = await this._getPublishBlockers(storyId, { story, includeAlreadyPublished: false });
+    return {
+      story_id: storyId,
+      status: String(story.status || '').toLowerCase() || null,
+      passes_editorial_contract: blockerDetails.length === 0,
       blockers: blockerDetails.map((b) => b.message),
       blocker_details: blockerDetails,
     };
@@ -215,12 +228,12 @@ class StoryService {
     return this.dao.setStoryStatus(storyId, status);
   }
 
-  async _getPublishBlockers(storyId, { story = null } = {}) {
+  async _getPublishBlockers(storyId, { story = null, includeAlreadyPublished = true } = {}) {
     const currentStory = story || await this.dao.getStoryById(storyId);
     if (!currentStory) return [];
 
     const blockers = [];
-    if (String(currentStory.status || '').toLowerCase() === 'published') {
+    if (includeAlreadyPublished && String(currentStory.status || '').toLowerCase() === 'published') {
       return [this._buildBlocker('already_published', 'story is already published')];
     }
 
