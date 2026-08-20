@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 import re
 from common import BASE, OR_BASE, get_tokens, api_req, load_state, save_state, utc_now
 
@@ -87,10 +88,54 @@ def _llm_gate(or_key, story, sources):
     }
 
 
+def _normalize_blockers(blockers):
+    issues = []
+    for b in blockers or []:
+        if isinstance(b, str):
+            issues.append(b.strip())
+            continue
+        if isinstance(b, dict):
+            code = str(b.get("code") or "").strip()
+            msg = str(b.get("message") or "").strip()
+            if code and msg:
+                issues.append(f"{code}: {msg}")
+            elif code:
+                issues.append(code)
+            elif msg:
+                issues.append(msg)
+            else:
+                issues.append(json.dumps(b, ensure_ascii=False)[:300])
+            continue
+        issues.append(str(b))
+    return list(dict.fromkeys([i for i in issues if i]))
+
+
+def _editorial_audit(tsq, story_id):
+    status, payload = api_req("GET", f"{BASE}/api/v1/stories/{story_id}/editorial-audit", token=tsq)
+    if status != 200:
+        return {
+            "ok": False,
+            "status": status,
+            "issues": [f"editorial_audit_http_{status}"],
+            "raw": payload,
+        }
+
+    blockers = payload.get("blockers", []) if isinstance(payload, dict) else []
+    issues = _normalize_blockers(blockers)
+    return {
+        "ok": True,
+        "status": status,
+        "issues": issues,
+        "pass": len(issues) == 0,
+        "raw": payload,
+    }
+
+
 def run():
     tsq, or_key = get_tokens()
     state = load_state()
     candidates = (state.get("candidates_step") or {}).get("candidates", [])
+    llm_shadow = os.environ.get("TSQ_QG_LLM_SHADOW", "0").strip().lower() in ("1", "true", "yes", "on")
 
     results = []
     for c in candidates:
@@ -102,22 +147,37 @@ def run():
         story = payload.get("story", {})
         sources = payload.get("sources", [])
 
-        heuristic_issues = _heuristics(story, sources)
-        llm = _llm_gate(or_key, story, sources)
-        merged_issues = list(dict.fromkeys(heuristic_issues + llm.get("issues", [])))
-        passed = len(merged_issues) == 0 and llm.get("pass", False)
+        audit = _editorial_audit(tsq, sid)
+        used = "editorial_audit"
+        llm = None
+
+        if audit.get("ok"):
+            merged_issues = audit.get("issues", [])
+            passed = bool(audit.get("pass", False))
+            if llm_shadow:
+                llm = _llm_gate(or_key, story, sources)
+        else:
+            used = "legacy_heuristic_llm"
+            heuristic_issues = _heuristics(story, sources)
+            llm = _llm_gate(or_key, story, sources)
+            merged_issues = list(dict.fromkeys(heuristic_issues + llm.get("issues", [])))
+            passed = len(merged_issues) == 0 and llm.get("pass", False)
 
         results.append({
             "story_id": sid,
             "title": story.get("title", ""),
             "pass": passed,
             "issues": merged_issues,
-            "llm_pass": llm.get("pass", False),
+            "gate_source": used,
+            "llm_shadow_enabled": bool(llm_shadow),
+            "llm_pass": None if llm is None else llm.get("pass", False),
         })
 
     state["quality_gate_step"] = {
         "started_at": utc_now(),
         "model": MODEL,
+        "gate_source": "editorial_audit_with_legacy_fallback",
+        "llm_shadow_enabled": bool(llm_shadow),
         "count": len(results),
         "results": results,
     }
