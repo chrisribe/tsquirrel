@@ -1176,7 +1176,7 @@ a.signal-meta-chip:hover {
 .card.archive:hover { box-shadow: 0 3px 14px rgba(0,0,0,.06); }
 .archive-media {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: clamp(120px, 24vw, 220px);
   border-radius: 10px;
   overflow: hidden;
   margin-bottom: .55rem;
