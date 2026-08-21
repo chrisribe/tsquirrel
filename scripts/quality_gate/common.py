@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-BASE = os.environ.get("TSQ_BASE_URL", "https://tsquirrel.pixagreat.com")
+BASE = os.environ.get("TSQ_BASE_URL", "https://tsquirrel.com")
 OR_BASE = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 QG_MODEL = os.environ.get("TSQ_QG_MODEL", "deepseek/deepseek-v4-flash")
 OR_HTTP_REFERER = os.environ.get("OPENROUTER_HTTP_REFERER", BASE.rstrip("/"))

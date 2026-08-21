@@ -4,6 +4,11 @@ node_modules/
 .DS_Store
 .playwright-mcp/
 
+# TLS certs / private keys — never commit
+*.pem
+*.key
+*.crt
+
 # TSquirrel quality gate runtime artifacts
 scripts/quality_gate/__pycache__/
 references/cost_ledger/*.jsonl
