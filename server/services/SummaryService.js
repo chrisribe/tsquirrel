@@ -4,7 +4,7 @@
 // Uses OpenAI-compatible API (set OPENAI_API_KEY or OPENAI_BASE_URL for proxy)
 
 const https = require('https');
-const crypto = require('crypto');
+const { slugify } = require('../lib/slug');
 
 const TITLE_STOPWORDS = new Set([
   'a','an','and','are','as','at','be','by','for','from','has','have','in','into','is','it','its','of','on','or','that','the','their','to','was','were','with',
@@ -67,16 +67,6 @@ function isClusterCoherent(articles) {
   const avgBestJaccard = totalBestJaccard / tokenSets.length;
 
   return overlapRatio >= 0.34 || avgBestJaccard >= 0.2;
-}
-
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .slice(0, 80)
-    + '-' + crypto.randomBytes(3).toString('hex');
 }
 
 async function callLLM(messages, json = true) {
@@ -310,7 +300,15 @@ Rules:
 
       const story = await dao.upsertStory({
         title: storyTitle,
-        slug: slugify(storyTitle),
+        slug: slugify(storyTitle, {
+          minWords: 5,
+          maxLength: 140,
+          extraTerms: [
+            category,
+            ...(Array.isArray(tags) ? tags : []),
+            ...unitArticles.slice(0, 2).map((a) => a.source_name),
+          ],
+        }),
         summary,
         category,
         tags,

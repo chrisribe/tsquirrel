@@ -101,7 +101,14 @@ class StoryService {
   async create(values, { authorType, authorId }) {
     const draft = await this.dao.createDraft({
       ...values,
-      slug: slugify(values.title),
+      slug: slugify(values.title, {
+        minWords: 5,
+        maxLength: 140,
+        extraTerms: [
+          values.category,
+          ...(Array.isArray(values.tags) ? values.tags : []),
+        ],
+      }),
       authorType,
       authorId: String(authorId),
     });
