@@ -46,11 +46,17 @@ router.get('/', async (req, res) => {
     dao.getCategories(),
   ]);
 
+  const featured = (!category && !tag && stories.length) ? stories[0] : null;
+  const heroImageUrl = featured?.image_url
+    ? String(featured.image_url).replace(/^http:\/\//i, 'https://')
+    : null;
+
   res.render('layout-main', {
     template: 'index-page',
     pageTitle: "What's Trending — TSquirrel",
     pageDescription: 'AI-curated news digest. Top stories across sources, summarized.',
     pageUrl: 'https://tsquirrel.com',
+    heroImageUrl,
     pageData: { stories, categories, activeCategory: category, activeTag: tag },
   });
 });

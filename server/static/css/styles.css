@@ -32,7 +32,7 @@
 }
 
 html { background: var(--page-bg); }
-body { font-family: 'Inter', sans-serif; background: var(--page-bg); padding-bottom: 4.5rem; min-height: 100vh; }
+body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--page-bg); padding-bottom: 4.5rem; min-height: 100vh; }
 
 /* Public pages keep a magazine-width column (matches the original mockup at
    720px) instead of Pico's default, which grows to 1450px on wide desktops —
