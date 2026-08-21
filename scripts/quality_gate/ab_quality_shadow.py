@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import os
+
 import statistics
 import subprocess
 import urllib.request
@@ -10,8 +10,8 @@ from pathlib import Path
 
 from common import utc_now
 
-DEFAULT_HOST = os.environ.get("TSQ_PROD_SSH_HOST", "")
-DEFAULT_SSH_KEY = os.environ.get("TSQ_PROD_SSH_KEY", "")
+DEFAULT_HOST = "root@5.78.154.18"
+DEFAULT_SSH_KEY = "/home/cribe/.ssh_hertzner_setup/id_hetzner"
 DEFAULT_DB_CONTAINER = "tsquirrel-db-1"
 DEFAULT_DB_USER = "dockeruser"
 DEFAULT_DB_NAME = "appdb"
