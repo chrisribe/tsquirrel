@@ -82,11 +82,24 @@ router.get('/story/:slug', async (req, res) => {
   const dao = new NewsDAO(pool);
 
   const story = await dao.getPublishedStoryBySlug(req.params.slug);
-  if (!story) return res.status(404).render('layout-main', {
-    template: 'errors/404',
-    pageTitle: 'Story Not Found — TSquirrel',
-    pageData: {},
-  });
+  if (!story) {
+    const { rows: redirectRows } = await pool.query(`
+      SELECT s.slug AS current_slug
+      FROM story_slug_redirects r
+      JOIN stories s ON s.id = r.story_id
+      WHERE r.old_slug = $1
+      LIMIT 1
+    `, [req.params.slug]);
+
+    const target = redirectRows[0]?.current_slug;
+    if (target) return res.redirect(301, `/story/${target}`);
+
+    return res.status(404).render('layout-main', {
+      template: 'errors/404',
+      pageTitle: 'Story Not Found — TSquirrel',
+      pageData: {},
+    });
+  }
 
   const articles = await dao.getStoryArticles(story.id);
   const related = await dao.getRelatedStories(story.id, { category: story.category, tags: story.tags || [] });

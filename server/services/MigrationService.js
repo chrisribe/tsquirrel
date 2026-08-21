@@ -314,6 +314,22 @@ const migrations = [
       console.log('Migration 18: api_request_idempotency ledger created');
     }
   },
+  {
+    version: 19,
+    description: 'Story slug redirects table for SEO-safe slug backfills',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_slug_redirects (
+          id SERIAL PRIMARY KEY,
+          story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+          old_slug VARCHAR(255) NOT NULL UNIQUE,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_story_slug_redirects_story_id ON story_slug_redirects(story_id)`);
+      console.log('Migration 19: story_slug_redirects table created');
+    }
+  },
   // Future migrations go here
 ];
 
