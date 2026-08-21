@@ -72,12 +72,35 @@ class NewsDAO {
 
   async getStoryArticles(storyId) {
     const { rows } = await this.pool.query(`
-      SELECT a.*, src.name AS source_name, src.slug AS source_slug, src.type AS source_type
+      SELECT a.*, src.name AS source_name, src.slug AS source_slug, src.type AS source_type,
+             sig.first_signal_at,
+             COALESCE(sig.first_signal_at, a.fetched_at, a.published_at) AS origin_at,
+             CASE
+               WHEN sig.first_signal_at IS NOT NULL THEN 'signal_first_seen'
+               WHEN a.fetched_at IS NOT NULL THEN 'fetched_at'
+               WHEN a.published_at IS NOT NULL THEN 'published_at'
+               ELSE 'unknown'
+             END AS origin_type,
+             CASE
+               WHEN sig.first_signal_at IS NOT NULL THEN 'high'
+               WHEN a.fetched_at IS NOT NULL THEN 'medium'
+               WHEN a.published_at IS NOT NULL THEN 'low'
+               ELSE 'low'
+             END AS origin_confidence
       FROM story_articles sa
       JOIN articles a ON a.id = sa.article_id
       JOIN sources src ON src.id = a.source_id
+      LEFT JOIN LATERAL (
+        SELECT MIN(s.fired_at) AS first_signal_at
+        FROM signals s
+        WHERE EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements_text(COALESCE((s.evidence::jsonb)->'article_ids', '[]'::jsonb)) AS e(val)
+          WHERE (e.val)::int = a.id
+        )
+      ) sig ON TRUE
       WHERE sa.story_id = $1
-      ORDER BY a.published_at DESC
+      ORDER BY COALESCE(sig.first_signal_at, a.fetched_at, a.published_at) DESC
     `, [storyId]);
     return rows;
   }
@@ -532,11 +555,35 @@ class NewsDAO {
     if (!ids || ids.length === 0) return [];
     const { rows } = await this.pool.query(`
       SELECT a.id, a.title, a.url, a.published_at, a.image_url, a.description,
-             src.name AS source_name, src.slug AS source_slug, src.type AS source_type
+             a.fetched_at,
+             src.name AS source_name, src.slug AS source_slug, src.type AS source_type,
+             sig.first_signal_at,
+             COALESCE(sig.first_signal_at, a.fetched_at, a.published_at) AS origin_at,
+             CASE
+               WHEN sig.first_signal_at IS NOT NULL THEN 'signal_first_seen'
+               WHEN a.fetched_at IS NOT NULL THEN 'fetched_at'
+               WHEN a.published_at IS NOT NULL THEN 'published_at'
+               ELSE 'unknown'
+             END AS origin_type,
+             CASE
+               WHEN sig.first_signal_at IS NOT NULL THEN 'high'
+               WHEN a.fetched_at IS NOT NULL THEN 'medium'
+               WHEN a.published_at IS NOT NULL THEN 'low'
+               ELSE 'low'
+             END AS origin_confidence
       FROM articles a
       JOIN sources src ON src.id = a.source_id
+      LEFT JOIN LATERAL (
+        SELECT MIN(s.fired_at) AS first_signal_at
+        FROM signals s
+        WHERE EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements_text(COALESCE((s.evidence::jsonb)->'article_ids', '[]'::jsonb)) AS e(val)
+          WHERE (e.val)::int = a.id
+        )
+      ) sig ON TRUE
       WHERE a.id = ANY($1::int[])
-      ORDER BY a.published_at DESC
+      ORDER BY COALESCE(sig.first_signal_at, a.fetched_at, a.published_at) DESC
     `, [ids]);
     return rows;
   }

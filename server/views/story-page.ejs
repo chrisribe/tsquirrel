@@ -86,7 +86,7 @@
         <div class="source-body">
           <div class="source-name"><%= displaySourceName(a) %></div>
           <div class="source-headline"><%= a.title %></div>
-          <div class="source-time"><%= timeAgo(a.published_at) %></div>
+          <div class="source-time"><%= timeAgo(a.origin_at || a.fetched_at || a.published_at) %></div>
         </div>
         <div class="source-arrow">›</div>
       </a>
