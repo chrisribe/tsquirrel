@@ -2,6 +2,7 @@
 import argparse
 import json
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 
 from common import BASE, ENV_TSQ, read_key, api_req, utc_now
@@ -75,7 +76,7 @@ def main():
     ap.add_argument("--env", default=ENV_TSQ, help="Path to .env with TSQUIRREL_API_TOKEN")
     ap.add_argument("--limit", type=int, default=100)
     ap.add_argument("--per-page", type=int, default=100)
-    ap.add_argument("--out", default=f"/tmp/tsq_editorial_audit_{Path('/tmp').stat().st_mtime_ns}.json")
+    ap.add_argument("--out", default=f"/tmp/tsq_editorial_audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     ap.add_argument("--only-failures", action="store_true", help="Report only failed stories in details list")
     args = ap.parse_args()
 

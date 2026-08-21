@@ -9,6 +9,9 @@ from datetime import datetime, timezone
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BASE = os.environ.get("TSQ_BASE_URL", "https://tsquirrel.pixagreat.com")
 OR_BASE = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+QG_MODEL = os.environ.get("TSQ_QG_MODEL", "deepseek/deepseek-v4-flash")
+OR_HTTP_REFERER = os.environ.get("OPENROUTER_HTTP_REFERER", BASE.rstrip("/"))
+OR_CLIENT_TITLE = os.environ.get("OPENROUTER_CLIENT_TITLE", "TSquirrel Quality Gate")
 ENV_TSQ = os.environ.get("TSQ_ENV_PATH", str(REPO_ROOT / ".env"))
 ENV_OR = os.environ.get("OR_ENV_PATH", str(Path.home() / ".hermes" / ".env"))
 STATE_PATH = os.environ.get("TSQ_QG_STATE", "/tmp/tsquirrel_quality_gate_state.json")

@@ -32,7 +32,7 @@ def run(dry_run=False):
         "blocked": blocked,
     }
     save_state(state)
-    print(f"publish_step done | published={len(published)} blocked={len(blocked)} dry_run={str(dry_run).lower()}")
+    print(f"publish_step done | published={len(published)} blocked={len(blocked)} dry_run={str(bool(dry_run)).lower()}")
 
 
 if __name__ == "__main__":

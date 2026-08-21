@@ -2,9 +2,18 @@
 import json
 import os
 import re
-from common import BASE, OR_BASE, get_tokens, api_req, load_state, save_state, utc_now
-
-MODEL = "deepseek/deepseek-v4-flash"
+from common import (
+    BASE,
+    OR_BASE,
+    OR_CLIENT_TITLE,
+    OR_HTTP_REFERER,
+    QG_MODEL,
+    get_tokens,
+    api_req,
+    load_state,
+    save_state,
+    utc_now,
+)
 
 
 def _heuristics(story, sources):
@@ -53,7 +62,7 @@ def _llm_gate(or_key, story, sources):
     }
 
     body = {
-        "model": MODEL,
+        "model": QG_MODEL,
         "messages": [{"role": "user", "content": json.dumps(prompt, ensure_ascii=False)}],
         "max_tokens": 300,
         "response_format": {"type": "json_object"},
@@ -63,7 +72,7 @@ def _llm_gate(or_key, story, sources):
         f"{OR_BASE}/chat/completions",
         token=or_key,
         data=body,
-        headers={"HTTP-Referer": "https://tsquirrel.pixagreat.com"},
+        headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
         timeout=90,
     )
     if status != 200:
@@ -175,7 +184,7 @@ def run():
 
     state["quality_gate_step"] = {
         "started_at": utc_now(),
-        "model": MODEL,
+        "model": QG_MODEL,
         "gate_source": "editorial_audit_with_legacy_fallback",
         "llm_shadow_enabled": bool(llm_shadow),
         "count": len(results),
@@ -183,7 +192,7 @@ def run():
     }
     save_state(state)
     ok = sum(1 for r in results if r.get("pass"))
-    print(f"quality_gate_step done | checked={len(results)} pass={ok} fail={len(results)-ok} model={MODEL}")
+    print(f"quality_gate_step done | checked={len(results)} pass={ok} fail={len(results)-ok} model={QG_MODEL}")
 
 
 if __name__ == "__main__":

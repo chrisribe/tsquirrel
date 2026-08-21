@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import statistics
 import subprocess
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
-DEFAULT_HOST = "root@5.78.154.18"
-DEFAULT_SSH_KEY = "/home/cribe/.ssh_hertzner_setup/id_hetzner"
+from common import utc_now
+
+DEFAULT_HOST = os.environ.get("TSQ_PROD_SSH_HOST", "")
+DEFAULT_SSH_KEY = os.environ.get("TSQ_PROD_SSH_KEY", "")
 DEFAULT_DB_CONTAINER = "tsquirrel-db-1"
 DEFAULT_DB_USER = "dockeruser"
 DEFAULT_DB_NAME = "appdb"
 DEFAULT_MODEL = "claude-opus-4.6"
-
-
-def utc_now():
-    return datetime.now(timezone.utc).isoformat()
 
 
 def run(cmd):
@@ -158,6 +157,11 @@ def main():
     ap.add_argument("--db-name", default=DEFAULT_DB_NAME)
     ap.add_argument("--out", default=f"/tmp/tsq_ab_shadow_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     args = ap.parse_args()
+
+    if not args.ssh_host:
+        raise RuntimeError("Missing SSH host. Set TSQ_PROD_SSH_HOST or pass --ssh-host.")
+    if not args.ssh_key:
+        raise RuntimeError("Missing SSH key path. Set TSQ_PROD_SSH_KEY or pass --ssh-key.")
 
     stories = fetch_live_stories(args.limit, args.ssh_key, args.ssh_host, args.db_container, args.db_user, args.db_name)
     if not stories:
