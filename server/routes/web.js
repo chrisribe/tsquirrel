@@ -97,6 +97,8 @@ router.get('/story/:slug', async (req, res) => {
     return res.status(404).render('layout-main', {
       template: 'errors/404',
       pageTitle: 'Story Not Found — TSquirrel',
+      pageDescription: 'The story URL changed or no longer exists. Browse latest stories or archive.',
+      noIndex: true,
       pageData: {},
     });
   }

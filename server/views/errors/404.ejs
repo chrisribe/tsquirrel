@@ -1,8 +1,11 @@
 <section class="error-page">
   <h1>404</h1>
   <p>Page not found</p>
-  <p class="hint">The page you're looking for doesn't exist or has been moved.</p>
-  <a href="/" role="button">Back to Home</a>
+  <p class="hint">This URL changed or no longer exists. Try the latest stories or archive.</p>
+  <div class="actions">
+    <a href="/" role="button">Latest Stories</a>
+    <a href="/archive" role="button" class="secondary">Archive</a>
+  </div>
 </section>
 
 <style>
@@ -22,6 +25,12 @@
   .error-page .hint {
     font-size: 1rem;
     color: var(--pico-muted-color);
-    margin-bottom: 2rem;
+    margin-bottom: 1.25rem;
+  }
+  .error-page .actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 </style>
