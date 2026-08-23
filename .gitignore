@@ -12,3 +12,7 @@ node_modules/
 # TSquirrel quality gate runtime artifacts
 scripts/quality_gate/__pycache__/
 references/cost_ledger/*.jsonl
+
+# GA4 analytics artifacts
+reports/analytics/*.md
+reports/analytics/*.json
