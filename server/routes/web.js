@@ -5,12 +5,9 @@ const router = express.Router();
 const NewsDAO = require('../dao/NewsDAO');
 
 const LEGACY_REDIRECTS = new Map([
-  ['/about', '/'],
   ['/external', '/archive'],
-  ['/privacy-policy', '/'],
-  ['/terms-of-service', '/'],
-  ['/login', '/'],
-  ['/signup', '/'],
+  ['/login', '/auth/login'],
+  ['/signup', '/auth/login'],
 ]);
 
 // ── Legacy dead paths cleanup (SEO leakage guard) ─────────────────────
@@ -22,6 +19,47 @@ router.get(Array.from(LEGACY_REDIRECTS.keys()), (req, res) => {
 // ── Legacy media paths that should not be indexed ──────────────────────
 router.get('/_data/photos/*', (_req, res) => {
   return res.status(410).type('text/plain').send('Gone');
+});
+
+// ── Static info/legal pages ────────────────────────────────────────────
+router.get('/about', (_req, res) => {
+  res.render('layout-main', {
+    template: 'about-page',
+    pageTitle: 'About — TSquirrel',
+    pageDescription: 'What TSquirrel is, how stories are curated, and what to expect.',
+    pageUrl: 'https://tsquirrel.com/about',
+    pageData: {},
+  });
+});
+
+router.get('/privacy-policy', (_req, res) => {
+  res.render('layout-main', {
+    template: 'privacy-page',
+    pageTitle: 'Privacy Policy — TSquirrel',
+    pageDescription: 'How TSquirrel handles analytics, logs, and user data.',
+    pageUrl: 'https://tsquirrel.com/privacy-policy',
+    pageData: {},
+  });
+});
+
+router.get('/terms-of-service', (_req, res) => {
+  res.render('layout-main', {
+    template: 'terms-page',
+    pageTitle: 'Terms of Service — TSquirrel',
+    pageDescription: 'Terms governing use of TSquirrel.',
+    pageUrl: 'https://tsquirrel.com/terms-of-service',
+    pageData: {},
+  });
+});
+
+router.get('/contact', (_req, res) => {
+  res.render('layout-main', {
+    template: 'contact-page',
+    pageTitle: 'Contact — TSquirrel',
+    pageDescription: 'How to reach TSquirrel for feedback or requests.',
+    pageUrl: 'https://tsquirrel.com/contact',
+    pageData: {},
+  });
 });
 
 // ── Legacy article route — must come BEFORE catch-all ──────────────────

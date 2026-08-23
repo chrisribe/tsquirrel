@@ -8,5 +8,8 @@
       </span>
     </a>
     <span class="nav-count">🌰 <%= nutsToday %> nut<%= nutsToday === 1 ? '' : 's' %> stashed today</span>
+    <% if (user && user.role === 'admin') { %>
+      <a href="/admin" class="secondary">Admin</a>
+    <% } %>
   </nav>
 </header>
