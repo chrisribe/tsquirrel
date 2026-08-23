@@ -4,6 +4,26 @@ const express = require('express');
 const router = express.Router();
 const NewsDAO = require('../dao/NewsDAO');
 
+const LEGACY_REDIRECTS = new Map([
+  ['/about', '/'],
+  ['/external', '/archive'],
+  ['/privacy-policy', '/'],
+  ['/terms-of-service', '/'],
+  ['/login', '/'],
+  ['/signup', '/'],
+]);
+
+// ── Legacy dead paths cleanup (SEO leakage guard) ─────────────────────
+router.get(Array.from(LEGACY_REDIRECTS.keys()), (req, res) => {
+  const target = LEGACY_REDIRECTS.get(req.path) || '/';
+  return res.redirect(301, target);
+});
+
+// ── Legacy media paths that should not be indexed ──────────────────────
+router.get('/_data/photos/*', (_req, res) => {
+  return res.status(410).type('text/plain').send('Gone');
+});
+
 // ── Legacy article route — must come BEFORE catch-all ──────────────────
 // Serves original tsquirrel.com slug URLs at their exact paths
 // e.g. /drapeau-francais-le-retour-dun-symbole-apres-les-attentats-55
@@ -88,6 +108,8 @@ router.get('/story/:slug', async (req, res) => {
       FROM story_slug_redirects r
       JOIN stories s ON s.id = r.story_id
       WHERE r.old_slug = $1
+        AND s.status = 'published'
+        AND s.slug IS NOT NULL
       LIMIT 1
     `, [req.params.slug]);
 

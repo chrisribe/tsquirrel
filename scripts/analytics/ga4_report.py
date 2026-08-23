@@ -21,7 +21,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 GA_API_BASE = "https://analyticsdata.googleapis.com/v1beta"
@@ -92,6 +92,38 @@ def run_report(access_token: str, property_id: str, payload: Dict) -> Dict:
         return json.loads(resp.read().decode())
 
 
+def metric_int(rows: List[Dict], idx: int) -> int:
+    if not rows:
+        return 0
+    values = rows[0].get("metricValues", [])
+    if idx >= len(values):
+        return 0
+    return int(values[idx].get("value", "0"))
+
+
+def build_or_prefix_filter(prefixes: List[str]) -> Optional[Dict]:
+    normalized = [p.strip() for p in prefixes if p and p.strip()]
+    if not normalized:
+        return None
+    return {
+        "orGroup": {
+            "expressions": [
+                {
+                    "filter": {
+                        "fieldName": "pagePath",
+                        "stringFilter": {"matchType": "BEGINS_WITH", "value": p},
+                    }
+                }
+                for p in normalized
+            ]
+        }
+    }
+
+
+def path_is_excluded(page_path: str, exclude_prefixes: List[str]) -> bool:
+    return any(page_path.startswith(prefix) for prefix in exclude_prefixes)
+
+
 def parse_rows(report: Dict) -> List[Dict]:
     rows: List[Dict] = []
     for row in report.get("rows", []):
@@ -109,7 +141,7 @@ def parse_rows(report: Dict) -> List[Dict]:
     return rows
 
 
-def analyze(rows: List[Dict]) -> Dict:
+def analyze(rows: List[Dict], exclude_prefixes: List[str], totals: Dict) -> Dict:
     homepage_titles = [r for r in rows if r["page_path"] == "/"]
     title_split = {}
     for r in homepage_titles:
@@ -120,12 +152,25 @@ def analyze(rows: List[Dict]) -> Dict:
         r["screen_page_views"] for r in rows if "404" in (r["page_title"] or "")
     )
 
-    non_admin = [r for r in rows if not r["page_path"].startswith("/admin")]
+    public_rows = [r for r in rows if not path_is_excluded(r["page_path"], exclude_prefixes)]
+    excluded_rows = [r for r in rows if path_is_excluded(r["page_path"], exclude_prefixes)]
+
+    excluded_toprow_views = sum(r["screen_page_views"] for r in excluded_rows)
+    total_views = totals["all"]["screen_page_views"]
+    excluded_total_views = totals["excluded"]["screen_page_views"]
+    excluded_share_pct = (
+        round((excluded_total_views / total_views) * 100, 1) if total_views else 0.0
+    )
 
     return {
         "homepage_title_variants": title_split,
         "error_404_views": error_404_views,
-        "top_non_admin_pages": non_admin[:10],
+        "exclude_prefixes": exclude_prefixes,
+        "top_public_pages": public_rows[:10],
+        "top_excluded_pages": excluded_rows[:10],
+        "excluded_toprow_views": excluded_toprow_views,
+        "totals": totals,
+        "excluded_share_pct": excluded_share_pct,
     }
 
 
@@ -136,6 +181,10 @@ def render_markdown(meta: Dict, rows: List[Dict], analysis: Dict) -> str:
     lines.append(f"- Generated: {meta['generated_at_utc']}")
     lines.append(f"- Property ID: {meta['property_id']}")
     lines.append(f"- Row limit: {meta['limit']}")
+    lines.append(
+        "- Excluded internal prefixes: "
+        + (", ".join(analysis["exclude_prefixes"]) if analysis["exclude_prefixes"] else "(none)")
+    )
     lines.append("")
     lines.append("## Top pages")
     lines.append("")
@@ -165,11 +214,43 @@ def render_markdown(meta: Dict, rows: List[Dict], analysis: Dict) -> str:
 
     lines.append(f"- 404 page views (top rows aggregate): {analysis['error_404_views']}")
     lines.append("")
-    lines.append("### Top non-admin pages")
-    for r in analysis["top_non_admin_pages"][:10]:
+    lines.append("### Internal/admin noise")
+    lines.append(
+        f"- Excluded internal share (all traffic): {analysis['excluded_share_pct']}%"
+    )
+    lines.append(
+        "- Totals (all): "
+        f"{analysis['totals']['all']['screen_page_views']} views / "
+        f"{analysis['totals']['all']['sessions']} sessions / "
+        f"{analysis['totals']['all']['active_users']} active users"
+    )
+    lines.append(
+        "- Totals (excluded): "
+        f"{analysis['totals']['excluded']['screen_page_views']} views / "
+        f"{analysis['totals']['excluded']['sessions']} sessions / "
+        f"{analysis['totals']['excluded']['active_users']} active users"
+    )
+    lines.append(
+        "- Totals (public): "
+        f"{analysis['totals']['public']['screen_page_views']} views / "
+        f"{analysis['totals']['public']['sessions']} sessions / "
+        f"{analysis['totals']['public']['active_users']} active users"
+    )
+    lines.append("")
+
+    lines.append("### Top public pages")
+    for r in analysis["top_public_pages"][:10]:
         lines.append(
             f"- {r['page_title']} ({r['page_path']}): {r['screen_page_views']} views / {r['sessions']} sessions"
         )
+
+    if analysis["top_excluded_pages"]:
+        lines.append("")
+        lines.append("### Top excluded internal pages")
+        for r in analysis["top_excluded_pages"][:10]:
+            lines.append(
+                f"- {r['page_title']} ({r['page_path']}): {r['screen_page_views']} views / {r['sessions']} sessions"
+            )
 
     lines.append("")
     return "\n".join(lines)
@@ -192,11 +273,19 @@ def main() -> int:
     ap.add_argument("--days", type=int, default=7)
     ap.add_argument("--limit", type=int, default=25)
     ap.add_argument(
+        "--exclude-prefix",
+        action="append",
+        default=None,
+        help="Exclude pagePath prefixes from public metrics (repeatable). Defaults to /admin and /auth.",
+    )
+    ap.add_argument(
         "--out-dir",
         default="reports/analytics",
         help="Directory for markdown/json outputs",
     )
     args = ap.parse_args()
+
+    exclude_prefixes = args.exclude_prefix or ["/admin", "/auth"]
 
     if not args.property_id:
         raise SystemExit("Missing --property-id (or GA4_PROPERTY_ID env var)")
@@ -214,7 +303,7 @@ def main() -> int:
         body = e.read().decode()
         raise SystemExit(f"Token request failed: HTTP {e.code} {body}")
 
-    payload = {
+    payload: Dict[str, object] = {
         "dateRanges": [{"startDate": f"{args.days}daysAgo", "endDate": "today"}],
         "dimensions": [{"name": "pagePath"}, {"name": "pageTitle"}],
         "metrics": [
@@ -226,6 +315,10 @@ def main() -> int:
         "limit": args.limit,
     }
 
+    exclude_or_filter = build_or_prefix_filter(exclude_prefixes)
+    if exclude_or_filter:
+        payload["dimensionFilter"] = {"notExpression": exclude_or_filter}
+
     try:
         report = run_report(token, str(args.property_id), payload)
     except urllib.error.HTTPError as e:
@@ -233,7 +326,47 @@ def main() -> int:
         raise SystemExit(f"GA runReport failed: HTTP {e.code} {body}")
 
     rows = parse_rows(report)
-    analysis = analyze(rows)
+
+    totals_all_payload: Dict[str, object] = {
+        "dateRanges": [{"startDate": f"{args.days}daysAgo", "endDate": "today"}],
+        "metrics": [
+            {"name": "screenPageViews"},
+            {"name": "sessions"},
+            {"name": "activeUsers"},
+        ],
+    }
+    totals_excluded_payload: Dict[str, object] = {
+        "dateRanges": [{"startDate": f"{args.days}daysAgo", "endDate": "today"}],
+        "metrics": [
+            {"name": "screenPageViews"},
+            {"name": "sessions"},
+            {"name": "activeUsers"},
+        ],
+    }
+    if exclude_or_filter:
+        totals_excluded_payload["dimensionFilter"] = exclude_or_filter
+
+    totals_all_report = run_report(token, str(args.property_id), totals_all_payload)
+    totals_excluded_report = run_report(token, str(args.property_id), totals_excluded_payload)
+
+    totals_all = {
+        "screen_page_views": metric_int(totals_all_report.get("rows", []), 0),
+        "sessions": metric_int(totals_all_report.get("rows", []), 1),
+        "active_users": metric_int(totals_all_report.get("rows", []), 2),
+    }
+    totals_excluded = {
+        "screen_page_views": metric_int(totals_excluded_report.get("rows", []), 0),
+        "sessions": metric_int(totals_excluded_report.get("rows", []), 1),
+        "active_users": metric_int(totals_excluded_report.get("rows", []), 2),
+    }
+    totals_public = {
+        "screen_page_views": max(0, totals_all["screen_page_views"] - totals_excluded["screen_page_views"]),
+        "sessions": max(0, totals_all["sessions"] - totals_excluded["sessions"]),
+        "active_users": max(0, totals_all["active_users"] - totals_excluded["active_users"]),
+    }
+
+    totals = {"all": totals_all, "excluded": totals_excluded, "public": totals_public}
+    analysis = analyze(rows, exclude_prefixes, totals)
 
     generated_at = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -249,6 +382,7 @@ def main() -> int:
         "property_id": str(args.property_id),
         "days": args.days,
         "limit": args.limit,
+        "exclude_prefixes": exclude_prefixes,
     }
 
     md = render_markdown(meta, rows, analysis)
@@ -260,6 +394,7 @@ def main() -> int:
     print(f"OK report_md={out_md}")
     print(f"OK report_json={out_json}")
     print(f"rows={len(rows)}")
+    print(f"excluded_share_pct={analysis['excluded_share_pct']}")
     if analysis["homepage_title_variants"]:
         print("homepage_title_variants=" + json.dumps(analysis["homepage_title_variants"]))
     print(f"error_404_views={analysis['error_404_views']}")
