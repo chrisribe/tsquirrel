@@ -4,7 +4,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
 
-const ASSET_VERSION = '1.1.2';
+const ASSET_VERSION = process.env.ASSET_VERSION || '1.1.3';
 
 async function startServer() {
   const app = express();
