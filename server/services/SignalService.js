@@ -39,9 +39,20 @@ class SignalService {
     const articles = await this.dao.getArticlesByIds(articleIds);
     const lead = articles.find(a => a.image_url)?.image_url || null;
 
+    const title = signal.topic.replace(/\b\w/g, c => c.toUpperCase());
+    const slugExtraTerms = [
+      ...(articles || []).slice(0, 3).map(a => a?.title || ''),
+      ...(articles || []).slice(0, 2).map(a => a?.source_name || ''),
+      'tsquirrel',
+    ];
+
     const draft = await this.dao.createDraft({
-      title: signal.topic.replace(/\b\w/g, c => c.toUpperCase()),
-      slug: slugify(signal.topic),
+      title,
+      slug: slugify(title, {
+        minWords: 5,
+        maxLength: 140,
+        extraTerms: slugExtraTerms,
+      }),
       summary: null,
       squirrelTake: null,
       category: 'Other',

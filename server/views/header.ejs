@@ -7,9 +7,33 @@
         <span class="logo-tagline">stashing today's best links</span>
       </span>
     </a>
-    <span class="nav-count">🌰 <%= nutsToday %> nut<%= nutsToday === 1 ? '' : 's' %> stashed today</span>
-    <% if (user && user.role === 'admin') { %>
-      <a href="/admin" class="secondary">Admin</a>
-    <% } %>
+
+    <div class="site-nav-right">
+      <span class="nav-count">🌰 <%= nutsToday %> nut<%= nutsToday === 1 ? '' : 's' %> stashed today</span>
+      <% if (user && user.role === 'admin') { %>
+        <a href="/admin" class="secondary header-admin">Admin</a>
+      <% } %>
+      <button type="button"
+              class="menu-toggle"
+              id="menu-toggle"
+              aria-label="Open menu"
+              aria-controls="mobile-menu"
+              aria-expanded="false"><span class="hamburger-icon" aria-hidden="true"></span></button>
+    </div>
   </nav>
+
+  <div id="mobile-menu" class="mobile-menu" aria-label="Mobile menu">
+    <div class="mobile-menu-inner">
+      <a href="/" class="mobile-link <%= currentPath === '/' && !currentCategory ? 'active' : '' %>">🔥 Trending</a>
+      <a href="/?category=Technology" class="mobile-link <%= currentPath === '/' && currentCategory === 'Technology' ? 'active' : '' %>">💻 Tech</a>
+      <a href="/archive" class="mobile-link <%= currentPath === '/archive' ? 'active' : '' %>">📰 Archive</a>
+      <a href="/about" class="mobile-link <%= currentPath === '/about' ? 'active' : '' %>">ℹ️ About</a>
+      <a href="/privacy-policy" class="mobile-link <%= currentPath === '/privacy-policy' ? 'active' : '' %>">Privacy</a>
+      <a href="/terms-of-service" class="mobile-link <%= currentPath === '/terms-of-service' ? 'active' : '' %>">Terms</a>
+      <a href="/contact" class="mobile-link <%= currentPath === '/contact' ? 'active' : '' %>">Contact</a>
+      <% if (user && user.role === 'admin') { %>
+        <a href="/admin" class="mobile-link <%= currentPath === '/admin' ? 'active' : '' %>">Admin</a>
+      <% } %>
+    </div>
+  </div>
 </header>

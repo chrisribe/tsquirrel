@@ -178,11 +178,23 @@ router.get('/story/:slug', async (req, res) => {
 router.get('/api/stories', async (req, res) => {
   const pool = req.app.get('pool');
   const dao = new NewsDAO(pool);
-  const offset = parseInt(req.query.offset) || 0;
+  const offset = parseInt(req.query.offset, 10) || 0;
   const category = req.query.category || null;
   const tag = req.query.tag || null;
-  const stories = await dao.getTopStories({ limit: 10, offset, category, tag });
-  res.render('partials/story-cards', { pageData: { stories } });
+
+  const pageSize = 10;
+  const rows = await dao.getTopStories({ limit: pageSize + 1, offset, category, tag });
+  const hasMore = rows.length > pageSize;
+  const stories = hasMore ? rows.slice(0, pageSize) : rows;
+  const nextOffset = offset + stories.length;
+
+  res.render('partials/story-cards-with-more', {
+    stories,
+    hasMore,
+    nextOffset,
+    activeCategory: category,
+    activeTag: tag,
+  });
 });
 
 module.exports = router;

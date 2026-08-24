@@ -81,6 +81,8 @@ async function startServer() {
       : ASSET_VERSION;
     res.locals.googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID || '';
     res.locals.nutsToday = 0;
+    res.locals.currentPath = req.path;
+    res.locals.currentCategory = typeof req.query?.category === 'string' ? req.query.category : null;
     if (!req.path.startsWith('/api') && !req.path.startsWith('/static')) {
       try {
         const { rows } = await pool.query(

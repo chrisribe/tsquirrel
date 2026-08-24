@@ -1,0 +1,13 @@
+<%- include('./story-cards', { pageData: { stories } }) %>
+<% if (hasMore) { %>
+<div id="load-more"
+     class="load-more-wrap"
+     hx-get="/api/stories?offset=<%= nextOffset %><%= activeCategory ? '&category=' + encodeURIComponent(activeCategory) : '' %><%= activeTag ? '&tag=' + encodeURIComponent(activeTag) : '' %>"
+     hx-trigger="click"
+     hx-swap="outerHTML"
+     hx-target="#load-more">
+  <button type="button" class="secondary outline">Load more stories</button>
+</div>
+<% } else { %>
+<p class="feed-end">You reached the end of the stash 🌰</p>
+<% } %>

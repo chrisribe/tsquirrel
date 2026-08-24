@@ -50,11 +50,12 @@
   <!-- HTMX load-more trigger -->
   <% if (stories.length === 30) { %>
   <div id="load-more"
-       hx-get="/api/stories?offset=30<%= activeCategory ? '&category=' + activeCategory : '' %><%= activeTag ? '&tag=' + encodeURIComponent(activeTag) : '' %>"
-       hx-trigger="revealed"
+       class="load-more-wrap"
+       hx-get="/api/stories?offset=30<%= activeCategory ? '&category=' + encodeURIComponent(activeCategory) : '' %><%= activeTag ? '&tag=' + encodeURIComponent(activeTag) : '' %>"
+       hx-trigger="click"
        hx-swap="outerHTML"
        hx-target="#load-more">
-    <p style="text-align:center; color:var(--pico-muted-color)">Loading more…</p>
+    <button type="button" class="secondary outline">Load more stories</button>
   </div>
   <% } %>
 </section>
