@@ -74,7 +74,11 @@ router.get('/contact', (_req, res) => {
 // ── XML sitemap (auto-updates from published stories) ──────────────────
 router.get('/sitemap.xml', async (req, res) => {
   const pool = req.app.get('pool');
-  const baseUrl = String(process.env.PUBLIC_URL || 'https://tsquirrel.com').replace(/\/$/, '');
+  const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const host = req.get('x-forwarded-host') || req.get('host');
+  const requestBase = host ? `${proto}://${host}` : null;
+  const configuredBase = String(process.env.PUBLIC_URL || '').trim();
+  const baseUrl = String(requestBase || configuredBase || 'https://tsquirrel.com').replace(/\/$/, '');
 
   const staticPaths = ['/', '/archive', '/about', '/privacy-policy', '/terms-of-service', '/contact'];
   const { rows } = await pool.query(`
