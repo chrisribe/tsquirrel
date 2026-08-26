@@ -10,6 +10,15 @@ const LEGACY_REDIRECTS = new Map([
   ['/signup', '/auth/login'],
 ]);
 
+function xmlEscape(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 // ── Legacy dead paths cleanup (SEO leakage guard) ─────────────────────
 router.get(Array.from(LEGACY_REDIRECTS.keys()), (req, res) => {
   const target = LEGACY_REDIRECTS.get(req.path) || '/';
@@ -60,6 +69,54 @@ router.get('/contact', (_req, res) => {
     pageUrl: 'https://tsquirrel.com/contact',
     pageData: {},
   });
+});
+
+// ── XML sitemap (auto-updates from published stories) ──────────────────
+router.get('/sitemap.xml', async (req, res) => {
+  const pool = req.app.get('pool');
+  const baseUrl = String(process.env.PUBLIC_URL || 'https://tsquirrel.com').replace(/\/$/, '');
+
+  const staticPaths = ['/', '/archive', '/about', '/privacy-policy', '/terms-of-service', '/contact'];
+  const { rows } = await pool.query(`
+    SELECT slug, COALESCE(updated_at, published_at, created_at) AS lastmod
+    FROM stories
+    WHERE status = 'published' AND slug IS NOT NULL
+    ORDER BY published_at DESC NULLS LAST, updated_at DESC
+  `);
+
+  const urls = [
+    ...staticPaths.map(path => ({
+      loc: `${baseUrl}${path}`,
+      lastmod: null,
+      changefreq: path === '/' ? 'hourly' : 'daily',
+      priority: path === '/' ? '1.0' : '0.7',
+    })),
+    ...rows.map(r => ({
+      loc: `${baseUrl}/story/${encodeURIComponent(r.slug)}`,
+      lastmod: r.lastmod ? new Date(r.lastmod).toISOString() : null,
+      changefreq: 'daily',
+      priority: '0.8',
+    })),
+  ];
+
+  const body = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...urls.map(u => {
+      const bits = [
+        `    <loc>${xmlEscape(u.loc)}</loc>`,
+        u.lastmod ? `    <lastmod>${xmlEscape(u.lastmod)}</lastmod>` : null,
+        u.changefreq ? `    <changefreq>${u.changefreq}</changefreq>` : null,
+        u.priority ? `    <priority>${u.priority}</priority>` : null,
+      ].filter(Boolean);
+      return ['  <url>', ...bits, '  </url>'].join('\n');
+    }),
+    '</urlset>',
+  ].join('\n');
+
+  res.set('Content-Type', 'application/xml; charset=utf-8');
+  res.set('Cache-Control', 'public, max-age=300');
+  return res.status(200).send(body);
 });
 
 // ── Legacy article route — must come BEFORE catch-all ──────────────────

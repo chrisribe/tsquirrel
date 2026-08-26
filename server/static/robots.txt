@@ -1,35 +1,14 @@
-# EventGlimpse robots.txt
+# TSquirrel robots.txt
 
-# Facebook crawler - explicit allow for social sharing
-User-agent: facebookexternalhit
-Allow: /
-
-# Twitter crawler
-User-agent: Twitterbot
-Allow: /
-
-# LinkedIn crawler
-User-agent: LinkedInBot
-Allow: /
-
-# All other bots
 User-agent: *
-
-# Allow public pages and galleries (for social sharing)
 Allow: /
-Allow: /g/
-Allow: /about
-Allow: /privacy
-Allow: /terms
 
-# Block auth and admin pages from search engines
-Disallow: /galleries
+# Private surfaces
 Disallow: /auth/
 Disallow: /admin/
-Disallow: /register
+Disallow: /api/
 
-# Block static assets from indexing
+# Keep static assets out of index pages
 Disallow: /static/
 
-# Sitemap (if added later)
-# Sitemap: https://event-glimpse.com/sitemap.xml
+Sitemap: https://tsquirrel.com/sitemap.xml
