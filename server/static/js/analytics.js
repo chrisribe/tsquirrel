@@ -3,6 +3,24 @@
 
   if (typeof window.gtag !== 'function') return;
 
+  function isPrivateHost(hostname) {
+    return hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname === '::1'
+      || /^192\.168\./.test(hostname)
+      || /^10\./.test(hostname)
+      || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+  }
+
+  function shouldTrack() {
+    const path = window.location.pathname || '';
+    if (path.startsWith('/admin') || path.startsWith('/auth') || path.startsWith('/api')) return false;
+    if (isPrivateHost(window.location.hostname || '')) return false;
+    return true;
+  }
+
+  if (!shouldTrack()) return;
+
   function normalizeValue(value) {
     if (value === 'true') return true;
     if (value === 'false') return false;

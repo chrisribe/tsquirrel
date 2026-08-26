@@ -8,6 +8,8 @@ const LEGACY_REDIRECTS = new Map([
   ['/external', '/archive'],
   ['/login', '/auth/login'],
   ['/signup', '/auth/login'],
+  ['/privacy', '/privacy-policy'],
+  ['/terms', '/terms-of-service'],
 ]);
 
 function xmlEscape(value = '') {
@@ -23,6 +25,11 @@ function xmlEscape(value = '') {
 router.get(Array.from(LEGACY_REDIRECTS.keys()), (req, res) => {
   const target = LEGACY_REDIRECTS.get(req.path) || '/';
   return res.redirect(301, target);
+});
+
+// ── Legacy section paths cleanup ───────────────────────────────────────
+router.get('/section/:slug', (_req, res) => {
+  return res.redirect(301, '/archive');
 });
 
 // ── Legacy media paths that should not be indexed ──────────────────────
@@ -126,7 +133,7 @@ router.get('/sitemap.xml', async (req, res) => {
 // ── Legacy article route — must come BEFORE catch-all ──────────────────
 // Serves original tsquirrel.com slug URLs at their exact paths
 // e.g. /drapeau-francais-le-retour-dun-symbole-apres-les-attentats-55
-router.get('/:slug([a-z0-9][a-z0-9-]+-\\d+)', async (req, res, next) => {
+router.get('/:slug([a-z0-9][a-z0-9-]+-\\d+)', async (req, res) => {
   const pool = req.app.get('pool');
   const slug = req.params.slug;
 
@@ -135,7 +142,7 @@ router.get('/:slug([a-z0-9][a-z0-9-]+-\\d+)', async (req, res, next) => {
     [slug]
   );
 
-  if (!rows[0]) return next(); // not a legacy slug — fall through to 404
+  if (!rows[0]) return res.redirect(301, '/archive'); // legacy-like slug but missing entry
 
   const article = rows[0];
   res.render('layout-main', {
