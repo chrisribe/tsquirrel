@@ -235,7 +235,7 @@ router.get('/story/:slug', async (req, res) => {
   const related = await dao.getRelatedStories(story.id, { category: story.category, tags: story.tags || [] });
   res.render('layout-main', {
     template: 'story-page',
-    pageTitle: `${story.title} — TSquirrel`,
+    pageTitle: `${story.title} | TSquirrel`,
     pageDescription: story.summary || story.title,
     pageUrl: `https://tsquirrel.com/story/${story.slug}`,
     pageData: { story, articles, related },

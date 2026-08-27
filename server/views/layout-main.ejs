@@ -1,20 +1,87 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
+  <% 
+    const isStoryPage = template === 'story-page' && pageData && pageData.story;
+    const story = isStoryPage ? pageData.story : null;
+    const canonicalUrl = typeof pageUrl !== 'undefined' ? pageUrl : 'https://tsquirrel.com';
+    const metaTitle = typeof pageTitle !== 'undefined' ? pageTitle : "What's Trending — TSquirrel";
+    const metaDescription = typeof pageDescription !== 'undefined' ? pageDescription : 'AI-curated news digest across sources.';
+    const storyImage = story?.image_url ? secureUrl(story.image_url) : null;
+    const storyPublishedAt = story?.published_at || story?.created_at || null;
+    const storyUpdatedAt = story?.updated_at || story?.published_at || story?.created_at || null;
+    const robotsContent = (typeof noIndex !== 'undefined' && noIndex)
+      ? 'noindex, nofollow'
+      : 'index, follow, max-image-preview:large';
+
+    const jsonLd = isStoryPage ? {
+      '@context': 'https://schema.org',
+      '@type': 'NewsArticle',
+      mainEntityOfPage: canonicalUrl,
+      headline: story.title,
+      description: metaDescription,
+      image: storyImage ? [storyImage] : undefined,
+      datePublished: storyPublishedAt ? new Date(storyPublishedAt).toISOString() : undefined,
+      dateModified: storyUpdatedAt ? new Date(storyUpdatedAt).toISOString() : undefined,
+      articleSection: story.category || undefined,
+      keywords: Array.isArray(story.tags) ? story.tags.join(', ') : undefined,
+      publisher: {
+        '@type': 'Organization',
+        name: 'TSquirrel',
+        url: 'https://tsquirrel.com'
+      }
+    } : null;
+
+    const jsonLdString = jsonLd
+      ? JSON.stringify(jsonLd).replace(/</g, '\\u003c')
+      : '';
+  %>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof pageTitle !== 'undefined' ? pageTitle : 'What\'s Trending — TSquirrel' %></title>
-  <meta name="description" content="<%= typeof pageDescription !== 'undefined' ? pageDescription : 'AI-curated news digest across sources.' %>">
-  <% if (typeof noIndex !== 'undefined' && noIndex) { %>
-  <meta name="robots" content="noindex, nofollow">
+  <title><%= metaTitle %></title>
+  <meta name="description" content="<%= metaDescription %>">
+  <meta name="robots" content="<%= robotsContent %>">
+
+  <meta property="og:type" content="<%= isStoryPage ? 'article' : 'website' %>">
+  <meta property="og:title" content="<%= metaTitle %>">
+  <meta property="og:description" content="<%= metaDescription %>">
+  <meta property="og:url" content="<%= canonicalUrl %>">
+  <meta property="og:site_name" content="TSquirrel">
+  <% if (storyImage) { %>
+  <meta property="og:image" content="<%= storyImage %>">
+  <meta property="og:image:secure_url" content="<%= storyImage %>">
+  <meta property="og:image:alt" content="<%= story?.title || 'TSquirrel story image' %>">
+  <% } %>
+  <% if (isStoryPage && storyUpdatedAt) { %>
+  <meta property="og:updated_time" content="<%= new Date(storyUpdatedAt).toISOString() %>">
   <% } %>
 
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="<%= typeof pageTitle !== 'undefined' ? pageTitle : 'What\'s Trending — TSquirrel' %>">
-  <meta property="og:description" content="<%= typeof pageDescription !== 'undefined' ? pageDescription : 'AI-curated news digest.' %>">
-  <meta property="og:url" content="<%= typeof pageUrl !== 'undefined' ? pageUrl : 'https://tsquirrel.com' %>">
-  <meta property="og:site_name" content="TSquirrel">
-  <link rel="canonical" href="<%= typeof pageUrl !== 'undefined' ? pageUrl : 'https://tsquirrel.com' %>">
+  <meta name="twitter:card" content="<%= storyImage ? 'summary_large_image' : 'summary' %>">
+  <meta name="twitter:title" content="<%= metaTitle %>">
+  <meta name="twitter:description" content="<%= metaDescription %>">
+  <% if (storyImage) { %>
+  <meta name="twitter:image" content="<%= storyImage %>">
+  <% } %>
+
+  <% if (isStoryPage && storyPublishedAt) { %>
+  <meta property="article:published_time" content="<%= new Date(storyPublishedAt).toISOString() %>">
+  <% } %>
+  <% if (isStoryPage && storyUpdatedAt) { %>
+  <meta property="article:modified_time" content="<%= new Date(storyUpdatedAt).toISOString() %>">
+  <% } %>
+  <% if (isStoryPage && story?.category) { %>
+  <meta property="article:section" content="<%= story.category %>">
+  <% } %>
+  <% if (isStoryPage && Array.isArray(story?.tags)) { story.tags.forEach(tag => { %>
+  <meta property="article:tag" content="<%= tag %>">
+  <% }); } %>
+
+  <link rel="canonical" href="<%= canonicalUrl %>">
+
+  <% if (jsonLdString) { %>
+  <script type="application/ld+json"><%- jsonLdString %></script>
+  <% } %>
 
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🐿️</text></svg>">
 
