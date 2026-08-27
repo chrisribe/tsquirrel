@@ -32,8 +32,27 @@
       }
     } : null;
 
-    const jsonLdString = jsonLd
+    const orgJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'TSquirrel',
+      url: 'https://tsquirrel.com'
+    };
+
+    const websiteJsonLd = canonicalUrl === 'https://tsquirrel.com' ? {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'TSquirrel',
+      url: 'https://tsquirrel.com',
+      inLanguage: 'en'
+    } : null;
+
+    const storyJsonLdString = jsonLd
       ? JSON.stringify(jsonLd).replace(/</g, '\\u003c')
+      : '';
+    const orgJsonLdString = JSON.stringify(orgJsonLd).replace(/</g, '\\u003c');
+    const websiteJsonLdString = websiteJsonLd
+      ? JSON.stringify(websiteJsonLd).replace(/</g, '\\u003c')
       : '';
   %>
 
@@ -79,8 +98,12 @@
 
   <link rel="canonical" href="<%= canonicalUrl %>">
 
-  <% if (jsonLdString) { %>
-  <script type="application/ld+json"><%- jsonLdString %></script>
+  <% if (storyJsonLdString) { %>
+  <script type="application/ld+json"><%- storyJsonLdString %></script>
+  <% } %>
+  <script type="application/ld+json"><%- orgJsonLdString %></script>
+  <% if (websiteJsonLdString) { %>
+  <script type="application/ld+json"><%- websiteJsonLdString %></script>
   <% } %>
 
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🐿️</text></svg>">
