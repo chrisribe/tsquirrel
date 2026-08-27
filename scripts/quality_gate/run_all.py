@@ -5,6 +5,7 @@ import step1_ingest
 import step2_candidates
 import step2_5_editorial
 import step3_quality_gate
+import step3_5_unblock
 import step4_publish
 import step5_report
 
@@ -20,6 +21,7 @@ def run_all(dry_run=False, limit=50):
     step2_candidates.run(limit=limit, dry_run=dry_run)
     step2_5_editorial.run(limit=limit, dry_run=dry_run)
     step3_quality_gate.run()
+    step3_5_unblock.run(dry_run=dry_run)
     step4_publish.run(dry_run=dry_run)
     step5_report.run()
 

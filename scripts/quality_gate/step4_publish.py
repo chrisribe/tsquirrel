@@ -5,7 +5,7 @@ from common import BASE, get_tokens, api_req, load_state, save_state, utc_now
 def run(dry_run=False):
     tsq, _ = get_tokens()
     state = load_state()
-    qg = (state.get("quality_gate_step") or {}).get("results", [])
+    qg = (state.get("quality_gate_unblock_step") or {}).get("results") or (state.get("quality_gate_step") or {}).get("results", [])
 
     published = []
     blocked = []

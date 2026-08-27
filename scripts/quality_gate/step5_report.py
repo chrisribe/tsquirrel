@@ -10,7 +10,7 @@ def run():
     post = get_or_usage(or_key)
     delta = float(post.get("usage_daily", 0.0)) - float(pre.get("usage_daily", 0.0))
 
-    qg = state.get("quality_gate_step", {})
+    qg = state.get("quality_gate_unblock_step") or state.get("quality_gate_step", {})
     pb = state.get("publish_step", {})
     entry = {
         "timestamp": utc_now(),
