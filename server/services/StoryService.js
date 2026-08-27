@@ -216,6 +216,9 @@ class StoryService {
         const fallbackTags = this._deriveFallbackTags(story);
         if (fallbackTags.length > 0) await this.dao.setTags(storyId, fallbackTags);
       }
+      if (story) {
+        await this._syncSlugWithTitle(storyId, story);
+      }
 
       // Keep source list clean at publish time. If duplicate URLs are attached,
       // retain the newest article per URL and detach the rest.
@@ -303,7 +306,71 @@ class StoryService {
       ));
     }
 
+    const recentDupes = await this._findRecentLikelyDuplicates(currentStory, { hours: 48, minTokenOverlap: 0.6 });
+    if (recentDupes.length > 0) {
+      const refs = recentDupes.slice(0, 3).map((d) => `#${d.id}`).join(', ');
+      blockers.push(this._buildBlocker(
+        'recent_duplicate_topic',
+        `likely duplicate topic within last 48h (${refs})`,
+        {
+          field: 'title',
+          meta: {
+            window_hours: 48,
+            candidate_ids: recentDupes.slice(0, 3).map((d) => d.id),
+            scores: recentDupes.slice(0, 3).map((d) => ({ id: d.id, overlap: d.overlap, shared: d.shared })),
+          },
+        }
+      ));
+    }
+
     return blockers;
+  }
+
+  async _syncSlugWithTitle(storyId, story) {
+    const title = String(story?.title || '').trim();
+    if (!title) return;
+
+    const desiredSlug = slugify(title, {
+      minWords: 5,
+      maxLength: 140,
+      extraTerms: [
+        story?.category,
+        ...(Array.isArray(story?.tags) ? story.tags : []),
+      ],
+    });
+
+    const currentSlug = String(story?.slug || '').trim();
+    if (!desiredSlug || desiredSlug === currentSlug) return;
+
+    await this.dao.replaceStorySlug(storyId, desiredSlug);
+  }
+
+  async _findRecentLikelyDuplicates(story, { hours = 48, minTokenOverlap = 0.6 } = {}) {
+    if (!story || !story.id) return [];
+    const baseTokens = this._titleTokenSet(story.title);
+    if (baseTokens.size < 3) return [];
+
+    const recent = await this.dao.listRecentPublishedStories({
+      hours,
+      excludeId: Number(story.id),
+      limit: 40,
+    });
+
+    const out = [];
+    for (const candidate of recent) {
+      const candTokens = this._titleTokenSet(candidate.title);
+      if (candTokens.size < 3) continue;
+
+      const inter = [...baseTokens].filter((t) => candTokens.has(t)).length;
+      const minSize = Math.max(1, Math.min(baseTokens.size, candTokens.size));
+      const overlap = inter / minSize;
+
+      if (inter >= 3 && overlap >= minTokenOverlap) {
+        out.push({ id: candidate.id, overlap: Number(overlap.toFixed(2)), shared: inter, title: candidate.title });
+      }
+    }
+
+    return out.sort((a, b) => b.overlap - a.overlap || b.shared - a.shared);
   }
 
   _buildBlocker(code, message, { field = null, meta = null } = {}) {

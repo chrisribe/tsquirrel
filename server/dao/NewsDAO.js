@@ -452,6 +452,58 @@ class NewsDAO {
     );
   }
 
+  async replaceStorySlug(id, newSlug) {
+    const { rows: currentRows } = await this.pool.query(
+      'SELECT slug FROM stories WHERE id = $1',
+      [id]
+    );
+    const currentSlug = currentRows[0]?.slug || null;
+    if (!currentSlug || currentSlug === newSlug) {
+      return currentSlug;
+    }
+
+    await this.pool.query('BEGIN');
+    try {
+      await this.pool.query(
+        `INSERT INTO story_slug_redirects (story_id, old_slug)
+         VALUES ($1, $2)
+         ON CONFLICT (old_slug) DO NOTHING`,
+        [id, currentSlug]
+      );
+
+      await this.pool.query(
+        'UPDATE stories SET slug = $2, updated_at = NOW() WHERE id = $1',
+        [id, newSlug]
+      );
+
+      await this.pool.query('COMMIT');
+      return currentSlug;
+    } catch (err) {
+      await this.pool.query('ROLLBACK');
+      throw err;
+    }
+  }
+
+  async listRecentPublishedStories({ hours = 48, excludeId = null, limit = 30 } = {}) {
+    const params = [hours, limit];
+    let whereEx = '';
+    if (Number.isFinite(excludeId)) {
+      params.push(excludeId);
+      whereEx = ` AND id <> $${params.length}`;
+    }
+
+    const { rows } = await this.pool.query(`
+      SELECT id, title, slug, category, tags, published_at
+      FROM stories
+      WHERE status = 'published'
+        AND published_at >= NOW() - ($1::int * INTERVAL '1 hour')
+        ${whereEx}
+      ORDER BY published_at DESC
+      LIMIT $2
+    `, params);
+    return rows;
+  }
+
   async setStoryImage(id, imageUrl = null) {
     await this.pool.query(
       'UPDATE stories SET image_url = $2, updated_at = NOW() WHERE id = $1',
