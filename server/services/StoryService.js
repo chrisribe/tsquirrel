@@ -29,6 +29,29 @@ const BOILERPLATE_PATTERNS = [
   /staffing and legal controls/i,
 ];
 
+const TITLE_MIN_CHARS = 45;
+const TITLE_MAX_CHARS = 70;
+const SUMMARY_MIN_CHARS = 120;
+const SUMMARY_MAX_CHARS = 280;
+
+const CATEGORY_KEYWORDS = {
+  Politics: ['election', 'parliament', 'senate', 'congress', 'minister', 'president', 'white house', 'government', 'policy'],
+  Business: ['market', 'earnings', 'ipo', 'merger', 'acquisition', 'stocks', 'investor', 'revenue', 'company'],
+  Technology: ['ai', 'software', 'chip', 'semiconductor', 'cyber', 'openai', 'google', 'microsoft', 'apple', 'iphone', 'android'],
+  Science: ['study', 'research', 'nasa', 'space', 'physics', 'biology', 'scientist', 'laboratory'],
+  Health: ['hospital', 'cdc', 'who', 'disease', 'vaccine', 'virus', 'health', 'medical'],
+  Sports: ['premier league', 'nba', 'nfl', 'mlb', 'fifa', 'match', 'goal', 'transfer', 'coach'],
+  Entertainment: ['movie', 'film', 'tv', 'music', 'album', 'celebrity', 'actor', 'actress', 'streaming'],
+  World: ['war', 'conflict', 'border', 'diplomatic', 'un', 'earthquake', 'tsunami', 'international'],
+  Environment: ['wildfire', 'flood', 'hurricane', 'emissions', 'pollution', 'ecosystem', 'climate'],
+  Crime: ['police', 'arrest', 'court', 'lawsuit', 'shooting', 'murder', 'fraud', 'investigation'],
+};
+
+const CATEGORY_ALIASES = {
+  tech: 'Technology',
+  technology: 'Technology',
+};
+
 // Core story domain service. Owns all NewsDAO access for stories and returns
 // raw domain data (stories, articles, suggestions, booleans). Presentation
 // shaping — admin page-view models vs JSON payloads — lives in the wrapping
@@ -252,12 +275,42 @@ class StoryService {
     if (titleWords.length < 4) {
       blockers.push(this._buildBlocker('title_too_short', 'title must be at least 4 words', { field: 'title' }));
     }
+    if (title.length < TITLE_MIN_CHARS) {
+      blockers.push(this._buildBlocker(
+        'title_too_short_chars',
+        `title should be at least ${TITLE_MIN_CHARS} characters for clarity`,
+        { field: 'title', meta: { min_chars: TITLE_MIN_CHARS, current_chars: title.length } }
+      ));
+    }
+    if (title.length > TITLE_MAX_CHARS) {
+      blockers.push(this._buildBlocker(
+        'title_too_long_chars',
+        `title should be at most ${TITLE_MAX_CHARS} characters`,
+        { field: 'title', meta: { max_chars: TITLE_MAX_CHARS, current_chars: title.length } }
+      ));
+    }
 
     const summary = String(currentStory.summary || '').trim();
     if (!summary) {
       blockers.push(this._buildBlocker('summary_required', 'summary is required', { field: 'summary' }));
     } else if (this._isTitleParrot(summary, title)) {
       blockers.push(this._buildBlocker('summary_duplicates_title', 'summary should add facts beyond the title', { field: 'summary' }));
+    }
+    if (summary) {
+      if (summary.length < SUMMARY_MIN_CHARS) {
+        blockers.push(this._buildBlocker(
+          'summary_too_short_chars',
+          `summary should be at least ${SUMMARY_MIN_CHARS} characters`,
+          { field: 'summary', meta: { min_chars: SUMMARY_MIN_CHARS, current_chars: summary.length } }
+        ));
+      }
+      if (summary.length > SUMMARY_MAX_CHARS) {
+        blockers.push(this._buildBlocker(
+          'summary_too_long_chars',
+          `summary should be at most ${SUMMARY_MAX_CHARS} characters`,
+          { field: 'summary', meta: { max_chars: SUMMARY_MAX_CHARS, current_chars: summary.length } }
+        ));
+      }
     }
 
     const squirrelTake = String(currentStory.squirrel_take || '').trim();
@@ -279,7 +332,25 @@ class StoryService {
       blockers.push(this._buildBlocker('why_it_matters_boilerplate', 'why_it_matters looks generic/boilerplate', { field: 'why_it_matters' }));
     }
 
+    const category = this._normalizeCategoryName(currentStory.category);
+    if (!category) {
+      blockers.push(this._buildBlocker('category_required', 'category is required', { field: 'category' }));
+    }
+
     const articles = await this.dao.getStoryArticles(storyId);
+    if (category === 'Other') {
+      const inferred = this._inferCategoryFromStory(currentStory, articles);
+      if (inferred && inferred.category !== 'Other' && inferred.score >= 2) {
+        blockers.push(this._buildBlocker(
+          'category_too_generic',
+          `category "Other" is too generic; likely ${inferred.category}`,
+          { field: 'category', meta: { suggested_category: inferred.category, confidence: inferred.score } }
+        ));
+      }
+    }
+
+    // Sentiment is intentionally non-blocking for now; keep optional until
+    // we wire it into ranking/UI with reliable extraction quality.
     const duplicateSources = this._findDuplicateSourceUrls(articles);
     if (duplicateSources.length > 0) {
       blockers.push(this._buildBlocker(
@@ -371,6 +442,36 @@ class StoryService {
     }
 
     return out.sort((a, b) => b.overlap - a.overlap || b.shared - a.shared);
+  }
+
+  _normalizeCategoryName(raw) {
+    const value = String(raw || '').trim();
+    if (!value) return '';
+    const aliased = CATEGORY_ALIASES[value.toLowerCase()] || value;
+    return aliased;
+  }
+
+  _inferCategoryFromStory(story, articles = []) {
+    const parts = [
+      String(story?.title || ''),
+      String(story?.summary || ''),
+      String(story?.squirrel_take || ''),
+      String(story?.why_it_matters || ''),
+      ...(Array.isArray(story?.tags) ? story.tags : []),
+      ...(Array.isArray(articles) ? articles.map((a) => a?.title || '') : []),
+    ];
+    const haystack = parts.join(' | ').toLowerCase();
+
+    let best = { category: 'Other', score: 0 };
+    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+      let score = 0;
+      for (const key of keywords) {
+        if (haystack.includes(String(key).toLowerCase())) score += 1;
+      }
+      if (score > best.score) best = { category, score };
+    }
+
+    return best;
   }
 
   _buildBlocker(code, message, { field = null, meta = null } = {}) {
