@@ -173,7 +173,16 @@ main.container, footer.container { max-width: 980px; }
   margin: 0;
   flex: 1;
 }
-.search-form button { margin: 0; }
+.search-form button {
+  margin: 0;
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: .52rem 1rem;
+}
+.search-form input[type="search"] {
+  min-width: 0;
+}
 .search-clear { font-size: .85rem; }
 @media (max-width: 640px) {
   .search-form {
