@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import json
 import re
 
@@ -343,5 +344,13 @@ def run(limit=50, dry_run=False):
     )
 
 
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--limit", type=int, default=50)
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+    run(limit=args.limit, dry_run=args.dry_run)
+
+
 if __name__ == "__main__":
-    run()
+    main()
