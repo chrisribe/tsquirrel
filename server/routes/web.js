@@ -145,11 +145,13 @@ router.get('/:slug([a-z0-9][a-z0-9-]+-\\d+)', async (req, res) => {
   if (!rows[0]) return res.redirect(301, '/archive'); // legacy-like slug but missing entry
 
   const article = rows[0];
+  res.set('X-Robots-Tag', 'noindex, nofollow');
   res.render('layout-main', {
     template: 'legacy-article-page',
     pageTitle: `${article.title} — TSquirrel`,
     pageDescription: article.description,
-    pageUrl: `https://tsquirrel.com/${article.slug}`,
+    pageUrl: 'https://tsquirrel.com/archive',
+    noIndex: true,
     pageData: { article },
   });
 });

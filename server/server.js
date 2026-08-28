@@ -29,6 +29,22 @@ async function startServer() {
 
   // Middleware
   app.set('trust proxy', 1);
+
+  // Canonical host redirect: collapse www → apex to avoid duplicate indexing.
+  const publicUrl = String(process.env.PUBLIC_URL || 'https://tsquirrel.com').trim();
+  let canonicalHost = 'tsquirrel.com';
+  try {
+    canonicalHost = new URL(publicUrl).hostname || canonicalHost;
+  } catch (_) {}
+  app.use((req, res, next) => {
+    const host = String(req.hostname || '').toLowerCase();
+    const targetHost = String(canonicalHost || '').toLowerCase();
+    if (host && targetHost && host === `www.${targetHost}`) {
+      return res.redirect(301, `https://${targetHost}${req.originalUrl}`);
+    }
+    return next();
+  });
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use('/static', express.static(path.join(__dirname, 'static')));

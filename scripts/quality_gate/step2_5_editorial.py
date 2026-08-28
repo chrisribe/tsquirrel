@@ -23,6 +23,23 @@ STOP = {
     "while", "would", "years", "before", "during", "should", "their", "there", "these", "those", "through", "people",
 }
 
+ALLOWED_CATEGORIES = {
+    "Politics", "Business", "Technology", "Science", "Health", "Sports",
+    "Entertainment", "World", "Environment", "Crime", "Other",
+}
+
+CATEGORY_ALIASES = {
+    "tech": "Technology",
+    "technology": "Technology",
+    "international affairs": "World",
+    "international": "World",
+    "world news": "World",
+    "finance": "Business",
+    "economy": "Business",
+    "climate": "Environment",
+    "legal": "Crime",
+}
+
 
 def _needs_editorial(story):
     title = str((story or {}).get("title") or "").strip()
@@ -68,6 +85,94 @@ def _clean_tags(tags, title):
             if len(out) >= 4:
                 break
     return out
+
+
+def _normalize_category(raw):
+    value = str(raw or "").strip()
+    if not value:
+        return "Other"
+    low = value.lower()
+    mapped = CATEGORY_ALIASES.get(low, value)
+    if mapped in ALLOWED_CATEGORIES:
+        return mapped
+    title_cased = mapped.title()
+    return title_cased if title_cased in ALLOWED_CATEGORIES else "Other"
+
+
+def _needs_category_refresh(story):
+    category = _normalize_category((story or {}).get("category"))
+    return category == "Other"
+
+
+def _llm_category(or_key, story, sources):
+    source_lines = []
+    for i, s in enumerate(sources[:6], 1):
+        source_lines.append(
+            {
+                "i": i,
+                "source": s.get("source_name"),
+                "title": s.get("title"),
+                "url": s.get("url"),
+                "description": s.get("description"),
+            }
+        )
+
+    payload = {
+        "model": QG_MODEL,
+        "temperature": 0.0,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "Classify one TSquirrel story into exactly one category using source URLs and metadata. "
+                    "Return STRICT JSON only: {\"category\":\"...\",\"confidence\":0..1,\"theme\":\"<=8 words\"}. "
+                    "Allowed categories only: Politics, Business, Technology, Science, Health, Sports, "
+                    "Entertainment, World, Environment, Crime, Other. Use Other only when nothing fits."
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "story": {
+                            "id": story.get("id"),
+                            "title": story.get("title"),
+                            "summary": story.get("summary"),
+                            "category": story.get("category"),
+                        },
+                        "sources": source_lines,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+    }
+
+    status, out = api_req(
+        "POST",
+        f"{OR_BASE}/chat/completions",
+        token=or_key,
+        data=payload,
+        headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
+        timeout=60,
+    )
+    if status != 200 or not isinstance(out, dict):
+        return {}
+
+    content = out.get("choices", [{}])[0].get("message", {}).get("content", "{}")
+    if isinstance(content, list):
+        content = "".join(str(block.get("text", "")) if isinstance(block, dict) else str(block) for block in content)
+    if not isinstance(content, str):
+        content = str(content)
+
+    start, end = content.find("{"), content.rfind("}")
+    if start < 0 or end < 0:
+        return {}
+    try:
+        return json.loads(content[start : end + 1])
+    except Exception:
+        return {}
 
 
 def _llm_editor(or_key, story, sources):
@@ -160,7 +265,31 @@ def run(limit=50, dry_run=False):
         sources = payload.get("sources") or []
 
         if not _needs_editorial(story):
-            skipped.append({"story_id": sid, "reason": "already_has_editorial"})
+            if _needs_category_refresh(story):
+                cat = _llm_category(or_key, story, sources)
+                new_category = _normalize_category(cat.get("category") if isinstance(cat, dict) else None)
+                old_category = _normalize_category(story.get("category"))
+                if new_category != old_category and new_category != "Other":
+                    patch_payload = {"category": new_category}
+                    if dry_run:
+                        edited.append({"story_id": sid, "dry_run": True, "action": "recategorize", "from": old_category, "to": new_category})
+                    else:
+                        pst, pp = api_req("PATCH", f"{BASE}/api/v1/stories/{sid}", token=tsq, data=patch_payload)
+                        edited.append(
+                            {
+                                "story_id": sid,
+                                "status": pst,
+                                "ok": pst in (200, 201),
+                                "action": "recategorize",
+                                "from": old_category,
+                                "to": new_category,
+                                "response_ok": bool((pp or {}).get("ok")) if isinstance(pp, dict) else False,
+                            }
+                        )
+                else:
+                    skipped.append({"story_id": sid, "reason": "category_kept_other_or_same"})
+            else:
+                skipped.append({"story_id": sid, "reason": "already_has_editorial"})
             continue
 
         gen = _llm_editor(or_key, story, sources)
@@ -173,7 +302,7 @@ def run(limit=50, dry_run=False):
         summary = str(gen.get("summary") or "").strip()
         squirrel_take = str(gen.get("squirrel_take") or "").strip()
         why = str(gen.get("why_it_matters") or "").strip()
-        category = str(gen.get("category") or story.get("category") or "Other").strip() or "Other"
+        category = _normalize_category(gen.get("category") or story.get("category") or "Other")
         tags = _clean_tags(gen.get("tags"), title)
 
         patch_payload = {
