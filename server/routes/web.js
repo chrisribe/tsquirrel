@@ -169,12 +169,13 @@ router.get('/', async (req, res) => {
 
   const category = req.query.category || null;
   const tag = req.query.tag || null;
+  const q = String(req.query.q || '').trim() || null;
   const [stories, categories] = await Promise.all([
-    dao.getTopStories({ limit: 30, category, tag }),
+    dao.getTopStories({ limit: 30, category, tag, q }),
     dao.getCategories(),
   ]);
 
-  const featured = (!category && !tag && stories.length) ? stories[0] : null;
+  const featured = (!category && !tag && !q && stories.length) ? stories[0] : null;
   const heroImageUrl = featured?.image_url
     ? String(featured.image_url).replace(/^http:\/\//i, 'https://')
     : null;
@@ -185,7 +186,7 @@ router.get('/', async (req, res) => {
     pageDescription: 'AI-curated news digest. Top stories across sources, summarized.',
     pageUrl: 'https://tsquirrel.com',
     heroImageUrl,
-    pageData: { stories, categories, activeCategory: category, activeTag: tag },
+    pageData: { stories, categories, activeCategory: category, activeTag: tag, activeQuery: q },
   });
 });
 
@@ -251,9 +252,10 @@ router.get('/api/stories', async (req, res) => {
   const offset = parseInt(req.query.offset, 10) || 0;
   const category = req.query.category || null;
   const tag = req.query.tag || null;
+  const q = String(req.query.q || '').trim() || null;
 
   const pageSize = 10;
-  const rows = await dao.getTopStories({ limit: pageSize + 1, offset, category, tag });
+  const rows = await dao.getTopStories({ limit: pageSize + 1, offset, category, tag, q });
   const hasMore = rows.length > pageSize;
   const stories = hasMore ? rows.slice(0, pageSize) : rows;
   const nextOffset = offset + stories.length;
@@ -264,6 +266,7 @@ router.get('/api/stories', async (req, res) => {
     nextOffset,
     activeCategory: category,
     activeTag: tag,
+    activeQuery: q,
   });
 });
 

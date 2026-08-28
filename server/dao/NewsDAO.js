@@ -7,7 +7,7 @@ class NewsDAO {
 
   // ── Stories ──────────────────────────────────────────────────
 
-  async getTopStories({ limit = 20, offset = 0, category = null, tag = null } = {}) {
+  async getTopStories({ limit = 20, offset = 0, category = null, tag = null, q = null } = {}) {
     const params = [limit, offset];
     let categoryClause = '';
     if (category) {
@@ -19,6 +19,20 @@ class NewsDAO {
       params.push(tag);
       tagClause = `AND $${params.length} = ANY(s.tags)`;
     }
+    let searchClause = '';
+    if (q && String(q).trim()) {
+      params.push(`%${String(q).trim()}%`);
+      const p = `$${params.length}`;
+      searchClause = `
+        AND (
+          s.title ILIKE ${p}
+          OR COALESCE(s.summary, '') ILIKE ${p}
+          OR COALESCE(s.squirrel_take, '') ILIKE ${p}
+          OR COALESCE(s.why_it_matters, '') ILIKE ${p}
+          OR COALESCE(array_to_string(s.tags, ' '), '') ILIKE ${p}
+        )
+      `;
+    }
     const { rows } = await this.pool.query(`
       SELECT s.*,
              COUNT(sa.article_id) AS source_count
@@ -27,6 +41,7 @@ class NewsDAO {
       WHERE s.status = 'published'
       ${categoryClause}
       ${tagClause}
+      ${searchClause}
       GROUP BY s.id
       ORDER BY s.is_featured DESC, s.published_at DESC NULLS LAST, s.heat_score DESC
       LIMIT $1 OFFSET $2

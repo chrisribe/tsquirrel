@@ -1,11 +1,25 @@
 <%
-  const { stories, categories, activeCategory, activeTag } = pageData;
-  const featured = !activeCategory && !activeTag && stories.length ? stories[0] : null;
+  const { stories, categories, activeCategory, activeTag, activeQuery } = pageData;
+  const featured = !activeCategory && !activeTag && !activeQuery && stories.length ? stories[0] : null;
   const feedStories = featured ? stories.slice(1) : stories;
 %>
 
 <!-- Squirrel intro -->
 <p class="chatter">The internet is a big forest. <strong>We sniff out the good stuff</strong> so you don't have to dig.</p>
+
+<form class="search-form" method="get" action="/" role="search" aria-label="Search stories">
+  <input type="search" name="q" value="<%= activeQuery || '' %>" placeholder="Search stories (title, summary, tags)" aria-label="Search stories">
+  <% if (activeCategory) { %><input type="hidden" name="category" value="<%= activeCategory %>"><% } %>
+  <% if (activeTag) { %><input type="hidden" name="tag" value="<%= activeTag %>"><% } %>
+  <button type="submit" class="secondary">Search</button>
+  <% if (activeQuery) { %>
+    <a href="/" class="search-clear" data-ga-event="search_clear" data-ga-location="top_bar">Clear</a>
+  <% } %>
+</form>
+
+<% if (activeQuery) { %>
+  <p class="chatter">Showing results for <strong>"<%= activeQuery %>"</strong>.</p>
+<% } %>
 
 <% if (activeTag) { %>
   <p class="chatter">Showing stories tagged <strong>#<%= activeTag %></strong> — <a href="/" data-ga-event="tag_clear" data-ga-tag="<%= activeTag %>">clear filter</a></p>
@@ -51,7 +65,7 @@
   <% if (stories.length === 30) { %>
   <div id="load-more"
        class="load-more-wrap"
-       hx-get="/api/stories?offset=30<%= activeCategory ? '&category=' + encodeURIComponent(activeCategory) : '' %><%= activeTag ? '&tag=' + encodeURIComponent(activeTag) : '' %>"
+       hx-get="/api/stories?offset=30<%= activeCategory ? '&category=' + encodeURIComponent(activeCategory) : '' %><%= activeTag ? '&tag=' + encodeURIComponent(activeTag) : '' %><%= activeQuery ? '&q=' + encodeURIComponent(activeQuery) : '' %>"
        hx-trigger="click"
        hx-swap="outerHTML"
        hx-target="#load-more">
