@@ -172,7 +172,7 @@ main.container, footer.container { max-width: 980px; }
 }
 .search-form input[type="search"] {
   margin: 0;
-  flex: 1;
+  flex: auto;
   min-width: 0;
   height: var(--search-control-h);
 }
