@@ -57,7 +57,7 @@
 <p class="section-label">🌰 Fresh stash</p>
 
 <!-- Story feed -->
-<section class="story-feed"
+<section class="story-feed <%= activeQuery ? 'story-feed-search' : '' %>"
          id="story-feed">
   <%- include('partials/story-cards', { pageData: { stories: feedStories } }) %>
 

@@ -271,6 +271,7 @@ main.container, footer.container { max-width: 980px; }
 }
 @media (min-width: 760px) {
   .story-feed { grid-template-columns: repeat(2, 1fr); }
+  .story-feed-search { grid-template-columns: 1fr; }
 }
 /* "Loading more…" trigger spans both columns instead of squeezing into one */
 #load-more { grid-column: 1 / -1; }
