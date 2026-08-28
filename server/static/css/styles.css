@@ -164,26 +164,30 @@ main.container, footer.container { max-width: 980px; }
 
 /* Search */
 .search-form {
+  --search-control-h: 3rem;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: .5rem;
   margin: .35rem 0 .9rem;
 }
 .search-form input[type="search"] {
   margin: 0;
   flex: 1;
+  min-width: 0;
+  height: var(--search-control-h);
 }
 .search-form button {
   margin: 0;
   width: auto;
   flex: 0 0 auto;
   white-space: nowrap;
-  padding: .52rem 1rem;
+  height: var(--search-control-h);
+  padding: 0 1rem;
 }
-.search-form input[type="search"] {
-  min-width: 0;
+.search-clear {
+  font-size: .85rem;
+  align-self: center;
 }
-.search-clear { font-size: .85rem; }
 @media (max-width: 640px) {
   .search-form {
     flex-wrap: wrap;
