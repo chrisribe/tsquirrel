@@ -31,6 +31,14 @@ Dry run:
 python3 run_all.py --dry-run --limit 10
 ```
 
+## Deploy references (KISS)
+When quality-gate or related server changes need deployment, use:
+```bash
+cd /opt/stacks/tsquirrel
+scripts/deploy-server.sh --pull
+```
+Do not use ad-hoc compose teardown for routine deploys.
+
 ## Ledger
 - Writes JSONL to `references/cost_ledger/quality_gate_costs.jsonl`
 - Tracks `pre_daily`, `post_daily`, `delta_daily`, `published`, `blocked`
