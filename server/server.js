@@ -3,8 +3,20 @@
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
+const { execSync } = require('child_process');
 
-const ASSET_VERSION = process.env.ASSET_VERSION || '1.1.4';
+function resolveAssetVersion() {
+  if (process.env.ASSET_VERSION) return String(process.env.ASSET_VERSION).trim();
+  const ciCommit = process.env.GIT_COMMIT || process.env.RENDER_GIT_COMMIT || process.env.RAILWAY_GIT_COMMIT_SHA;
+  if (ciCommit) return String(ciCommit).trim().slice(0, 12);
+  try {
+    const sha = execSync('git rev-parse --short HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    if (sha) return sha;
+  } catch (_) {}
+  return Date.now().toString();
+}
+
+const ASSET_VERSION = resolveAssetVersion();
 
 async function startServer() {
   const app = express();
