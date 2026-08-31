@@ -16,6 +16,18 @@
     return raw.replace(/[?#].*$/, '').toLowerCase();
   }
 
+  function pickThumb(story, seenSet) {
+    const candidates = [story.image_url, ...(Array.isArray(story.source_images) ? story.source_images : [])];
+    for (const src of candidates) {
+      const key = imageKey(src);
+      if (!key) continue;
+      if (seenSet.has(key)) continue;
+      seenSet.add(key);
+      return { src, key, usedFallback: false };
+    }
+    return { src: '', key: '', usedFallback: true };
+  }
+
   const seenImageKeys = new Set();
 %>
 <% stories.forEach((story, idx) => { %>
@@ -23,9 +35,8 @@
 <% const recentHrs = (Date.now() - new Date(story.published_at || story.updated_at || story.created_at)) / 3600000; %>
 <% const isBlowingUp = story.heat_score >= 30 && recentHrs <= 3; %>
 <% const showTake = !!String(story.squirrel_take || '').trim(); %>
-<% const thumbKey = imageKey(story.image_url); %>
-<% const showImageThumb = !!thumbKey && !seenImageKeys.has(thumbKey); %>
-<% if (showImageThumb) seenImageKeys.add(thumbKey); %>
+<% const thumb = pickThumb(story, seenImageKeys); %>
+<% const showImageThumb = !!thumb.src; %>
 <article class="story-card">
   <a href="/story/<%= story.slug %>" class="story-link" data-ga-event="story_open" data-ga-story-id="<%= story.id %>" data-ga-story-slug="<%= story.slug %>" data-ga-category="<%= story.category %>" data-ga-location="feed_card">
     <div class="card-inner">
@@ -37,7 +48,7 @@
           <% if (story.source_count > 1) { %>
             <span class="badge badge-sources"><%= story.source_count %> sources</span>
           <% } %>
-          <% if (story.image_url && !showImageThumb) { %>
+          <% if (story.image_url && thumb.usedFallback) { %>
             <span class="badge badge-update">↻ update</span>
           <% } %>
         </div>
@@ -65,7 +76,7 @@
       </div>
       <div class="thumb <%= meta.cls %>">
         <% if (showImageThumb) { %>
-          <img src="<%= secureUrl(story.image_url) %>" alt="" <%= idx === 0 ? "loading=\"eager\" fetchpriority=\"high\"" : "loading=\"lazy\"" %> decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <img src="<%= secureUrl(thumb.src) %>" alt="" <%= idx === 0 ? "loading=\"eager\" fetchpriority=\"high\"" : "loading=\"lazy\"" %> decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
           <span class="thumb-fallback" style="display:none"><%= meta.thumb %></span>
         <% } else { %>
           <%= meta.thumb %>

@@ -35,9 +35,14 @@ class NewsDAO {
     }
     const { rows } = await this.pool.query(`
       SELECT s.*,
-             COUNT(sa.article_id) AS source_count
+             COUNT(sa.article_id) AS source_count,
+             COALESCE(
+               array_agg(DISTINCT NULLIF(a.image_url, '')) FILTER (WHERE NULLIF(a.image_url, '') IS NOT NULL),
+               '{}'::text[]
+             ) AS source_images
       FROM stories s
       LEFT JOIN story_articles sa ON sa.story_id = s.id
+      LEFT JOIN articles a ON a.id = sa.article_id
       WHERE s.status = 'published'
       ${categoryClause}
       ${tagClause}
