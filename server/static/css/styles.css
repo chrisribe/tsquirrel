@@ -209,39 +209,10 @@ main.container, footer.container { max-width: 980px; }
 .category-bar { margin: 1rem 0; overflow: visible; }
 .category-scroll {
   display: flex;
+  flex-wrap: wrap;
   gap: .5rem;
-  overflow-x: auto;
-  padding-bottom: .5rem;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.category-scroll::-webkit-scrollbar { display: none; }
-
-/* Desktop: keep the category rail explicitly scrollable with visible scrollbar. */
-@media (min-width: 960px) {
-  .category-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: #d7dce6 transparent;
-  }
-  .category-scroll:hover {
-    scrollbar-color: #9aa6bd transparent;
-  }
-  .category-scroll::-webkit-scrollbar {
-    display: block;
-    height: 10px;
-  }
-  .category-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .category-scroll::-webkit-scrollbar-thumb {
-    background: #d7dce6;
-    border-radius: 999px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
-  .category-scroll:hover::-webkit-scrollbar-thumb {
-    background: #9aa6bd;
-  }
+  overflow: visible;
+  padding-bottom: 0;
 }
 .category-pill {
   flex-shrink: 0;
