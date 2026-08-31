@@ -481,6 +481,7 @@ main.container, footer.container { max-width: 980px; }
 .badge-cat-sci   { background: #7c3aed22; color: #6d28d9; }
 .badge-cat-fire  { background: #db277722; color: #be185d; }
 .badge-sources { background: var(--accent-pale); color: var(--accent); }
+.badge-update { background: #eef2ff; color: #3730a3; }
 .badge-hot { background: #fee2e2; color: #b91c1c; }
 
 .card-take-note {
