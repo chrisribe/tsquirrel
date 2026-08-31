@@ -82,7 +82,14 @@
     <div class="sources-label">📡 Where we spotted it (<%= articles.length %>)</div>
     <% articles.forEach(a => { %>
       <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="source-row" data-ga-event="source_open" data-ga-source-name="<%= displaySourceName(a) %>" data-ga-story-id="<%= story.id %>" data-ga-story-slug="<%= story.slug %>">
-        <div class="source-icon">📰</div>
+        <div class="source-media">
+          <% if (a.image_url) { %>
+            <img src="<%= secureUrl(a.image_url) %>" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <span class="source-icon source-icon-fallback" style="display:none">📰</span>
+          <% } else { %>
+            <span class="source-icon">📰</span>
+          <% } %>
+        </div>
         <div class="source-body">
           <div class="source-name"><%= displaySourceName(a) %></div>
           <div class="source-headline"><%= a.title %></div>
