@@ -484,10 +484,14 @@ main.container, footer.container { max-width: 980px; }
 .badge-hot { background: #fee2e2; color: #b91c1c; }
 
 .card-take-note {
-  font-size: .82rem;
-  color: #374151;
+  font-size: .8rem;
+  color: #1f2937;
   line-height: 1.45;
-  margin: -.1rem 0 .45rem;
+  margin: .05rem 0 .55rem;
+  padding: .32rem .5rem;
+  background: #f8faf8;
+  border-left: 2px solid #b8d7bc;
+  border-radius: 0 8px 8px 0;
 }
 
 /* ── Take-led card hook (Prototype A) ── */
