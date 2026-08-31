@@ -32,7 +32,7 @@
     <% categories.forEach(c => { %>
       <a href="/?category=<%= c.category %>"
          class="category-pill <%= activeCategory === c.category ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="<%= c.category %>" data-ga-location="top_bar">
-        <%= catLabel(c.category) %> <span class="pill-count"><%= c.count %></span>
+        <%= catLabel(c.category) %>
       </a>
     <% }); %>
   </div>
