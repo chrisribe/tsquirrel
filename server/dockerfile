@@ -1,4 +1,6 @@
 FROM node:20-slim
+ARG GIT_SHA=dev
+ENV ASSET_VERSION=${GIT_SHA}
 WORKDIR /app
 
 COPY package*.json ./

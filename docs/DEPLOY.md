@@ -54,8 +54,8 @@ curl -sS http://localhost:3000/health
 # Restart app only
 docker compose restart server
 
-# Rebuild app only
-docker compose up -d --build server
+# Rebuild app only (cache-bust uses current git SHA)
+GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build server
 
 # DB shell
 docker exec -it tsquirrel-db-1 psql -U dockeruser -d appdb

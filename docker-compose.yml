@@ -25,6 +25,8 @@ services:
     build:
       context: ./server
       dockerfile: dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     pull_policy: build
     ports:
       - "${SERVER_PORT:-3000}:3000"
