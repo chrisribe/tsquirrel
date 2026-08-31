@@ -16,3 +16,5 @@ references/cost_ledger/*.jsonl
 # GA4 analytics artifacts
 reports/analytics/*.md
 reports/analytics/*.json
+reports/analytics/published_stories.tsv
+reports/analytics/story_slug_redirects.tsv
