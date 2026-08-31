@@ -8,9 +8,7 @@ ssh -A root@5.78.154.18
 
 # Deploy
 cd /opt/stacks/tsquirrel
-git pull
-docker compose down
-docker compose up -d --build
+scripts/deploy-server.sh --pull
 docker logs -f tsquirrel-server-1
 ```
 
@@ -55,7 +53,13 @@ curl -sS http://localhost:3000/health
 docker compose restart server
 
 # Rebuild app only (cache-bust uses current git SHA)
-GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build server
+scripts/deploy-server.sh
+
+# Pull + rebuild app
+scripts/deploy-server.sh --pull
+
+# Rebuild all services
+scripts/deploy-server.sh --full
 
 # DB shell
 docker exec -it tsquirrel-db-1 psql -U dockeruser -d appdb
