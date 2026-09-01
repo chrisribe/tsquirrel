@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const AUTO_LOADS_PER_CYCLE = 2;
+  const AUTO_LOADS_PER_CYCLE = 4;
   let autoLoadsRemaining = AUTO_LOADS_PER_CYCLE;
   let io = null;
 
