@@ -73,6 +73,8 @@ async function startServer() {
   app.set('signalService', new SignalService(pool));
   const ApiStoryService = require('./services/ApiStoryService');
   app.set('apiStoryService', new ApiStoryService(pool));
+  const PremiumResearchService = require('./services/PremiumResearchService');
+  app.set('premiumResearchService', new PremiumResearchService(pool));
 
   // Auth/session services
   const authService = require('./services/authService');

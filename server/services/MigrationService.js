@@ -330,6 +330,16 @@ const migrations = [
       console.log('Migration 19: story_slug_redirects table created');
     }
   },
+  {
+    version: 20,
+    description: 'Premium R&D brief fields on stories',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS premium_rd_brief_markdown TEXT`);
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS premium_rd_generated_at TIMESTAMP`);
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS premium_rd_model VARCHAR(120)`);
+      console.log('Migration 20: stories premium R&D fields added');
+    }
+  },
   // Future migrations go here
 ];
 

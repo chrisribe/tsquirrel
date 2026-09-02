@@ -1,5 +1,5 @@
 <%
-  const { story, articles, related } = pageData;
+  const { story, articles, related, premiumStatus } = pageData;
   function timeAgo(date) {
     const now = new Date();
     const diff = Math.floor((now - new Date(date)) / 1000);
@@ -62,6 +62,34 @@
       </div>
     <% } %>
   </header>
+
+  <section id="premium-rd" class="premium-rd-card">
+    <div class="premium-rd-top">
+      <div>
+        <div class="premium-rd-label">🔬 Premium R&D Brief</div>
+        <p class="premium-rd-sub">Deep analysis add-on (free for now). Translation can be added after this layer.</p>
+      </div>
+      <form method="post" action="/story/<%= encodeURIComponent(story.slug) %>/premium-rd">
+        <button type="submit" class="premium-rd-btn" data-ga-event="premium_rd_generate" data-ga-story-id="<%= story.id %>">Generate premium brief</button>
+      </form>
+    </div>
+
+    <% if (premiumStatus === 'generated') { %>
+      <div class="premium-rd-status premium-rd-ok">Premium brief updated.</div>
+    <% } else if (premiumStatus === 'error') { %>
+      <div class="premium-rd-status premium-rd-error">Could not generate premium brief right now. Try again.</div>
+    <% } %>
+
+    <% if (story.premium_rd_brief_markdown) { %>
+      <pre class="premium-rd-content"><%= story.premium_rd_brief_markdown %></pre>
+      <div class="premium-rd-meta">
+        Generated <%= timeAgo(story.premium_rd_generated_at || story.updated_at) %>
+        <% if (story.premium_rd_model) { %> · model: <%= story.premium_rd_model %><% } %>
+      </div>
+    <% } else { %>
+      <p class="premium-rd-empty">No premium brief yet. Tap the button to generate and attach one to this story.</p>
+    <% } %>
+  </section>
 
   <!-- Forest mood -->
   <% if (sentiment != null) { %>

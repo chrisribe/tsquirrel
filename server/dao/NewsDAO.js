@@ -472,6 +472,19 @@ class NewsDAO {
     );
   }
 
+  async setPremiumResearchBrief(id, { markdown, model }) {
+    const { rows } = await this.pool.query(`
+      UPDATE stories
+      SET premium_rd_brief_markdown = $2,
+          premium_rd_generated_at = NOW(),
+          premium_rd_model = $3,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id, markdown, model]);
+    return rows[0] || null;
+  }
+
   async replaceStorySlug(id, newSlug) {
     const { rows: currentRows } = await this.pool.query(
       'SELECT slug FROM stories WHERE id = $1',
