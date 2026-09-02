@@ -100,6 +100,23 @@ def _normalize_category(raw):
     return title_cased if title_cased in ALLOWED_CATEGORIES else "Other"
 
 
+def _clean_summary_text(summary, sources):
+    s = re.sub(r"\s+", " ", str(summary or "")).strip()
+    if not s:
+        return ""
+    if s[-1] in ".!?":
+        return s
+
+    # If model output got cut mid-sentence, fall back to a safe factual line
+    # from first source title rather than publishing dangling text.
+    fallback_title = ""
+    if sources:
+        fallback_title = re.sub(r"\s+", " ", str(sources[0].get("title") or "")).strip()
+    if fallback_title:
+        return f"{fallback_title}."
+    return f"{s}."
+
+
 def _needs_category_refresh(story):
     category = _normalize_category((story or {}).get("category"))
     return category == "Other"
@@ -300,7 +317,7 @@ def run(limit=50, dry_run=False):
         if len(title.split()) < 4:
             title = _title_fallback({"title": " ".join(title.split()[:12])}, sources)
 
-        summary = str(gen.get("summary") or "").strip()
+        summary = _clean_summary_text(gen.get("summary"), sources)
         squirrel_take = str(gen.get("squirrel_take") or "").strip()
         why = str(gen.get("why_it_matters") or "").strip()
         category = _normalize_category(gen.get("category") or story.get("category") or "Other")
