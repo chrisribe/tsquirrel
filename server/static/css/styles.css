@@ -1290,8 +1290,8 @@ a.signal-meta-chip:hover {
 .why-it-matters-label { font-size: .65rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: .25rem; }
 .why-it-matters-text { font-size: .88rem; color: var(--brand); line-height: 1.5; }
 
-/* ── Premium R&D card ── */
-.premium-rd-card {
+/* ── R&D brief card ── */
+.rd-brief-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -1299,21 +1299,21 @@ a.signal-meta-chip:hover {
   margin: 0 0 .75rem;
   box-shadow: 0 2px 10px rgba(26, 22, 18, .05);
 }
-.premium-rd-top {
+.rd-brief-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: .75rem;
   flex-wrap: wrap;
 }
-.premium-rd-label { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-mid); }
-.premium-rd-sub { margin: .3rem 0 0; font-size: .82rem; color: var(--muted); }
-.premium-rd-btn { margin: 0; white-space: nowrap; }
-.premium-rd-status { margin-top: .6rem; font-size: .8rem; padding: .45rem .55rem; border-radius: 8px; }
-.premium-rd-ok { background: #ebf8ec; color: #245a2a; border: 1px solid #cde9d1; }
-.premium-rd-error { background: #fff2f2; color: #8b1d1d; border: 1px solid #f7c8c8; }
-.premium-rd-empty { margin: .75rem 0 0; font-size: .84rem; color: var(--muted); }
-.premium-rd-content {
+.rd-brief-label { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-mid); }
+.rd-brief-sub { margin: .3rem 0 0; font-size: .82rem; color: var(--muted); }
+.rd-brief-btn { margin: 0; white-space: nowrap; }
+.rd-brief-status { margin-top: .6rem; font-size: .8rem; padding: .45rem .55rem; border-radius: 8px; }
+.rd-brief-ok { background: #ebf8ec; color: #245a2a; border: 1px solid #cde9d1; }
+.rd-brief-error { background: #fff2f2; color: #8b1d1d; border: 1px solid #f7c8c8; }
+.rd-brief-empty { margin: .75rem 0 0; font-size: .84rem; color: var(--muted); }
+.rd-brief-content {
   margin: .75rem 0 0;
   white-space: pre-wrap;
   font-size: .84rem;
@@ -1325,7 +1325,7 @@ a.signal-meta-chip:hover {
   max-height: 38rem;
   overflow: auto;
 }
-.premium-rd-meta { margin-top: .45rem; font-size: .72rem; color: var(--muted); }
+.rd-brief-meta { margin-top: .45rem; font-size: .72rem; color: var(--muted); }
 
 /* ── Forest mood ── */
 .sentiment-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: .85rem; margin-bottom: .75rem; box-shadow: 0 2px 10px rgba(26, 22, 18, .05); }

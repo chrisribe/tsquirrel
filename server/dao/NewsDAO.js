@@ -472,12 +472,12 @@ class NewsDAO {
     );
   }
 
-  async setPremiumResearchBrief(id, { markdown, model }) {
+  async setResearchBrief(id, { markdown, model }) {
     const { rows } = await this.pool.query(`
       UPDATE stories
-      SET premium_rd_brief_markdown = $2,
-          premium_rd_generated_at = NOW(),
-          premium_rd_model = $3,
+      SET rd_brief_markdown = $2,
+          rd_brief_generated_at = NOW(),
+          rd_brief_model = $3,
           updated_at = NOW()
       WHERE id = $1
       RETURNING *

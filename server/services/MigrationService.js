@@ -332,12 +332,61 @@ const migrations = [
   },
   {
     version: 20,
-    description: 'Premium R&D brief fields on stories',
+    description: 'R&D brief fields on stories',
     up: async (pool) => {
-      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS premium_rd_brief_markdown TEXT`);
-      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS premium_rd_generated_at TIMESTAMP`);
-      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS premium_rd_model VARCHAR(120)`);
-      console.log('Migration 20: stories premium R&D fields added');
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_markdown TEXT`);
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_generated_at TIMESTAMP`);
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_model VARCHAR(120)`);
+      console.log('Migration 20: stories R&D brief fields added');
+    }
+  },
+  {
+    version: 21,
+    description: 'Rename old premium_* R&D columns to neutral rd_* names',
+    up: async (pool) => {
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'premium_rd_brief_markdown'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'rd_brief_markdown'
+          ) THEN
+            ALTER TABLE stories RENAME COLUMN premium_rd_brief_markdown TO rd_brief_markdown;
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'premium_rd_generated_at'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'rd_brief_generated_at'
+          ) THEN
+            ALTER TABLE stories RENAME COLUMN premium_rd_generated_at TO rd_brief_generated_at;
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'premium_rd_model'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'rd_brief_model'
+          ) THEN
+            ALTER TABLE stories RENAME COLUMN premium_rd_model TO rd_brief_model;
+          END IF;
+        END $$;
+      `);
+      console.log('Migration 21: ensured neutral rd_* story brief columns');
     }
   },
   // Future migrations go here

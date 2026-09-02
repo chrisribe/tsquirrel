@@ -3,7 +3,7 @@
 const https = require('https');
 const NewsDAO = require('../dao/NewsDAO');
 
-class PremiumResearchService {
+class ResearchBriefService {
   constructor(pool) {
     this.dao = new NewsDAO(pool);
   }
@@ -15,14 +15,14 @@ class PremiumResearchService {
     const articles = await this.dao.getStoryArticles(story.id);
     const markdown = await this._generateMarkdown(story, articles);
 
-    const model = process.env.PREMIUM_RD_MODEL || 'deepseek/deepseek-v4-flash-0731';
-    const updated = await this.dao.setPremiumResearchBrief(story.id, { markdown, model });
+    const model = process.env.RD_BRIEF_MODEL || process.env.PREMIUM_RD_MODEL || 'deepseek/deepseek-v4-flash-0731';
+    const updated = await this.dao.setResearchBrief(story.id, { markdown, model });
     return updated || story;
   }
 
   async _generateMarkdown(story, articles) {
-    const model = process.env.PREMIUM_RD_MODEL || 'deepseek/deepseek-v4-flash-0731';
-    const baseUrl = process.env.PREMIUM_RD_BASE_URL || 'https://openrouter.ai/api/v1';
+    const model = process.env.RD_BRIEF_MODEL || process.env.PREMIUM_RD_MODEL || 'deepseek/deepseek-v4-flash-0731';
+    const baseUrl = process.env.RD_BRIEF_BASE_URL || process.env.PREMIUM_RD_BASE_URL || 'https://openrouter.ai/api/v1';
     const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || '';
 
     if (!apiKey) {
@@ -123,4 +123,4 @@ class PremiumResearchService {
   }
 }
 
-module.exports = PremiumResearchService;
+module.exports = ResearchBriefService;
