@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import html
 import json
 import re
 
@@ -42,6 +43,16 @@ CATEGORY_ALIASES = {
 }
 
 
+def _plain_text(value):
+    s = str(value or "")
+    # Some payloads arrive double-escaped (e.g., &amp;lt;p&amp;gt;)
+    for _ in range(2):
+        s = html.unescape(s)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
 def _needs_editorial(story):
     title = str((story or {}).get("title") or "").strip()
     if len([w for w in title.split() if w.strip()]) < 4:
@@ -53,12 +64,11 @@ def _needs_editorial(story):
 
 
 def _title_fallback(story, sources):
-    current = str((story or {}).get("title") or "").strip()
+    current = _plain_text((story or {}).get("title"))
     if len(current.split()) >= 4:
         return current
     if sources:
-        src = str(sources[0].get("title") or "").strip()
-        src = re.sub(r"\s+", " ", src)
+        src = _plain_text(sources[0].get("title"))
         if len(src.split()) >= 4:
             return " ".join(src.split()[:12])
     return current or "Breaking story update pending review"
@@ -101,7 +111,7 @@ def _normalize_category(raw):
 
 
 def _clean_summary_text(summary, sources):
-    s = re.sub(r"\s+", " ", str(summary or "")).strip()
+    s = _plain_text(summary)
     if not s:
         return ""
     if s[-1] in ".!?":
@@ -111,7 +121,7 @@ def _clean_summary_text(summary, sources):
     # from first source title rather than publishing dangling text.
     fallback_title = ""
     if sources:
-        fallback_title = re.sub(r"\s+", " ", str(sources[0].get("title") or "")).strip()
+        fallback_title = _plain_text(sources[0].get("title"))
     if fallback_title:
         return f"{fallback_title}."
     return f"{s}."
@@ -313,13 +323,13 @@ def run(limit=50, dry_run=False):
         gen = _llm_editor(or_key, story, sources)
         if not isinstance(gen, dict):
             gen = {}
-        title = str(gen.get("title") or "").strip() or _title_fallback(story, sources)
+        title = _plain_text(gen.get("title")) or _title_fallback(story, sources)
         if len(title.split()) < 4:
             title = _title_fallback({"title": " ".join(title.split()[:12])}, sources)
 
         summary = _clean_summary_text(gen.get("summary"), sources)
-        squirrel_take = str(gen.get("squirrel_take") or "").strip()
-        why = str(gen.get("why_it_matters") or "").strip()
+        squirrel_take = _plain_text(gen.get("squirrel_take"))
+        why = _plain_text(gen.get("why_it_matters"))
         category = _normalize_category(gen.get("category") or story.get("category") or "Other")
         tags = _clean_tags(gen.get("tags"), title)
 

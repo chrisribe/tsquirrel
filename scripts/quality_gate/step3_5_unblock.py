@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
+import html
 import re
 from common import BASE, get_tokens, api_req, load_state, save_state, utc_now
 
 
+def _plain_text(value):
+    s = str(value or "")
+    for _ in range(2):
+        s = html.unescape(s)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
 def _words(text):
-    return [w for w in re.split(r"\s+", str(text or "").strip()) if w]
+    return [w for w in re.split(r"\s+", _plain_text(text)) if w]
 
 
 def _trim_to_chars(text, max_chars):
