@@ -10,8 +10,10 @@
     const storyImage = story?.image_url ? secureUrl(story.image_url) : null;
     const storyPublishedAt = story?.published_at || story?.created_at || null;
     const storyUpdatedAt = story?.updated_at || story?.published_at || story?.created_at || null;
-    const robotsContent = (typeof noIndex !== 'undefined' && noIndex)
-      ? 'noindex, nofollow'
+    const isNoIndex = (typeof noIndex !== 'undefined' && noIndex);
+    const noFollowExplicit = (typeof noFollow !== 'undefined') ? Boolean(noFollow) : null;
+    const robotsContent = isNoIndex
+      ? ((noFollowExplicit === false) ? 'noindex, follow' : 'noindex, nofollow')
       : 'index, follow, max-image-preview:large';
 
     const jsonLd = isStoryPage ? {

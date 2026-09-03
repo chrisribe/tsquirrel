@@ -175,7 +175,8 @@ router.get('/', async (req, res) => {
     dao.getCategories(),
   ]);
 
-  const featured = (!category && !tag && !q && stories.length) ? stories[0] : null;
+  const isFilteredFeed = Boolean(category || tag || q);
+  const featured = (!isFilteredFeed && stories.length) ? stories[0] : null;
   const heroImageUrl = featured?.image_url
     ? String(featured.image_url).replace(/^http:\/\//i, 'https://')
     : null;
@@ -186,6 +187,8 @@ router.get('/', async (req, res) => {
     pageDescription: 'AI-curated news digest. Top stories across sources, summarized.',
     pageUrl: 'https://tsquirrel.com',
     heroImageUrl,
+    noIndex: isFilteredFeed,
+    noFollow: false,
     pageData: { stories, categories, activeCategory: category, activeTag: tag, activeQuery: q },
   });
 });
