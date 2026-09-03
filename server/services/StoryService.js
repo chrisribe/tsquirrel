@@ -34,6 +34,15 @@ const TITLE_MAX_CHARS = 70;
 const SUMMARY_MIN_CHARS = 120;
 const SUMMARY_MAX_CHARS = 280;
 
+const intEnv = (name, fallback) => {
+  const raw = process.env[name];
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+
+const DUPLICATE_TOPIC_WINDOW_HOURS = intEnv('TSQ_DUPLICATE_TOPIC_WINDOW_HOURS', 96);
+
 const CATEGORY_KEYWORDS = {
   Politics: ['election', 'parliament', 'senate', 'congress', 'minister', 'president', 'white house', 'government', 'policy'],
   Business: ['market', 'earnings', 'ipo', 'merger', 'acquisition', 'stocks', 'investor', 'revenue', 'company'],
@@ -377,16 +386,16 @@ class StoryService {
       ));
     }
 
-    const recentDupes = await this._findRecentLikelyDuplicates(currentStory, { hours: 48, minTokenOverlap: 0.6 });
+    const recentDupes = await this._findRecentLikelyDuplicates(currentStory, { hours: DUPLICATE_TOPIC_WINDOW_HOURS, minTokenOverlap: 0.6 });
     if (recentDupes.length > 0) {
       const refs = recentDupes.slice(0, 3).map((d) => `#${d.id}`).join(', ');
       blockers.push(this._buildBlocker(
         'recent_duplicate_topic',
-        `likely duplicate topic within last 48h (${refs})`,
+        `likely duplicate topic within last ${DUPLICATE_TOPIC_WINDOW_HOURS}h (${refs})`,
         {
           field: 'title',
           meta: {
-            window_hours: 48,
+            window_hours: DUPLICATE_TOPIC_WINDOW_HOURS,
             candidate_ids: recentDupes.slice(0, 3).map((d) => d.id),
             scores: recentDupes.slice(0, 3).map((d) => ({ id: d.id, overlap: d.overlap, shared: d.shared })),
           },

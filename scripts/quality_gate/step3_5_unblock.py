@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import html
+import os
 import re
 from common import BASE, get_tokens, api_req, load_state, save_state, utc_now
 
@@ -11,6 +12,13 @@ def _plain_text(value):
     s = re.sub(r"<[^>]+>", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
+
+def _env_bool(name, default=False):
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in ("1", "true", "yes", "on")
 
 
 def _words(text):
@@ -120,6 +128,7 @@ def run(dry_run=False):
     tsq, _ = get_tokens()
     state = load_state()
     qg_results = (state.get("quality_gate_step") or {}).get("results", [])
+    park_duplicates = _env_bool("TSQ_QG_PARK_DUPLICATES", True)
 
     processed = []
     next_gate = []
@@ -142,6 +151,8 @@ def run(dry_run=False):
             continue
 
         story = story_payload.get("story", {}) if isinstance(story_payload, dict) else {}
+        if not isinstance(story, dict):
+            story = {}
         before = _fetch_audit(tsq, sid)
         blockers = before.get("blocker_details", [])
         codes = set(_codes(blockers))
@@ -149,7 +160,56 @@ def run(dry_run=False):
         patch_payload = {}
         actions = []
 
+        duplicate_codes = {"duplicate_published_story", "recent_duplicate_topic"}
+        if codes.intersection(duplicate_codes):
+            park_status = None
+            park_error = None
+            if not dry_run and park_duplicates:
+                park_status, park_resp = api_req("POST", f"{BASE}/api/v1/stories/{sid}/hide", token=tsq, data={})
+                if park_status not in (200, 201):
+                    park_error = park_resp
+            actions.append({
+                "type": "park_duplicate",
+                "status": park_status,
+                "enabled": bool(park_duplicates),
+                "dry_run": bool(dry_run),
+                "error": park_error,
+            })
+
+            after = _fetch_audit(tsq, sid) if (not dry_run) else before
+            after_issues = []
+            for d in after.get("blocker_details", []):
+                if not isinstance(d, dict):
+                    continue
+                msg = str(d.get("message") or d.get("code") or "").strip()
+                if msg:
+                    after_issues.append(msg)
+            after_issues = list(dict.fromkeys(after_issues))
+
+            next_gate.append({
+                "story_id": sid,
+                "title": story.get("title", ""),
+                "pass": False,
+                "issues": after_issues,
+                "gate_source": "editorial_audit_unblock",
+                "llm_shadow_enabled": False,
+                "llm_pass": None,
+            })
+
+            processed.append({
+                "story_id": sid,
+                "changed": False,
+                "patch": {},
+                "actions": actions,
+                "before_blockers": blockers,
+                "after_blockers": after.get("blocker_details", []),
+                "patch_result": None,
+            })
+            continue
+
         for b in blockers:
+            if not isinstance(b, dict):
+                continue
             code = str(b.get("code") or "").strip()
             meta = b.get("meta") or {}
 
@@ -189,7 +249,7 @@ def run(dry_run=False):
 
         unresolved = [
             d for d in after.get("blocker_details", [])
-            if str(d.get("code") or "") not in {
+            if isinstance(d, dict) and str(d.get("code") or "") not in {
                 "category_too_generic",
                 "title_too_short_chars",
                 "title_too_long_chars",
