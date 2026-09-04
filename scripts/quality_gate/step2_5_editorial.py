@@ -110,6 +110,18 @@ def _normalize_category(raw):
     return title_cased if title_cased in ALLOWED_CATEGORIES else "Other"
 
 
+def _extract_or_cost(payload):
+    if not isinstance(payload, dict):
+        return 0.0
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return 0.0
+    try:
+        return float(usage.get("cost", 0.0) or 0.0)
+    except Exception:
+        return 0.0
+
+
 def _clean_summary_text(summary, sources):
     s = _plain_text(summary)
     if not s:
@@ -185,8 +197,9 @@ def _llm_category(or_key, story, sources):
         headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
         timeout=60,
     )
+    cost = _extract_or_cost(out)
     if status != 200 or not isinstance(out, dict):
-        return {}
+        return {"__or_cost": cost}
 
     content = out.get("choices", [{}])[0].get("message", {}).get("content", "{}")
     if isinstance(content, list):
@@ -196,11 +209,15 @@ def _llm_category(or_key, story, sources):
 
     start, end = content.find("{"), content.rfind("}")
     if start < 0 or end < 0:
-        return {}
+        return {"__or_cost": cost}
     try:
-        return json.loads(content[start : end + 1])
+        parsed = json.loads(content[start : end + 1])
+        if isinstance(parsed, dict):
+            parsed["__or_cost"] = cost
+            return parsed
+        return {"__or_cost": cost}
     except Exception:
-        return {}
+        return {"__or_cost": cost}
 
 
 def _llm_editor(or_key, story, sources):
@@ -256,8 +273,9 @@ def _llm_editor(or_key, story, sources):
         headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
         timeout=90,
     )
+    cost = _extract_or_cost(out)
     if status != 200 or not isinstance(out, dict):
-        return {}
+        return {"__or_cost": cost}
 
     content = out.get("choices", [{}])[0].get("message", {}).get("content", "{}")
     if isinstance(content, list):
@@ -267,11 +285,15 @@ def _llm_editor(or_key, story, sources):
 
     start, end = content.find("{"), content.rfind("}")
     if start < 0 or end < 0:
-        return {}
+        return {"__or_cost": cost}
     try:
-        return json.loads(content[start : end + 1])
+        parsed = json.loads(content[start : end + 1])
+        if isinstance(parsed, dict):
+            parsed["__or_cost"] = cost
+            return parsed
+        return {"__or_cost": cost}
     except Exception:
-        return {}
+        return {"__or_cost": cost}
 
 
 def run(limit=50, dry_run=False):
@@ -281,6 +303,7 @@ def run(limit=50, dry_run=False):
 
     edited = []
     skipped = []
+    openrouter_usage_cost_sum = 0.0
     for c in candidates:
         sid = c.get("id")
         if not sid:
@@ -295,6 +318,8 @@ def run(limit=50, dry_run=False):
         if not _needs_editorial(story):
             if _needs_category_refresh(story):
                 cat = _llm_category(or_key, story, sources)
+                if isinstance(cat, dict):
+                    openrouter_usage_cost_sum += float(cat.get("__or_cost", 0.0) or 0.0)
                 new_category = _normalize_category(cat.get("category") if isinstance(cat, dict) else None)
                 old_category = _normalize_category(story.get("category"))
                 if new_category != old_category and new_category != "Other":
@@ -321,6 +346,8 @@ def run(limit=50, dry_run=False):
             continue
 
         gen = _llm_editor(or_key, story, sources)
+        if isinstance(gen, dict):
+            openrouter_usage_cost_sum += float(gen.get("__or_cost", 0.0) or 0.0)
         if not isinstance(gen, dict):
             gen = {}
         title = _plain_text(gen.get("title")) or _title_fallback(story, sources)
@@ -364,6 +391,7 @@ def run(limit=50, dry_run=False):
         "edited": edited,
         "skipped": skipped,
         "edited_count": sum(1 for e in edited if e.get("ok") or e.get("dry_run")),
+        "openrouter_usage_cost_sum": round(openrouter_usage_cost_sum, 9),
     }
     save_state(state)
     print(
