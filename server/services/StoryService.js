@@ -320,6 +320,13 @@ class StoryService {
           { field: 'summary', meta: { max_chars: SUMMARY_MAX_CHARS, current_chars: summary.length } }
         ));
       }
+      if (!this._isCompleteSentence(summary)) {
+        blockers.push(this._buildBlocker(
+          'summary_incomplete_sentence',
+          'summary should end as a complete sentence',
+          { field: 'summary' }
+        ));
+      }
     }
 
     const squirrelTake = String(currentStory.squirrel_take || '').trim();
@@ -567,6 +574,12 @@ class StoryService {
     const words = value.split(/\s+/).filter(Boolean);
     if (words.length < 7) return true;
     return BOILERPLATE_PATTERNS.some((rx) => rx.test(value));
+  }
+
+  _isCompleteSentence(text) {
+    const value = String(text || '').trim();
+    if (!value) return false;
+    return /[.!?]["')\]]?$/.test(value);
   }
 
   _titleTokenSet(title) {

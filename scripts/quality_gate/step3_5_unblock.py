@@ -225,7 +225,7 @@ def run(dry_run=False):
                 patch_payload["title"] = new_title
                 actions.append({"type": "rewrite_title", "chars": len(new_title)})
 
-        if "summary_too_short_chars" in codes or "summary_too_long_chars" in codes:
+        if "summary_too_short_chars" in codes or "summary_too_long_chars" in codes or "summary_incomplete_sentence" in codes:
             new_summary = _normalize_summary(story.get("summary"), story.get("why_it_matters"))
             if new_summary and new_summary != str(story.get("summary") or "").strip():
                 patch_payload["summary"] = new_summary
@@ -255,6 +255,7 @@ def run(dry_run=False):
                 "title_too_long_chars",
                 "summary_too_short_chars",
                 "summary_too_long_chars",
+                "summary_incomplete_sentence",
             }
         ]
 
