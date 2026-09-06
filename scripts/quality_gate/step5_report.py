@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from collections import Counter
 from common import get_tokens, get_or_usage, load_state, save_state, append_ledger, utc_now
 
 
@@ -44,9 +45,24 @@ def run():
     state["report_step"] = entry
     save_state(state)
 
-    print("tsquirrel_quality_gate report")
-    print(f"checked={entry['checked']} published={entry['published']} blocked={entry['blocked']}")
-    print(f"openrouter_daily_delta=${delta:.6f} est_calls=${call_cost_sum:.6f} total=${post.get('usage_total',0.0):.6f} remaining=${post.get('limit_remaining',0.0):.6f}")
+    blocked_reasons = [str(x or "unknown") for x in entry.get("blocked_reasons", [])]
+    reason_counts = Counter(blocked_reasons)
+
+    print("## TSquirrel Quality Gate Report")
+    print(f"- Checked: **{entry['checked']}**")
+    print(f"- Published: **{entry['published']}**")
+    print(f"- Blocked: **{entry['blocked']}**")
+
+    if reason_counts:
+        print("- Blocked reasons:")
+        for reason, count in sorted(reason_counts.items(), key=lambda kv: (-kv[1], kv[0])):
+            print(f"  - `{reason}` × {count}")
+
+    print("- OpenRouter cost:")
+    print(f"  - Daily delta: `${delta:.6f}`")
+    print(f"  - Estimated from calls: `${call_cost_sum:.6f}`")
+    print(f"  - Usage total: `${post.get('usage_total',0.0):.6f}`")
+    print(f"  - Limit remaining: `${post.get('limit_remaining',0.0):.6f}`")
 
 
 if __name__ == "__main__":
