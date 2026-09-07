@@ -132,9 +132,7 @@ async function startServer() {
 
   // Inject globals into all views
   app.use(async (req, res, next) => {
-    res.locals.assetVersion = process.env.NODE_ENV === 'development'
-      ? Date.now().toString()
-      : ASSET_VERSION;
+    res.locals.assetVersion = ASSET_VERSION;
     res.locals.googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID || '';
     res.locals.nutsToday = 0;
     res.locals.currentPath = req.path;
