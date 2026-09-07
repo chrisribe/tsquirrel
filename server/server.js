@@ -3,9 +3,37 @@
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const { execSync } = require('child_process');
 
+function hashAssetFiles() {
+  const assetPaths = [
+    path.join(__dirname, 'static', 'css', 'styles.css'),
+    path.join(__dirname, 'static', 'css', 'pico.min.css'),
+    path.join(__dirname, 'static', 'js', 'analytics.js'),
+    path.join(__dirname, 'static', 'js', 'htmx.min.js'),
+    path.join(__dirname, 'static', 'js', 'feed-load-cycle.js'),
+    path.join(__dirname, 'static', 'js', 'nav-menu.js'),
+  ];
+  const h = crypto.createHash('sha1');
+  let added = 0;
+  for (const p of assetPaths) {
+    try {
+      h.update(fs.readFileSync(p));
+      added += 1;
+    } catch (_) {
+      // Ignore missing files; we still hash what exists.
+    }
+  }
+  if (added > 0) return h.digest('hex').slice(0, 12);
+  return null;
+}
+
 function resolveAssetVersion() {
+  const assetsHash = hashAssetFiles();
+  if (assetsHash) return assetsHash;
+
   if (process.env.ASSET_VERSION) return String(process.env.ASSET_VERSION).trim();
   const ciCommit = process.env.GIT_COMMIT || process.env.RENDER_GIT_COMMIT || process.env.RAILWAY_GIT_COMMIT_SHA;
   if (ciCommit) return String(ciCommit).trim().slice(0, 12);
