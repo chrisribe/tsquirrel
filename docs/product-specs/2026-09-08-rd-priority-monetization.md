@@ -86,6 +86,19 @@ Deep brief should include:
 
 Translation is optional add-on, appended after core brief.
 
+## 5.4 Shared unlock when brief already exists
+
+If a request is completed and publishable, later visitors on matching story/topic should see:
+- `Get it right now` (instant access path), instead of creating duplicate queue work
+- purchase/access options based on entitlement:
+  - already entitled users: instant open
+  - non-entitled users: one-click unlock (or plan entitlement)
+
+Rules:
+- no duplicate generation for the same canonical brief scope unless stale/revision-needed
+- preserve free authority lane: core story remains public
+- premium value is speed/depth packaging, not headline gating
+
 ## 6) Monetization Model (v1)
 
 Use **per-request pricing** first:
