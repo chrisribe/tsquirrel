@@ -52,11 +52,12 @@ class StoryAdminService {
   async getEditorModel(storyId, { returnTo = '/admin/stories' } = {}) {
     const story = await this.stories.getById(storyId);
     if (!story) return null;
-    const [attached, suggestions] = await Promise.all([
+    const [attached, suggestions, extraContext] = await Promise.all([
       this.stories.getArticles(story.id),
       this.stories.getSuggestions(story.id),
+      this.stories.getExtraContext(story.id),
     ]);
-    return { story, attached, suggestions, recentArticles: [], returnTo, error: null };
+    return { story, attached, suggestions, extraContext, recentArticles: [], returnTo, error: null };
   }
 
   async getAttachPickerModel(storyId) {
@@ -113,6 +114,26 @@ class StoryAdminService {
 
   async deleteStory(storyId) {
     return this.stories.delete(storyId);
+  }
+
+  async saveExtraContextDraft(storyId, expectedRevision, content) {
+    await this.stories.saveExtraContextDraft(storyId, expectedRevision, content);
+    return this.getEditorModel(storyId);
+  }
+
+  async publishExtraContext(storyId, expectedRevision, adminId) {
+    await this.stories.publishExtraContext(storyId, expectedRevision, adminId);
+    return this.getEditorModel(storyId);
+  }
+
+  async discardExtraContextDraft(storyId, expectedRevision) {
+    await this.stories.discardExtraContextDraft(storyId, expectedRevision);
+    return this.getEditorModel(storyId);
+  }
+
+  async withdrawExtraContext(storyId, expectedRevision) {
+    await this.stories.withdrawExtraContext(storyId, expectedRevision);
+    return this.getEditorModel(storyId);
   }
 
   async bulkAction(storyIds = [], action = '') {

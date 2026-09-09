@@ -330,6 +330,36 @@ const migrations = [
       console.log('Migration 19: story_slug_redirects table created');
     }
   },
+  {
+    version: 22,
+    description: 'Extra Context drafts, published snapshots, and limited research tokens',
+    up: async (pool) => {
+      await pool.query(`
+        ALTER TABLE api_tokens
+          ADD COLUMN IF NOT EXISTS purpose VARCHAR(30) NOT NULL DEFAULT 'editorial'
+      `);
+      await pool.query(`
+        ALTER TABLE api_tokens DROP CONSTRAINT IF EXISTS api_tokens_purpose_check
+      `);
+      await pool.query(`
+        ALTER TABLE api_tokens ADD CONSTRAINT api_tokens_purpose_check
+          CHECK (purpose IN ('editorial', 'research_draft'))
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_extra_context (
+          story_id INTEGER PRIMARY KEY REFERENCES stories(id) ON DELETE CASCADE,
+          draft_content JSONB,
+          published_content JSONB,
+          revision INTEGER NOT NULL DEFAULT 0,
+          draft_updated_at TIMESTAMP,
+          draft_author_token_id INTEGER REFERENCES api_tokens(id) ON DELETE SET NULL,
+          published_at TIMESTAMP,
+          published_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+        )
+      `);
+      console.log('Migration 22: Extra Context and token purposes added');
+    }
+  },
   // Future migrations go here
 ];
 

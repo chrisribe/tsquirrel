@@ -250,6 +250,40 @@ const StoryAdminController = {
     } catch (error) { return next(error); }
   },
 
+  async mutateExtraContext(req, res, next) {
+    try {
+      const expectedRevision = Number(req.body.expected_revision);
+      const action = String(req.body.action || 'save');
+      let pageData;
+      if (action === 'save') {
+        pageData = await serviceFor(req).saveExtraContextDraft(req.params.id, expectedRevision, {
+          title: req.body.title,
+          body: req.body.body,
+          researched_on: req.body.researched_on,
+          ai_assisted: req.body.ai_assisted === 'true',
+          sources: Object.values(req.body.sources || {}),
+        });
+      } else if (action === 'publish') {
+        pageData = await serviceFor(req).publishExtraContext(req.params.id, expectedRevision, req.session.user.id);
+      } else if (action === 'discard') {
+        pageData = await serviceFor(req).discardExtraContextDraft(req.params.id, expectedRevision);
+      } else if (action === 'withdraw') {
+        pageData = await serviceFor(req).withdrawExtraContext(req.params.id, expectedRevision);
+      } else {
+        const error = new Error('Invalid extra-context action.'); error.status = 400; throw error;
+      }
+      if (!pageData) return notFound(res);
+      return res.renderFragmentOrRedirect('admin/partials/_extra-context', { ...pageData, extraContextMessage: 'Extra Context updated.' }, `/admin/stories/${req.params.id}/edit`);
+    } catch (error) {
+      if (![400, 409].includes(error.status)) return next(error);
+      const pageData = await serviceFor(req).getEditorModel(req.params.id);
+      if (!pageData) return notFound(res);
+      return res.status(req.isHtmx ? 200 : error.status).render(req.isHtmx ? 'admin/partials/_extra-context' : 'layout-main', req.isHtmx
+        ? { pageData: { ...pageData, extraContextError: error.message } }
+        : { template: 'admin/story-edit', pageTitle: `Edit: ${pageData.story.title} — Admin — TSquirrel`, pageData: { ...pageData, extraContextError: error.message } });
+    }
+  },
+
   async bulkAction(req, res, next) {
     try {
       const ids = parseStoryIdList(req.body.storyIds);

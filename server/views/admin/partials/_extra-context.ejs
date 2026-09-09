@@ -1,0 +1,44 @@
+<%
+  const context = pageData.extraContext || { draft_content: null, published_content: null, revision: 0 };
+  const draft = context.draft_content;
+  const sources = draft?.sources?.length ? draft.sources : [{ id: 'S1', title: '', url: '', accessed_on: '', evidence_excerpt: '' }];
+%>
+<section class="extra-context-admin" id="extra-context-admin">
+  <h2>A little deeper</h2>
+  <p class="admin-meta">Drafts are private until this revision is published. Citation markers use <code>[S1]</code>.</p>
+  <% if (pageData.extraContextMessage) { %><p class="admin-alert" role="status"><%= pageData.extraContextMessage %></p><% } %>
+  <% if (pageData.extraContextError) { %><p class="admin-alert" role="alert"><%= pageData.extraContextError %></p><% } %>
+
+  <form method="POST" action="/admin/stories/<%= pageData.story.id %>/extra-context" class="extra-context-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="expected_revision" value="<%= context.revision %>">
+    <label>Title <input name="title" maxlength="160" value="<%= draft?.title || '' %>" required></label>
+    <label>Body <textarea name="body" rows="8" maxlength="12000" required><%= draft?.body || '' %></textarea></label>
+    <div class="grid">
+      <label>Researched on <input name="researched_on" type="date" value="<%= draft?.researched_on || '' %>" required></label>
+      <label class="extra-context-check"><input name="ai_assisted" type="checkbox" value="true" <%= draft?.ai_assisted ? 'checked' : '' %>> AI assistance disclosed</label>
+    </div>
+    <fieldset><legend>Research sources</legend>
+      <% sources.forEach(function(source, index) { %>
+        <div class="extra-context-source">
+          <label>ID <input name="sources[<%= index %>][id]" value="<%= source.id || '' %>" placeholder="S1" required></label>
+          <label>Title <input name="sources[<%= index %>][title]" value="<%= source.title || '' %>" required></label>
+          <label>URL <input name="sources[<%= index %>][url]" type="url" value="<%= source.url || '' %>" required></label>
+          <label>Accessed <input name="sources[<%= index %>][accessed_on]" type="date" value="<%= source.accessed_on || '' %>" required></label>
+          <label>Evidence excerpt <textarea name="sources[<%= index %>][evidence_excerpt]" rows="2" maxlength="1000"><%= source.evidence_excerpt || '' %></textarea></label>
+        </div>
+      <% }); %>
+    </fieldset>
+    <div class="admin-actions-row">
+      <button name="action" value="save" type="submit">Save draft</button>
+      <% if (draft) { %><button name="action" value="publish" type="submit" formnovalidate>Publish this revision</button><button name="action" value="discard" type="submit" class="secondary" formnovalidate>Discard draft</button><% } %>
+      <% if (context.published_content) { %><button name="action" value="withdraw" type="submit" class="outline" formnovalidate>Withdraw published</button><% } %>
+    </div>
+  </form>
+
+  <% if (context.published_content) { %>
+    <details class="extra-context-published"><summary>Currently published: <%= context.published_content.title %></summary>
+      <p>Published <%= context.published_at ? new Date(context.published_at).toLocaleString() : '' %>. A replacement draft does not change this version until published.</p>
+    </details>
+  <% } %>
+</section>

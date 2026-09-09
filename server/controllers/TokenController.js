@@ -17,7 +17,7 @@ const TokenController = {
 
   async create(req, res, next) {
     try {
-      const createdToken = await serviceFor(req).createToken(req.body.label);
+      const createdToken = await serviceFor(req).createToken(req.body.label, req.body.purpose);
       const pageData = await serviceFor(req).getTokensModel();
       return res.renderPage('admin/tokens', {
         ...pageData,

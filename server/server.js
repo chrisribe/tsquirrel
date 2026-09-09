@@ -85,8 +85,8 @@ async function startServer() {
     return next();
   });
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json({ limit: '64kb' }));
+  app.use(express.urlencoded({ extended: true, limit: '64kb' }));
   app.use('/static', express.static(path.join(__dirname, 'static')));
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
@@ -110,6 +110,7 @@ async function startServer() {
   const sessionService = new SessionService(pool);
   await sessionService.initialize(app);
   app.use(require('./middleware/sessionMiddleware'));
+  app.use(require('./middleware/csrfMiddleware').csrfToken);
   app.use(require('./middleware/responseHandler'));
 
   // Security headers
@@ -125,10 +126,12 @@ async function startServer() {
 
   // Category display helpers available in every template
   const { catMeta, catLabel, displaySourceName, secureUrl } = require('./lib/display');
+  const { renderCitedBody } = require('./lib/extraContext');
   app.locals.catMeta = catMeta;
   app.locals.catLabel = catLabel;
   app.locals.displaySourceName = displaySourceName;
   app.locals.secureUrl = secureUrl;
+  app.locals.renderCitedBody = renderCitedBody;
 
   // Inject globals into all views
   app.use(async (req, res, next) => {

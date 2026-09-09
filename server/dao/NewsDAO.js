@@ -90,6 +90,52 @@ class NewsDAO {
     return rows[0] || null;
   }
 
+  async getExtraContext(storyId) {
+    const { rows } = await this.pool.query(
+      'SELECT draft_content, published_content, revision, draft_updated_at, published_at FROM story_extra_context WHERE story_id = $1',
+      [storyId]
+    );
+    return rows[0] || null;
+  }
+
+  async getPublishedExtraContext(storyId) {
+    const { rows } = await this.pool.query(
+      'SELECT published_content, published_at FROM story_extra_context WHERE story_id = $1 AND published_content IS NOT NULL',
+      [storyId]
+    );
+    return rows[0] || null;
+  }
+
+  async lockStoryForExtraContext(client, storyId) {
+    const { rows } = await client.query('SELECT id, status FROM stories WHERE id = $1 FOR UPDATE', [storyId]);
+    return rows[0] || null;
+  }
+
+  async lockExtraContext(client, storyId) {
+    const { rows } = await client.query('SELECT draft_content, published_content, revision FROM story_extra_context WHERE story_id = $1 FOR UPDATE', [storyId]);
+    return rows[0] || null;
+  }
+
+  async saveExtraContextDraft(client, storyId, content, revision, tokenId) {
+    await client.query(`INSERT INTO story_extra_context (story_id, draft_content, revision, draft_updated_at, draft_author_token_id)
+      VALUES ($1, $2, $3, NOW(), $4)
+      ON CONFLICT (story_id) DO UPDATE SET draft_content = EXCLUDED.draft_content, revision = EXCLUDED.revision, draft_updated_at = NOW(), draft_author_token_id = EXCLUDED.draft_author_token_id`, [storyId, content, revision, tokenId]);
+  }
+
+  async publishExtraContext(client, storyId, content, revision, adminId) {
+    await client.query(`INSERT INTO story_extra_context (story_id, published_content, revision, published_at, published_by)
+      VALUES ($1, $2, $3, NOW(), $4)
+      ON CONFLICT (story_id) DO UPDATE SET draft_content = NULL, published_content = EXCLUDED.published_content, revision = EXCLUDED.revision, published_at = NOW(), published_by = EXCLUDED.published_by`, [storyId, content, revision, adminId]);
+  }
+
+  async discardExtraContextDraft(client, storyId, revision) {
+    await client.query('UPDATE story_extra_context SET draft_content = NULL, draft_updated_at = NULL, draft_author_token_id = NULL, revision = $2 WHERE story_id = $1', [storyId, revision]);
+  }
+
+  async withdrawExtraContext(client, storyId, revision) {
+    await client.query('UPDATE story_extra_context SET published_content = NULL, published_at = NULL, published_by = NULL, revision = $2 WHERE story_id = $1', [storyId, revision]);
+  }
+
   async getStoryArticles(storyId) {
     const { rows } = await this.pool.query(`
       SELECT a.*, src.name AS source_name, src.slug AS source_slug, src.type AS source_type,

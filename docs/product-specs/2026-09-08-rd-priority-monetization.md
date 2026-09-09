@@ -1,17 +1,32 @@
-# TSquirrel Product Spec — R&D Priority Monetization (Authority-first)
+# Deferred idea — R&D Priority Monetization
 
 Date: 2026-09-08  
 Owner: TSquirrel  
-Status: Draft (spec branch)
+Status: Deferred reference only — not an active implementation plan
+
+## Read this first
+
+The [Extra Context KISS plan](2026-09-08-extra-context-mvp-plan.md) is the **only active
+implementation plan**. This document preserves future monetization ideas so they do
+not need to be rediscovered; it does not add work to the current release.
+
+All phases, schemas, endpoints, and references to "v1" below describe a possible
+future paid product, not the Extra Context MVP. Revisit only after real usage supports
+the need. No commitment to a worker architecture, provider, price, or SLA is implied.
 
 ## 1) Decision Summary
 
-Adopt a **2-lane publishing model**:
+Potential future **2-lane publishing model**:
 
 - **Lane A (free authority lane):** keep live publication of short-form stories as the default growth engine (through existing publish gates; not raw radar auto-publish).
 - **Lane B (paid speed+depth lane):** add paid, on-demand **Priority Deep R&D Briefs** per story (or topic), delivered asynchronously with status + alerts.
 
 This keeps discovery open (SEO/authority) while monetizing urgency and analytical depth.
+
+**Product direction:** PR #4 was the initial exploration; PR #5 is the preferred
+long-term direction. Implement the small admin-only pilot first, not PR #4's public
+generator. This is a product/design change, not authorization to introduce
+unrestricted reader-triggered model calls.
 
 ## 2) Problem
 
@@ -53,7 +68,7 @@ Risk if we gate core content too early:
 
 Add a compact module on `/story/:slug`:
 
-- Button A: `Request Deep Dive` (free queue, standard SLA)
+- Button A: `Request Deep Dive` (standard queue; price and delivery target shown before submission)
 - Button B: `Priority Deep Dive` (paid, faster SLA)
 - Inputs:
   - email (required)
@@ -62,17 +77,25 @@ Add a compact module on `/story/:slug`:
 
 ## 5.2 Request lifecycle
 
-State machine:
+Generation/request lifecycle:
 
-`requested -> queued -> generating -> completed -> delivered`
+`requested -> queued -> generating -> completed`
 
-Failure path:
+- `requested` waits for verified reader identity and any required payment.
+- Only eligible requests enter the queue. Priority is assigned by the server after
+  verified payment, never by trusting a submitted urgency or payment-status field.
+- An eligible request matching an existing usable brief can go directly to `completed`.
+- Generation or quality-check failure transitions to `failed`; a bounded, authorized
+  retry returns it to `queued` without another charge for the same purchased service.
+- A brief is completed only after its evidence and quality checks pass.
 
-`generating -> failed (retryable)`
+Notification delivery is separate: `pending -> sending -> delivered|failed`.
+Here `delivered` means accepted by the email provider, not proof the reader opened it.
+Retrying notification delivery must not regenerate the brief or charge again.
 
 User surfaces:
-- on-page request success + tracking id
-- optional status page (`/r-and-d/:request_id`)
+- on-page request success + opaque tracking id (an identifier, not an access credential)
+- owner-only status page (`/r-and-d/:request_id`)
 - email notification when completed
 
 ## 5.3 Deliverable format
@@ -88,16 +111,26 @@ Translation is optional add-on, appended after core brief.
 
 ## 5.4 Shared unlock when brief already exists
 
-If a request is completed and publishable, later visitors on matching story/topic should see:
+If a matching brief is completed, current, and explicitly approved for shared access,
+later visitors should see:
 - `Get it right now` (instant access path), instead of creating duplicate queue work
 - purchase/access options based on entitlement:
   - already entitled users: instant open
-  - non-entitled users: one-click unlock (or plan entitlement)
+  - non-entitled users: one-off checkout/unlock; plan entitlements are deferred
 
 Rules:
 - no duplicate generation for the same canonical brief scope unless stale/revision-needed
+- private or embargoed output is not a shared-unlock candidate; completion alone
+  grants neither public release nor permission to resell access
+- entitlement is checked server-side before returning the full brief, including
+  status responses, downloads, and notification links
+- buying an existing brief grants access to that version, not another generation job
 - preserve free authority lane: core story remains public
 - premium value is speed/depth packaging, not headline gating
+
+Launch decision required: whether standard readers receive delayed free access to
+an existing shared brief or must buy an unlock. Do not silently remove the standard
+path when a brief becomes available. Show the chosen price/wait policy consistently.
 
 ## 6) Monetization Model (v1)
 
@@ -128,34 +161,84 @@ Rule:
 
 ## 8.1 Data model additions
 
+Separate reusable output from reader requests and access grants. These are logical
+records; final SQL and indexes belong to implementation review.
+
+New table: `rd_briefs`
+- `id`
+- exactly one subject: `story_id` or a persisted canonical `topic_key`
+- normalized `focus_tags`, `language`, and `scope_key`
+- `revision`, source/evidence snapshot, freshness deadline or invalidation reason
+- `status` (`queued|generating|completed|failed`)
+- `brief_markdown`, validated evidence/confidence data, model and generation timestamps
+- `sharing_policy` (`private|shareable|public`), with release approval recorded separately
+- job lease/attempt metadata for bounded worker retries
+
+Canonical shared scope is subject + normalized focus + language. Reuse requires the
+same scope, compatible sharing policy, a current revision, and successful quality
+checks. A story-only match is insufficient. Use a database uniqueness/locking rule
+to prevent simultaneous active shared jobs for the same scope/revision. Private
+artifacts remain request-scoped and cannot be reused across readers.
+
 New table: `rd_requests`
 - `id`
-- `story_id` (nullable for topic-only requests)
-- `email`
+- `brief_id` (nullable until matched/assigned)
+- requested subject/scope, using the same story-or-topic constraint as `rd_briefs`
+- verified reader identity reference and delivery email
 - `urgency` (`standard|priority`)
-- `focus_tags` (text/json)
 - `status` (`requested|queued|generating|completed|failed`)
-- `brief_markdown` (nullable until done)
-- `error_message` (nullable)
-- `payment_status` (`not_required|pending|paid|failed`)
+- reader-safe error code (detailed provider errors remain internal)
+- `payment_status` (`not_required|pending|paid|failed|refunded`)
+- `notification_status` (`pending|sending|delivered|failed`), attempts and `delivered_at`
 - `created_at`, `updated_at`, `completed_at`
 
-Optional table: `rd_request_events` (for audit timeline).
+New table: `rd_entitlements`
+- verified reader identity + brief version (unique pair)
+- grant reason (`standard|purchase|admin`), originating request/payment reference
+- grant/revocation timestamps; duplicate checkout events cannot duplicate a grant
 
-## 8.2 API endpoints
+Persist payment references and processed webhook event IDs for replay safety.
+Record request, payment, access, and release transitions in an audit timeline without
+raw access tokens or unnecessary personal data.
 
-- `POST /api/v1/rd-requests` create request
-- `GET /api/v1/rd-requests/:id` status/details
-- `POST /api/v1/rd-requests/:id/retry` admin/manual retry
-- `POST /api/v1/rd-requests/:id/publish` optional public release of redacted brief
+## 8.2 API endpoints and authorization
+
+Keep existing `/api/v1` API-token authentication intact; do not expose staff tokens
+to browsers or remove router-wide authentication to add reader endpoints.
+
+Reader surface (separate router, verified reader session/access required):
+- `POST /r-and-d/requests` create request, or request access to an existing shared brief
+- `GET /r-and-d/:request_id` owner-only status; full output additionally requires entitlement
+- `POST /r-and-d/requests/:id/checkout` owner-only, server-priced checkout creation
+
+Use verified email access links to establish reader identity without requiring a
+subscription/account system. Links must be random, expiring, single-use, stored
+hashed, and exchanged for a secure session. Email text and request IDs are not proof
+of ownership. Do not return another reader's email, private output, or internal errors.
+Protect cookie-authenticated mutations against CSRF and rate-limit verification,
+creation, and checkout; request submission must be idempotent per reader.
+
+Staff API surface (existing token authentication plus explicit staff authorization):
+- `GET /api/v1/rd-requests/:id` operational status/details
+- `POST /api/v1/rd-requests/:id/retry` bounded manual retry
+- `POST /api/v1/rd-briefs/:id/publish` optional reviewed public release of a redacted artifact (Phase 3)
+
+Provider webhook surface uses verified provider signatures, not reader sessions.
 
 ## 8.3 Background processing
 
 Reuse Hermes-native cron pattern:
-1. pick queued requests
-2. generate brief with source-grounded template
-3. persist output + confidence labels
-4. send alert (email first; optional Discord DM later)
+1. match eligible requests to a current, permitted brief or atomically create/claim a job
+2. generate with a bounded deadline and source-grounded template outside the web request
+3. validate evidence and output; persist the version and complete linked eligible requests
+4. grant the applicable entitlements and enqueue notification delivery
+5. send alerts independently (email first; optional Discord DM later)
+
+Use leases with ownership/fencing checks so expired workers cannot overwrite a newer
+attempt. Cap retries, concurrency, and daily model spend; prioritize paid work without
+starving standard requests. A worker restart must recover jobs without duplicate
+active generation. Provider calls may have incurred cost before a timeout: record
+attempts and budget for that uncertainty rather than promising exactly-once inference.
 
 ## 8.4 Payments
 
@@ -164,12 +247,32 @@ v1 abstraction:
 - start with “payment_status” state handling and webhook-ready transitions
 - no provider lock-in in core request logic
 
+Required invariants before enabling paid checkout:
+- Compute price, currency, and purchasable scope/version on the server; persist the
+  order and provider references before fulfillment.
+- Verify webhook signatures and bind paid amount/currency/order to the expected
+  purchase. A browser success redirect is not proof of payment.
+- Apply payment events idempotently and tolerate duplicates/out-of-order delivery;
+  persist each event ID and fulfillment transition transactionally.
+- Only verified paid priority requests receive paid queue priority. Instant unlock
+  grants an entitlement and never starts a duplicate job.
+- Define cancellation, terminal generation failure, refund, and entitlement-revocation
+  behavior before launch. Record refunds separately; never erase the payment audit.
+- Show when the delivery target begins (identity verified + payment confirmed), and
+  disclose the missed-target/refund policy before charging. The example <2h target
+  is not a promise until capacity is validated.
+
 ## 8.5 Safety / quality
 
 - Require >=2 credible sources for generated brief sections that claim facts.
 - Explicitly label unsupported sections as uncertain.
 - Never fabricate numerical claims.
 - Keep current StoryService editorial gates unchanged for public story publishing.
+- Validate claim-to-source references against the stored evidence snapshot; a prompt
+  instruction alone is not enforcement. Reject insufficient evidence and preserve
+  the existing usable revision on failed regeneration.
+- Generated private output does not overwrite the public story. Shared/public release
+  requires explicit review and source/license permission; no automatic release in v1.
 
 ## 9) Analytics & Success Metrics
 
@@ -196,10 +299,29 @@ Guardrails:
 
 ## 10) Rollout Plan
 
-Phase 0 (this spec): align direction + settle conflicts.  
-Phase 1: schema + basic API + admin queue view (no payment).  
-Phase 2: priority payment path + webhook handling + SLA dashboards.  
-Phase 3: optional embargo-to-public release controls.
+First ship the admin-only pilot described above. The following phases are the later
+reader-facing expansion, not prerequisites for that pilot. Membership and monetization
+should follow evidence of useful output and manageable operating cost.
+
+- Phase 0 (this spec): align direction + settle launch policy questions below.
+- Phase 1: protected standard-request pilot, schema + reader verification + basic API + admin queue + bounded worker + notifications (no paid checkout or paid-SLA claims).
+- Phase 2: priority payment + shared unlock + verified webhooks + entitlement enforcement + SLA dashboards, after access/pricing/refund policies are approved.
+- Phase 3: optional embargo-to-public release controls.
+
+### Acceptance gates
+
+- Unverified readers cannot trigger model work; other readers cannot inspect a request
+  or retrieve its private/paid output by guessing an ID or following an expired link.
+- Repeated submission and concurrent workers create at most one active shared job per
+  canonical scope/revision. An entitled reader opens a reusable brief without generation.
+- Forged checkout success, mismatched amounts, and duplicate/reordered webhooks cannot
+  grant unpaid access, duplicate fulfillment, or downgrade a settled payment.
+- Generation timeouts, insufficient evidence, and worker restarts have bounded,
+  auditable recovery; notification retries neither regenerate nor recharge.
+- Free story access remains unchanged. Private/embargoed briefs cannot enter shared
+  unlock or public release merely because generation completed.
+- Standard-access policy, priority target, terminal-failure/refund handling, provider,
+  and privacy/retention policy are approved before the corresponding public launch.
 
 ## 11) Conflict Check Against Existing Work
 
@@ -224,16 +346,30 @@ Existing docs currently lock two guardrails:
 
 So this spec **does not** override those policies. “Live authority lane” here means continuing normal published story flow under existing quality/review gates, while premium deep briefs are generated post-click as a separate product lane.
 
+## 11.6 PR #4 relationship and sequencing
+
+PR #5 is the preferred long-term direction; PR #4 is earlier exploration, not a
+committed second implementation. Its free, cited Story Brief ideas may inform the
+authority lane, but its synchronous public generator is not a prerequisite. Do not
+import its direct writes to published story content or anonymous, unrestricted
+generation path. No PR #4 runtime changes are included or approved by this specification.
+
 ## 12) Open Questions
 
 1. Should standard deep-dive be fully free at launch or soft-paid from day one?
 2. What SLA target is realistic for priority requests under current model budget?
 3. Should completed premium briefs auto-publish in redacted form after N days by default, or opt-in only?
 4. Which payment provider should be first adapter?
+5. When a shared brief already exists, can standard readers wait for free access, or
+  must they purchase an unlock? What happens to already accepted standard requests?
+6. What terminal-failure, missed-target, cancellation, and refund policy will be shown
+  before payment, including whether refunded access is revoked?
+7. What email/request retention period, deletion process, and notification consent
+  wording apply? Completion alerts must not silently subscribe readers to marketing.
 
-## 13) Recommendation
+## 13) Revisit criteria
 
-Proceed with this spec as the current direction:
-- maintain free authority lane,
-- monetize urgency/depth via priority deep dives,
-- add subscription complexity only after conversion signal is proven.
+Return to this proposal only after the Extra Context MVP demonstrates useful output,
+manageable editorial cost, and evidence of demand for paid depth or faster delivery.
+Until then, keep the public reading experience free and implement only the linked
+Extra Context plan. Do not add subscription or research-worker infrastructure in advance.

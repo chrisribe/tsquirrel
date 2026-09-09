@@ -21,6 +21,11 @@
   <form method="POST" action="/admin/tokens" class="admin-inline-form">
     <label for="token-label">Token label</label>
     <input id="token-label" name="label" type="text" maxlength="100" required placeholder="e.g. Hermes Curator Bot">
+    <label for="token-purpose">Purpose</label>
+    <select id="token-purpose" name="purpose">
+      <option value="editorial">Editorial — full API access</option>
+      <option value="research_draft">Research draft — selected story context only</option>
+    </select>
     <button type="submit">Create token</button>
   </form>
 
@@ -30,6 +35,7 @@
         <tr>
           <th>Label</th>
           <th class="nowrap">Prefix</th>
+          <th class="nowrap">Purpose</th>
           <th class="nowrap">Created</th>
           <th class="nowrap">Last used</th>
           <th class="nowrap">Status</th>
@@ -38,12 +44,13 @@
       </thead>
       <tbody>
         <% if (!pageData.tokens.length) { %>
-          <tr><td colspan="6" class="hint">No tokens yet.</td></tr>
+          <tr><td colspan="7" class="hint">No tokens yet.</td></tr>
         <% } %>
         <% pageData.tokens.forEach(function(t) { %>
           <tr>
             <td><%= t.label %></td>
             <td class="nowrap mono">tsq_••••</td>
+            <td class="nowrap"><%= t.purpose === 'research_draft' ? 'research draft' : 'editorial' %></td>
             <td class="nowrap mono"><%= new Date(t.created_at).toLocaleString() %></td>
             <td class="nowrap mono"><%= t.last_used_at ? new Date(t.last_used_at).toLocaleString() : 'never' %></td>
             <td class="nowrap">

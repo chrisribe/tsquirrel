@@ -1,5 +1,5 @@
 <%
-  const { story, articles, related } = pageData;
+  const { story, articles, related, extraContext } = pageData;
   function timeAgo(date) {
     const now = new Date();
     const diff = Math.floor((now - new Date(date)) / 1000);
@@ -54,6 +54,9 @@
     <% if (story.summary) { %>
       <p class="story-summary-large"><%= story.summary %></p>
     <% } %>
+    <% if (extraContext?.published_content) { %>
+      <a class="extra-context-jump" href="#a-little-deeper">Read a little deeper ↓</a>
+    <% } %>
     <% if (story.tags && story.tags.length) { %>
       <div class="story-tags">
         <% story.tags.forEach(tag => { %>
@@ -99,6 +102,20 @@
       </a>
     <% }); %>
   </section>
+
+  <% if (extraContext?.published_content) { const context = extraContext.published_content; %>
+    <section class="extra-context-card" id="a-little-deeper">
+      <div class="extra-context-label">🐿️ A little deeper</div>
+      <h2><%= context.title %></h2>
+      <% String(context.body).split(/\n\s*\n/).forEach(function(paragraph) { %>
+        <p><%- renderCitedBody(paragraph, context.sources) %></p>
+      <% }); %>
+      <div class="extra-context-meta">Researched <%= context.researched_on %> · Published <%= extraContext.published_at ? new Date(extraContext.published_at).toLocaleDateString() : '' %> · <%= context.ai_assisted ? 'AI-assisted research, editor reviewed' : 'Editor reviewed' %></div>
+      <ol class="extra-context-sources">
+        <% context.sources.forEach(function(source) { %><li id="source-<%= source.id %>"><a href="<%= source.url %>" target="_blank" rel="noopener noreferrer">[<%= source.id %>] <%= source.title %></a></li><% }); %>
+      </ol>
+    </section>
+  <% } %>
 </article>
 
 <% if (related && related.length) { %>

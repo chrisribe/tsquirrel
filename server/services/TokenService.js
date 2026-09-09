@@ -13,7 +13,7 @@ class TokenService {
     return { tokens };
   }
 
-  async createToken(rawLabel) {
+  async createToken(rawLabel, rawPurpose = 'editorial') {
     const label = String(rawLabel || '').trim().slice(0, 100);
     if (!label) {
       const error = new Error('Label is required.');
@@ -21,9 +21,16 @@ class TokenService {
       throw error;
     }
 
+    const purpose = String(rawPurpose || '').trim();
+    if (!['editorial', 'research_draft'].includes(purpose)) {
+      const error = new Error('Token purpose is invalid.');
+      error.status = 400;
+      throw error;
+    }
+
     const token = `tsq_${crypto.randomBytes(24).toString('base64url')}`;
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    await this.dao.createApiToken({ label, tokenHash });
+    await this.dao.createApiToken({ label, tokenHash, purpose });
     return token;
   }
 

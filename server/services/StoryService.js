@@ -3,6 +3,7 @@
 const NewsDAO = require('../dao/NewsDAO');
 const { slugify } = require('../lib/slug');
 const { isLowQualityImage, fetchOgImage } = require('./IngestionService');
+const { normalizeExtraContext, publicSnapshot } = require('../lib/extraContext');
 
 const TITLE_STOPWORDS = new Set([
   'a','an','and','are','as','at','be','by','for','from','has','have','in','into','is','it','its','of','on','or','that','the','their','to','was','were','with',
@@ -68,6 +69,7 @@ const CATEGORY_ALIASES = {
 // boundaries too; this service assumes it is handed already-normalized values.
 class StoryService {
   constructor(pool) {
+    this.pool = pool;
     this.dao = new NewsDAO(pool);
   }
 
@@ -127,6 +129,71 @@ class StoryService {
 
   getArticlesByIds(ids = []) {
     return this.dao.getArticlesByIds(ids);
+  }
+
+  async getExtraContext(storyId, { publishedStoryOnly = false } = {}) {
+    const story = await this.dao.getStoryById(storyId);
+    if (!story || (publishedStoryOnly && story.status !== 'published')) return null;
+    const context = await this.dao.getExtraContext(storyId);
+    return { story, draft_content: context?.draft_content || null, published_content: context?.published_content || null, revision: context?.revision || 0, draft_updated_at: context?.draft_updated_at || null, published_at: context?.published_at || null };
+  }
+
+  async getPublishedExtraContext(storyId) {
+    return this.dao.getPublishedExtraContext(storyId);
+  }
+
+  async saveExtraContextDraft(storyId, expectedRevision, rawContent, tokenId = null, { publishedStoryOnly = false } = {}) {
+    const content = normalizeExtraContext(rawContent);
+    return this._mutateExtraContext(storyId, expectedRevision, async (client, current) => {
+      const revision = current.revision + 1;
+      await this.dao.saveExtraContextDraft(client, storyId, content, revision, tokenId);
+      return { draft_content: content, published_content: current.published_content, revision };
+    }, { publishedStoryOnly });
+  }
+
+  async publishExtraContext(storyId, expectedRevision, adminId) {
+    return this._mutateExtraContext(storyId, expectedRevision, async (client, current, story) => {
+      if (story.status !== 'published') { const error = new Error('The story must be published before its extra context can be published.'); error.status = 400; throw error; }
+      if (!current.draft_content) { const error = new Error('There is no draft extra context to publish.'); error.status = 400; throw error; }
+      const revision = current.revision + 1;
+      const published = publicSnapshot(current.draft_content);
+      await this.dao.publishExtraContext(client, storyId, published, revision, adminId);
+      return { draft_content: null, published_content: published, revision };
+    });
+  }
+
+  async discardExtraContextDraft(storyId, expectedRevision) {
+    return this._mutateExtraContext(storyId, expectedRevision, async (client, current) => {
+      if (!current.draft_content) return current;
+      const revision = current.revision + 1;
+      await this.dao.discardExtraContextDraft(client, storyId, revision);
+      return { draft_content: null, published_content: current.published_content, revision };
+    });
+  }
+
+  async withdrawExtraContext(storyId, expectedRevision) {
+    return this._mutateExtraContext(storyId, expectedRevision, async (client, current) => {
+      if (!current.published_content) return current;
+      const revision = current.revision + 1;
+      await this.dao.withdrawExtraContext(client, storyId, revision);
+      return { draft_content: current.draft_content, published_content: null, revision };
+    });
+  }
+
+  async _mutateExtraContext(storyId, expectedRevision, mutate, { publishedStoryOnly = false } = {}) {
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 0) { const error = new Error('expected_revision must be a non-negative integer'); error.status = 400; throw error; }
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const story = await this.dao.lockStoryForExtraContext(client, storyId);
+      if (!story) { const error = new Error('story not found'); error.status = 404; throw error; }
+      if (publishedStoryOnly && story.status !== 'published') { const error = new Error('story not found'); error.status = 404; throw error; }
+      const current = await this.dao.lockExtraContext(client, storyId) || { draft_content: null, published_content: null, revision: 0 };
+      if (current.revision !== expectedRevision) { const error = new Error('extra context was updated; reload before saving'); error.status = 409; throw error; }
+      const result = await mutate(client, current, story);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   }
 
   // ── Mutations ──────────────────────────────────────────────────────────────
