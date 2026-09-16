@@ -34,6 +34,19 @@ const TITLE_MAX_CHARS = 70;
 const SUMMARY_MIN_CHARS = 120;
 const SUMMARY_MAX_CHARS = 280;
 
+const DANGLING_END_TOKENS = new Set([
+  'a', 'an', 'the',
+  'and', 'or', 'but',
+  'of', 'to', 'in', 'on', 'at', 'for', 'from', 'with', 'by', 'as',
+  'into', 'onto', 'than', 'via', 'amid', 'after', 'before', 'over', 'under', 'without',
+]);
+
+// Single-word endings that often indicate a clipped/incomplete phrase even when
+// punctuation exists (e.g. "... raising risks of direct."). Keep conservative.
+const DANGLING_END_WEAK_WORDS = new Set([
+  'direct',
+]);
+
 const intEnv = (name, fallback) => {
   const raw = process.env[name];
   const parsed = Number.parseInt(raw, 10);
@@ -298,6 +311,13 @@ class StoryService {
         { field: 'title', meta: { max_chars: TITLE_MAX_CHARS, current_chars: title.length } }
       ));
     }
+    if (title && this._hasDanglingEnding(title)) {
+      blockers.push(this._buildBlocker(
+        'title_incomplete_phrase',
+        'title appears clipped/incomplete; ending word is dangling',
+        { field: 'title', meta: { ending: this._endingToken(title) } }
+      ));
+    }
 
     const summary = String(currentStory.summary || '').trim();
     if (!summary) {
@@ -325,6 +345,13 @@ class StoryService {
           'summary_incomplete_sentence',
           'summary should end as a complete sentence',
           { field: 'summary' }
+        ));
+      }
+      if (this._hasDanglingEnding(summary)) {
+        blockers.push(this._buildBlocker(
+          'summary_incomplete_phrase',
+          'summary appears clipped/incomplete at the ending phrase',
+          { field: 'summary', meta: { ending: this._endingToken(summary) } }
         ));
       }
     }
@@ -580,6 +607,35 @@ class StoryService {
     const value = String(text || '').trim();
     if (!value) return false;
     return /[.!?]["')\]]?$/.test(value);
+  }
+
+  _endingToken(text) {
+    const value = String(text || '').trim();
+    if (!value) return '';
+    const stripped = value
+      .replace(/["')\]]+$/g, '')
+      .replace(/[.!?]+$/g, '')
+      .trim();
+    if (!stripped) return '';
+    const words = stripped.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return '';
+    return String(words[words.length - 1] || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '');
+  }
+
+  _hasDanglingEnding(text) {
+    const value = String(text || '').trim();
+    if (!value) return false;
+
+    const plainEnd = value.replace(/["')\]]+$/g, '').trim();
+    if (/[:,;\-—–]$/.test(plainEnd)) return true;
+
+    const ending = this._endingToken(value);
+    if (!ending) return false;
+    if (DANGLING_END_TOKENS.has(ending)) return true;
+    if (DANGLING_END_WEAK_WORDS.has(ending)) return true;
+    return false;
   }
 
   _titleTokenSet(title) {
