@@ -1,8 +1,20 @@
 #!/usr/bin/env python3
 import html
+import json
 import os
 import re
-from common import BASE, get_tokens, api_req, load_state, save_state, utc_now
+from common import (
+    BASE,
+    OR_BASE,
+    OR_CLIENT_TITLE,
+    OR_HTTP_REFERER,
+    QG_MODEL,
+    get_tokens,
+    api_req,
+    load_state,
+    save_state,
+    utc_now,
+)
 
 
 def _plain_text(value):
@@ -172,14 +184,160 @@ def _codes(details):
     return [str(d.get("code") or "").strip() for d in details if str(d.get("code") or "").strip()]
 
 
+def _extract_or_cost(payload):
+    if not isinstance(payload, dict):
+        return 0.0
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return 0.0
+    try:
+        return float(usage.get("cost", 0.0) or 0.0)
+    except Exception:
+        return 0.0
+
+
+def _llm_correct(or_key, story, sources, blocker_details):
+    source_rows = []
+    for s in sources[:8]:
+        source_rows.append({
+            "id": s.get("id"),
+            "source": s.get("source_name"),
+            "title": _plain_text(s.get("title")),
+            "url": str(s.get("url") or "").strip(),
+        })
+
+    prompt = {
+        "instruction": "Return JSON only.",
+        "task": "Fix TSquirrel editorial blockers for this story draft.",
+        "rules": [
+            "Prefer minimal edits that clear blockers.",
+            "Do not invent facts not present in source titles/context.",
+            "Title target: 45-70 chars, clear and complete.",
+            "Summary target: 120-280 chars, factual, not just title restatement.",
+            "If duplicate source URLs exist, include remove_source_ids for duplicates to drop.",
+            "If sources are irreconcilably mismatched, set hide_as_duplicate=true only for duplicate-topic blockers.",
+        ],
+        "blockers": blocker_details,
+        "story": {
+            "title": story.get("title"),
+            "summary": story.get("summary"),
+            "squirrel_take": story.get("squirrel_take"),
+            "why_it_matters": story.get("why_it_matters"),
+            "category": story.get("category"),
+        },
+        "sources": source_rows,
+        "output_schema": {
+            "patch": {
+                "title": "optional string",
+                "summary": "optional string",
+                "squirrel_take": "optional string",
+                "why_it_matters": "optional string",
+                "category": "optional string",
+            },
+            "remove_source_ids": [0],
+            "hide_as_duplicate": False,
+            "notes": "optional short string",
+        },
+    }
+
+    body = {
+        "model": QG_MODEL,
+        "messages": [{"role": "user", "content": json.dumps(prompt, ensure_ascii=False)}],
+        "max_tokens": 500,
+        "response_format": {"type": "json_object"},
+    }
+    resp = api_req(
+        "POST",
+        f"{OR_BASE}/chat/completions",
+        token=or_key,
+        data=body,
+        headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
+        timeout=90,
+    )
+    if not (isinstance(resp, tuple) and len(resp) == 2):
+        return {
+            "ok": False,
+            "error": "openrouter_bad_response_shape",
+            "raw": str(resp)[:500],
+            "or_cost": 0.0,
+            "patch": {},
+            "remove_source_ids": [],
+            "hide_as_duplicate": False,
+        }
+
+    status, payload = resp
+    cost = _extract_or_cost(payload)
+    if status != 200:
+        return {
+            "ok": False,
+            "error": f"openrouter_error_http_{status}",
+            "raw": payload,
+            "or_cost": cost,
+            "patch": {},
+            "remove_source_ids": [],
+            "hide_as_duplicate": False,
+        }
+
+    choices = payload.get("choices") if isinstance(payload, dict) else []
+    first = choices[0] if isinstance(choices, list) and choices else {}
+    msg = first.get("message", {}) if isinstance(first, dict) else {}
+    content = msg.get("content") if isinstance(msg, dict) else ""
+    if isinstance(content, list):
+        content = "".join(str(block.get("text", "")) if isinstance(block, dict) else str(block) for block in content)
+    if content is None:
+        content = ""
+
+    try:
+        parsed = json.loads(content)
+    except Exception:
+        return {
+            "ok": False,
+            "error": "openrouter_non_json_response",
+            "raw": str(content)[:500],
+            "or_cost": cost,
+            "patch": {},
+            "remove_source_ids": [],
+            "hide_as_duplicate": False,
+        }
+
+    patch = parsed.get("patch") if isinstance(parsed.get("patch"), dict) else {}
+    cleaned_patch = {}
+    for k in ("title", "summary", "squirrel_take", "why_it_matters", "category"):
+        v = patch.get(k)
+        if isinstance(v, str):
+            vv = _plain_text(v)
+            if vv:
+                cleaned_patch[k] = vv
+
+    remove_ids = []
+    for x in (parsed.get("remove_source_ids") or []):
+        try:
+            remove_ids.append(int(x))
+        except Exception:
+            pass
+
+    return {
+        "ok": True,
+        "error": None,
+        "raw": parsed,
+        "or_cost": cost,
+        "patch": cleaned_patch,
+        "remove_source_ids": sorted(set(remove_ids)),
+        "hide_as_duplicate": bool(parsed.get("hide_as_duplicate", False)),
+        "notes": str(parsed.get("notes") or "").strip(),
+    }
+
+
 def run(dry_run=False):
-    tsq, _ = get_tokens()
+    tsq, or_key = get_tokens()
     state = load_state()
     qg_results = (state.get("quality_gate_step") or {}).get("results", [])
     park_duplicates = _env_bool("TSQ_QG_PARK_DUPLICATES", True)
+    llm_correct = _env_bool("TSQ_QG_LLM_CORRECT", True)
 
     processed = []
     next_gate = []
+    openrouter_usage_cost_sum = 0.0
 
     for row in qg_results:
         sid = row.get("story_id")
@@ -199,14 +357,21 @@ def run(dry_run=False):
             continue
 
         story = story_payload.get("story", {}) if isinstance(story_payload, dict) else {}
+        sources = story_payload.get("sources", []) if isinstance(story_payload, dict) else []
         if not isinstance(story, dict):
             story = {}
+        if not isinstance(sources, list):
+            sources = []
+
         before = _fetch_audit(tsq, sid)
         blockers = before.get("blocker_details", [])
         codes = set(_codes(blockers))
 
         patch_payload = {}
         actions = []
+        changed = False
+        patch_result = None
+        llm_used = False
 
         duplicate_codes = {"duplicate_published_story", "recent_duplicate_topic"}
         if codes.intersection(duplicate_codes):
@@ -288,21 +453,50 @@ def run(dry_run=False):
                 patch_payload["summary"] = new_summary
                 actions.append({"type": "rewrite_summary", "chars": len(new_summary)})
 
-        changed = bool(patch_payload)
-        patch_result = None
-        if changed and not dry_run:
-            p_status, p_payload = api_req("PATCH", f"{BASE}/api/v1/stories/{sid}", token=tsq, data=patch_payload)
-            patch_result = {"status": p_status}
-            if p_status != 200:
-                patch_result["error"] = p_payload
+        if "why_it_matters_boilerplate" in codes:
+            base = _first_sentence(story.get("summary"))
+            if len(_words(base)) >= 10:
+                new_why = _trim_to_chars(_ensure_terminal_sentence(base), 220)
+                if new_why and new_why != str(story.get("why_it_matters") or "").strip():
+                    patch_payload["why_it_matters"] = new_why
+                    actions.append({"type": "rewrite_why_it_matters", "chars": len(new_why)})
+
+        if "duplicate_source_urls" in codes and sources:
+            seen = {}
+            remove_ids = []
+            for src in sources:
+                aid = src.get("id")
+                url = str(src.get("url") or "").strip().lower().replace("&amp;", "&")
+                if not aid or not url:
+                    continue
+                if url in seen:
+                    remove_ids.append(int(aid))
+                else:
+                    seen[url] = int(aid)
+            remove_ids = sorted(set(remove_ids))
+            if remove_ids:
+                changed = True
+                remove_status = []
+                if not dry_run:
+                    for aid in remove_ids:
+                        d_status, _ = api_req("DELETE", f"{BASE}/api/v1/stories/{sid}/sources/{aid}", token=tsq)
+                        remove_status.append({"article_id": aid, "status": d_status})
+                actions.append({
+                    "type": "dedupe_sources",
+                    "removed_article_ids": remove_ids,
+                    "statuses": remove_status,
+                    "dry_run": bool(dry_run),
+                })
+
+        if patch_payload:
+            changed = True
+            if not dry_run:
+                p_status, p_payload = api_req("PATCH", f"{BASE}/api/v1/stories/{sid}", token=tsq, data=patch_payload)
+                patch_result = {"status": p_status}
+                if p_status != 200:
+                    patch_result["error"] = p_payload
 
         after = _fetch_audit(tsq, sid) if (not dry_run) else before
-        after_issues = []
-        for d in after.get("blocker_details", []):
-            msg = str(d.get("message") or d.get("code") or "").strip()
-            if msg:
-                after_issues.append(msg)
-        after_issues = list(dict.fromkeys(after_issues))
 
         unresolved = [
             d for d in after.get("blocker_details", [])
@@ -313,8 +507,68 @@ def run(dry_run=False):
                 "summary_too_short_chars",
                 "summary_too_long_chars",
                 "summary_incomplete_sentence",
+                "summary_duplicates_title",
+                "duplicate_source_urls",
+                "why_it_matters_boilerplate",
             }
         ]
+
+        if unresolved and llm_correct and not dry_run:
+            llm_used = True
+            refresh_status, refresh_payload = api_req("GET", f"{BASE}/api/v1/stories/{sid}", token=tsq)
+            live_story = (refresh_payload.get("story") or {}) if refresh_status == 200 and isinstance(refresh_payload, dict) else story
+            live_sources = (refresh_payload.get("sources") or []) if refresh_status == 200 and isinstance(refresh_payload, dict) else sources
+
+            llm_fix = _llm_correct(or_key, live_story, live_sources, unresolved)
+            openrouter_usage_cost_sum += float(llm_fix.get("or_cost", 0.0) or 0.0)
+
+            llm_actions = {
+                "type": "llm_correction",
+                "ok": bool(llm_fix.get("ok")),
+                "error": llm_fix.get("error"),
+                "notes": llm_fix.get("notes")
+            }
+
+            live_ids = {int(s.get("id")) for s in live_sources if s.get("id") is not None}
+            remove_ids = [aid for aid in (llm_fix.get("remove_source_ids") or []) if aid in live_ids]
+            if remove_ids:
+                changed = True
+                statuses = []
+                for aid in remove_ids:
+                    d_status, _ = api_req("DELETE", f"{BASE}/api/v1/stories/{sid}/sources/{aid}", token=tsq)
+                    statuses.append({"article_id": aid, "status": d_status})
+                llm_actions["removed_article_ids"] = remove_ids
+                llm_actions["remove_statuses"] = statuses
+
+            llm_patch = llm_fix.get("patch") or {}
+            if llm_patch:
+                changed = True
+                p_status, p_payload = api_req("PATCH", f"{BASE}/api/v1/stories/{sid}", token=tsq, data=llm_patch)
+                llm_actions["patch_status"] = p_status
+                llm_actions["patch_keys"] = sorted(llm_patch.keys())
+                if p_status != 200:
+                    llm_actions["patch_error"] = p_payload
+
+            if llm_fix.get("hide_as_duplicate"):
+                changed = True
+                h_status, h_payload = api_req("POST", f"{BASE}/api/v1/stories/{sid}/hide", token=tsq, data={})
+                llm_actions["hide_status"] = h_status
+                if h_status not in (200, 201):
+                    llm_actions["hide_error"] = h_payload
+
+            actions.append(llm_actions)
+            after = _fetch_audit(tsq, sid)
+            unresolved = [
+                d for d in after.get("blocker_details", [])
+                if isinstance(d, dict)
+            ]
+
+        after_issues = []
+        for d in after.get("blocker_details", []):
+            msg = str(d.get("message") or d.get("code") or "").strip()
+            if msg:
+                after_issues.append(msg)
+        after_issues = list(dict.fromkeys(after_issues))
 
         if unresolved:
             actions.append({
@@ -322,14 +576,20 @@ def run(dry_run=False):
                 "blocker_codes": _codes(unresolved),
             })
 
+        final_title = patch_payload.get("title") or story.get("title", "")
+        if not dry_run:
+            f_status, f_payload = api_req("GET", f"{BASE}/api/v1/stories/{sid}", token=tsq)
+            if f_status == 200 and isinstance(f_payload, dict):
+                final_title = (f_payload.get("story") or {}).get("title") or final_title
+
         next_gate.append({
             "story_id": sid,
-            "title": patch_payload.get("title") or story.get("title", ""),
+            "title": final_title,
             "pass": bool(after.get("pass", False)),
             "issues": after_issues,
             "gate_source": "editorial_audit_unblock",
             "llm_shadow_enabled": False,
-            "llm_pass": None,
+            "llm_pass": None if not llm_used else bool(after.get("pass", False)),
         })
 
         processed.append({
@@ -345,7 +605,10 @@ def run(dry_run=False):
     passed = sum(1 for r in next_gate if r.get("pass"))
     state["quality_gate_unblock_step"] = {
         "started_at": utc_now(),
+        "model": QG_MODEL,
         "dry_run": bool(dry_run),
+        "llm_correction_enabled": bool(llm_correct),
+        "openrouter_usage_cost_sum": round(openrouter_usage_cost_sum, 9),
         "processed": processed,
         "count": len(processed),
         "passed_after_unblock": passed,
@@ -354,7 +617,7 @@ def run(dry_run=False):
     }
     save_state(state)
     print(
-        f"unblock_step done | processed={len(processed)} changed={sum(1 for p in processed if p.get('changed'))} pass={passed} fail={len(next_gate)-passed} dry_run={str(bool(dry_run)).lower()}"
+        f"unblock_step done | processed={len(processed)} changed={sum(1 for p in processed if p.get('changed'))} pass={passed} fail={len(next_gate)-passed} dry_run={str(bool(dry_run)).lower()} llm_correct={str(bool(llm_correct)).lower()} model={QG_MODEL}"
     )
 
 
