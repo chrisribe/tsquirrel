@@ -37,14 +37,8 @@ const SUMMARY_MAX_CHARS = 280;
 const DANGLING_END_TOKENS = new Set([
   'a', 'an', 'the',
   'and', 'or', 'but',
-  'of', 'to', 'in', 'on', 'at', 'for', 'from', 'with', 'by', 'as',
-  'into', 'onto', 'than', 'via', 'amid', 'after', 'before', 'over', 'under', 'without',
-]);
-
-// Single-word endings that often indicate a clipped/incomplete phrase even when
-// punctuation exists (e.g. "... raising risks of direct."). Keep conservative.
-const DANGLING_END_WEAK_WORDS = new Set([
-  'direct',
+  'of', 'to', 'at', 'for', 'from', 'with', 'by', 'as',
+  'into', 'onto', 'than', 'via', 'amid', 'after', 'before', 'without',
 ]);
 
 const intEnv = (name, fallback) => {
@@ -634,7 +628,6 @@ class StoryService {
     const ending = this._endingToken(value);
     if (!ending) return false;
     if (DANGLING_END_TOKENS.has(ending)) return true;
-    if (DANGLING_END_WEAK_WORDS.has(ending)) return true;
     return false;
   }
 
