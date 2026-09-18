@@ -2,6 +2,7 @@
 import argparse
 import html
 import json
+import os
 import re
 
 from common import (
@@ -296,10 +297,107 @@ def _llm_editor(or_key, story, sources):
         return {"__or_cost": cost}
 
 
+def _llm_review_tags(or_key, story, sources, tags):
+    source_lines = []
+    for i, s in enumerate(sources[:6], 1):
+        source_lines.append(
+            {
+                "i": i,
+                "source": s.get("source_name"),
+                "title": s.get("title"),
+                "url": s.get("url"),
+                "description": s.get("description"),
+            }
+        )
+
+    payload = {
+        "model": QG_MODEL,
+        "temperature": 0.0,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You validate TSquirrel tags against sources. Return STRICT JSON only with keys: "
+                    "tags (array), changed (boolean), reason (<=14 words). "
+                    "Rules: keep only tags directly supported by source titles/descriptions/URLs; "
+                    "replace weak tags with better supported topical tags; output 3-5 lowercase tags; "
+                    "no generic tags like news, update, article, ai, tech, world."
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "story": {
+                            "id": story.get("id"),
+                            "title": story.get("title"),
+                            "summary": story.get("summary"),
+                            "category": story.get("category"),
+                        },
+                        "proposed_tags": tags,
+                        "sources": source_lines,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+    }
+
+    response = api_req(
+        "POST",
+        f"{OR_BASE}/chat/completions",
+        token=or_key,
+        data=payload,
+        headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
+        timeout=60,
+    )
+    if not isinstance(response, tuple) or len(response) != 2:
+        return {"tags": tags, "changed": False, "reason": "invalid_response", "__or_cost": 0.0}
+
+    status, out = response
+    cost = _extract_or_cost(out)
+    if status != 200 or not isinstance(out, dict):
+        return {"tags": tags, "changed": False, "reason": f"http_{status}", "__or_cost": cost}
+
+    choices = out.get("choices")
+    first = choices[0] if isinstance(choices, list) and len(choices) > 0 else {}
+    message = first.get("message") if isinstance(first, dict) else {}
+    content = message.get("content", "{}") if isinstance(message, dict) else "{}"
+    if isinstance(content, list):
+        content = "".join(str(block.get("text", "")) if isinstance(block, dict) else str(block) for block in content)
+    if not isinstance(content, str):
+        content = str(content)
+
+    start, end = content.find("{"), content.rfind("}")
+    if start < 0 or end < 0:
+        return {"tags": tags, "changed": False, "reason": "parse_missing_json", "__or_cost": cost}
+    try:
+        parsed = json.loads(content[start : end + 1])
+        if not isinstance(parsed, dict):
+            return {"tags": tags, "changed": False, "reason": "parse_not_object", "__or_cost": cost}
+        reviewed = _clean_tags(parsed.get("tags"), story.get("title"))
+        if len(reviewed) < 3:
+            reviewed = tags
+        changed = reviewed != tags
+        return {
+            "tags": reviewed,
+            "changed": bool(parsed.get("changed")) or changed,
+            "reason": str(parsed.get("reason") or "")[:120],
+            "__or_cost": cost,
+        }
+    except Exception:
+        return {"tags": tags, "changed": False, "reason": "parse_error", "__or_cost": cost}
+
+
 def run(limit=50, dry_run=False):
     tsq, or_key = get_tokens()
     state = load_state()
     candidates = (state.get("candidates_step") or {}).get("candidates", [])[: int(limit)]
+
+    tag_review_enabled = str(os.environ.get("TSQ_TAG_LLM_REVIEW", "1")).strip().lower() not in {"0", "false", "no"}
+    tag_review_count = 0
+    tag_review_changed_count = 0
 
     edited = []
     skipped = []
@@ -359,6 +457,24 @@ def run(limit=50, dry_run=False):
         why = _plain_text(gen.get("why_it_matters"))
         category = _normalize_category(gen.get("category") or story.get("category") or "Other")
         tags = _clean_tags(gen.get("tags"), title)
+        if tag_review_enabled and tags and sources:
+            review_story = {
+                "id": sid,
+                "title": title,
+                "summary": summary,
+                "category": category,
+            }
+            reviewed = _llm_review_tags(or_key, review_story, sources, tags)
+            if isinstance(reviewed, dict):
+                openrouter_usage_cost_sum += float(reviewed.get("__or_cost", 0.0) or 0.0)
+                tag_review_count += 1
+                next_tags = reviewed.get("tags")
+                if isinstance(next_tags, list) and len(next_tags) >= 3:
+                    next_clean = _clean_tags(next_tags, title)
+                    if len(next_clean) >= 3:
+                        if next_clean != tags:
+                            tag_review_changed_count += 1
+                        tags = next_clean
 
         patch_payload = {
             "title": title,
@@ -388,6 +504,9 @@ def run(limit=50, dry_run=False):
         "started_at": utc_now(),
         "model": QG_MODEL,
         "dry_run": bool(dry_run),
+        "tag_review_enabled": bool(tag_review_enabled),
+        "tag_review_count": int(tag_review_count),
+        "tag_review_changed_count": int(tag_review_changed_count),
         "edited": edited,
         "skipped": skipped,
         "edited_count": sum(1 for e in edited if e.get("ok") or e.get("dry_run")),
@@ -395,7 +514,8 @@ def run(limit=50, dry_run=False):
     }
     save_state(state)
     print(
-        f"editorial_step done | edited={len(edited)} skipped={len(skipped)} dry_run={str(bool(dry_run)).lower()} model={QG_MODEL}"
+        f"editorial_step done | edited={len(edited)} skipped={len(skipped)} tag_reviewed={tag_review_count} "
+        f"tag_changed={tag_review_changed_count} dry_run={str(bool(dry_run)).lower()} model={QG_MODEL}"
     )
 
 
