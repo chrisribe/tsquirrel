@@ -68,6 +68,12 @@ const CATEGORY_ALIASES = {
   technology: 'Technology',
 };
 
+const GENERIC_TAGS = new Set([
+  'news', 'update', 'updates', 'breaking', 'story', 'article', 'report',
+  'world', 'global', 'general', 'latest', 'top', 'trending',
+  'ai', 'tech', 'technology'
+]);
+
 // Core story domain service. Owns all NewsDAO access for stories and returns
 // raw domain data (stories, articles, suggestions, booleans). Presentation
 // shaping — admin page-view models vs JSON payloads — lives in the wrapping
@@ -386,6 +392,35 @@ class StoryService {
       }
     }
 
+    const tagReview = this._reviewTagsAgainstEvidence(currentStory, articles);
+    if (tagReview.tags.length > 0 && tagReview.genericCount >= Math.ceil(tagReview.tags.length * 0.6)) {
+      blockers.push(this._buildBlocker(
+        'tags_too_generic',
+        'tags are too generic after editorial pass',
+        {
+          field: 'tags',
+          meta: {
+            generic_tags: tagReview.genericTags,
+            tags: tagReview.tags,
+          },
+        }
+      ));
+    }
+    if (tagReview.tags.length > 0 && tagReview.specificSupportedCount < 2) {
+      blockers.push(this._buildBlocker(
+        'tags_not_source_supported',
+        'tags are not sufficiently supported by attached source evidence',
+        {
+          field: 'tags',
+          meta: {
+            unsupported_tags: tagReview.unsupportedTags,
+            tags: tagReview.tags,
+            specific_supported_count: tagReview.specificSupportedCount,
+          },
+        }
+      ));
+    }
+
     // Sentiment is intentionally non-blocking for now; keep optional until
     // we wire it into ranking/UI with reliable extraction quality.
     const duplicateSources = this._findDuplicateSourceUrls(articles);
@@ -638,6 +673,98 @@ class StoryService {
       .split(/\s+/)
       .filter((t) => t.length >= 3 && !TITLE_STOPWORDS.has(t) && !/^\d+$/.test(t));
     return new Set(tokens);
+  }
+
+  _tagTokenSet(tag) {
+    const tokens = String(tag || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .split(/\s+/)
+      .filter((t) => t.length >= 2 && !/^\d+$/.test(t));
+    return new Set(tokens);
+  }
+
+  _evidenceTokenSet(story, articles = []) {
+    const parts = [
+      String(story?.title || ''),
+      String(story?.summary || ''),
+      String(story?.squirrel_take || ''),
+      String(story?.why_it_matters || ''),
+    ];
+
+    for (const a of articles || []) {
+      parts.push(String(a?.title || ''));
+      parts.push(String(a?.description || ''));
+      const url = String(a?.url || '').toLowerCase();
+      if (url) {
+        const cleanUrl = url
+          .replace(/^https?:\/\//, ' ')
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim();
+        parts.push(cleanUrl);
+      }
+    }
+
+    const all = parts.join(' ').toLowerCase();
+    return new Set(
+      all
+        .replace(/[^a-z0-9\s-]/g, ' ')
+        .split(/\s+/)
+        .filter((t) => t.length >= 2 && !TITLE_STOPWORDS.has(t) && !/^\d+$/.test(t))
+    );
+  }
+
+  _reviewTagsAgainstEvidence(story, articles = []) {
+    const tags = Array.isArray(story?.tags)
+      ? story.tags.map((t) => String(t || '').trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    if (tags.length === 0) {
+      return {
+        tags: [],
+        genericCount: 0,
+        genericTags: [],
+        unsupportedTags: [],
+        specificSupportedCount: 0,
+      };
+    }
+
+    const evidence = this._evidenceTokenSet(story, articles);
+    let genericCount = 0;
+    let specificSupportedCount = 0;
+    const genericTags = [];
+    const unsupportedTags = [];
+
+    for (const tag of tags) {
+      const normalized = tag.trim().toLowerCase();
+      const tokenSet = this._tagTokenSet(normalized);
+      const tokens = [...tokenSet].filter((t) => !TITLE_STOPWORDS.has(t));
+      const isGeneric = GENERIC_TAGS.has(normalized) || tokens.every((t) => GENERIC_TAGS.has(t));
+
+      if (isGeneric) {
+        genericCount += 1;
+        genericTags.push(normalized);
+        continue;
+      }
+
+      if (tokens.length === 0) {
+        unsupportedTags.push(normalized);
+        continue;
+      }
+
+      const hitCount = tokens.filter((t) => evidence.has(t)).length;
+      const supported = (hitCount / tokens.length) >= 0.6;
+      if (supported) specificSupportedCount += 1;
+      else unsupportedTags.push(normalized);
+    }
+
+    return {
+      tags,
+      genericCount,
+      genericTags,
+      unsupportedTags,
+      specificSupportedCount,
+    };
   }
 
   _isClusterCoherent(articles) {
