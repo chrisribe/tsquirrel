@@ -30,7 +30,7 @@
   <div class="category-scroll">
     <a href="/" class="category-pill <%= !activeCategory ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="all" data-ga-location="top_bar">🌰 All</a>
     <% categories.forEach(c => { %>
-      <a href="/?category=<%= c.category %>"
+      <a href="/?category=<%= encodeURIComponent(c.category) %>"
          class="category-pill <%= activeCategory === c.category ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="<%= c.category %>" data-ga-location="top_bar">
         <%= catLabel(c.category) %>
       </a>
