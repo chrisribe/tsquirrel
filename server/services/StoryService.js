@@ -53,7 +53,8 @@ const DUPLICATE_TOPIC_WINDOW_HOURS = intEnv('TSQ_DUPLICATE_TOPIC_WINDOW_HOURS', 
 const CATEGORY_KEYWORDS = {
   Politics: ['election', 'parliament', 'senate', 'congress', 'minister', 'president', 'white house', 'government', 'policy'],
   Business: ['market', 'earnings', 'ipo', 'merger', 'acquisition', 'stocks', 'investor', 'revenue', 'company'],
-  Technology: ['ai', 'software', 'chip', 'semiconductor', 'cyber', 'openai', 'google', 'microsoft', 'apple', 'iphone', 'android'],
+  AI: ['ai', 'artificial intelligence', 'machine learning', 'llm', 'chatgpt', 'openai', 'anthropic', 'gemini', 'copilot', 'model'],
+  Technology: ['software', 'chip', 'semiconductor', 'cyber', 'google', 'microsoft', 'apple', 'iphone', 'android'],
   Science: ['study', 'research', 'nasa', 'space', 'physics', 'biology', 'scientist', 'laboratory'],
   Health: ['hospital', 'cdc', 'who', 'disease', 'vaccine', 'virus', 'health', 'medical'],
   Sports: ['premier league', 'nba', 'nfl', 'mlb', 'fifa', 'match', 'goal', 'transfer', 'coach'],
@@ -64,6 +65,10 @@ const CATEGORY_KEYWORDS = {
 };
 
 const CATEGORY_ALIASES = {
+  ai: 'AI',
+  'artificial intelligence': 'AI',
+  'machine learning': 'AI',
+  llm: 'AI',
   tech: 'Technology',
   technology: 'Technology',
 };

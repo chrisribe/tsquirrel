@@ -25,6 +25,7 @@
   <div id="mobile-menu" class="mobile-menu" aria-label="Mobile menu">
     <div class="mobile-menu-inner">
       <a href="/" class="mobile-link <%= currentPath === '/' && !currentCategory ? 'active' : '' %>">🔥 Trending</a>
+      <a href="/?category=AI" class="mobile-link <%= currentPath === '/' && currentCategory === 'AI' ? 'active' : '' %>">🤖 AI</a>
       <a href="/?category=Technology" class="mobile-link <%= currentPath === '/' && currentCategory === 'Technology' ? 'active' : '' %>">💻 Tech</a>
       <a href="/archive" class="mobile-link <%= currentPath === '/archive' ? 'active' : '' %>">📰 Archive</a>
       <a href="/about" class="mobile-link <%= currentPath === '/about' ? 'active' : '' %>">ℹ️ About</a>

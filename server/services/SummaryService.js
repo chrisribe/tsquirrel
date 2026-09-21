@@ -12,13 +12,23 @@ const TITLE_STOPWORDS = new Set([
 ]);
 
 const ALLOWED_CATEGORIES = new Set([
-  'Politics', 'Business', 'Tech', 'Science', 'Health', 'Sports', 'Entertainment', 'World', 'Environment', 'Crime', 'Other'
+  'AI', 'Politics', 'Business', 'Technology', 'Science', 'Health', 'Sports', 'Entertainment', 'World', 'Environment', 'Crime', 'Other'
 ]);
+
+const CATEGORY_ALIASES = {
+  tech: 'Technology',
+  technology: 'Technology',
+  ai: 'AI',
+  'artificial intelligence': 'AI',
+  'machine learning': 'AI',
+  llm: 'AI',
+};
 
 const CATEGORY_KEYWORDS = {
   Politics: ['election', 'parliament', 'senate', 'congress', 'minister', 'president', 'white house', 'government', 'policy'],
   Business: ['market', 'earnings', 'ipo', 'merger', 'acquisition', 'stocks', 'investor', 'revenue', 'company'],
-  Tech: ['ai', 'software', 'chip', 'semiconductor', 'cyber', 'openai', 'google', 'microsoft', 'apple'],
+  AI: ['ai', 'artificial intelligence', 'machine learning', 'llm', 'chatgpt', 'openai', 'anthropic', 'gemini', 'copilot', 'model'],
+  Technology: ['software', 'chip', 'semiconductor', 'cyber', 'google', 'microsoft', 'apple'],
   Science: ['study', 'research', 'nasa', 'space', 'physics', 'biology', 'climate model', 'scientist'],
   Health: ['hospital', 'cdc', 'who', 'disease', 'vaccine', 'virus', 'health', 'medical'],
   Sports: ['premier league', 'nba', 'nfl', 'mlb', 'fifa', 'match', 'goal', 'transfer', 'coach'],
@@ -147,8 +157,11 @@ function cleanTags(tags = [], fallbackTitle = '') {
 
 function normalizeCategory(rawCategory, titles = []) {
   const candidate = String(rawCategory || '').trim();
-  if (ALLOWED_CATEGORIES.has(candidate)) {
-    if (candidate !== 'Other') return candidate;
+  const candidateKey = candidate.toLowerCase();
+  const aliased = CATEGORY_ALIASES[candidateKey] || candidate;
+
+  if (ALLOWED_CATEGORIES.has(aliased)) {
+    if (aliased !== 'Other') return aliased;
   }
 
   const haystack = titles.join(' | ').toLowerCase();
@@ -162,7 +175,7 @@ function normalizeCategory(rawCategory, titles = []) {
   }
 
   if (best.score >= 1) return best.category;
-  return ALLOWED_CATEGORIES.has(candidate) ? candidate : 'Other';
+  return ALLOWED_CATEGORIES.has(aliased) ? aliased : 'Other';
 }
 
 // Group recent unsummarized articles into stories + generate AI summaries
@@ -199,7 +212,7 @@ async function processNewArticles(pool) {
         content: `You are a precise news desk editor.
 Group headlines into distinct stories about the same event/topic.
 Output JSON only:
-{ "stories": [ { "indices": [0,2,5], "title": "Story title", "category": "Politics|Business|Tech|Science|Health|Sports|Entertainment|World|Environment|Crime|Other" } ] }
+{ "stories": [ { "indices": [0,2,5], "title": "Story title", "category": "AI|Politics|Business|Technology|Science|Health|Sports|Entertainment|World|Environment|Crime|Other" } ] }
 Rules:
 - Only cluster headlines that describe the same event or direct development.
 - Singletons are valid and preferred over bad merges.

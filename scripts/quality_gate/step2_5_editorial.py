@@ -27,11 +27,15 @@ STOP = {
 }
 
 ALLOWED_CATEGORIES = {
-    "Politics", "Business", "Technology", "Science", "Health", "Sports",
+    "AI", "Politics", "Business", "Technology", "Science", "Health", "Sports",
     "Entertainment", "World", "Environment", "Crime", "Other",
 }
 
 CATEGORY_ALIASES = {
+    "ai": "AI",
+    "artificial intelligence": "AI",
+    "machine learning": "AI",
+    "llm": "AI",
     "tech": "Technology",
     "technology": "Technology",
     "international affairs": "World",
@@ -168,7 +172,7 @@ def _llm_category(or_key, story, sources):
                 "content": (
                     "Classify one TSquirrel story into exactly one category using source URLs and metadata. "
                     "Return STRICT JSON only: {\"category\":\"...\",\"confidence\":0..1,\"theme\":\"<=8 words\"}. "
-                    "Allowed categories only: Politics, Business, Technology, Science, Health, Sports, "
+                    "Allowed categories only: AI, Politics, Business, Technology, Science, Health, Sports, "
                     "Entertainment, World, Environment, Crime, Other. Use Other only when nothing fits."
                 ),
             },
