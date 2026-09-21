@@ -1,5 +1,5 @@
 <%
-  const { article } = pageData;
+  const { article, relatedStories = [] } = pageData;
 %>
 <article class="legacy-article">
   <header class="story-detail-header">
@@ -21,6 +21,19 @@
       <span class="source-title"><%= article.source_url.replace(/^https?:\/\/(?:www\.)?/, '').split('/')[0] %></span>
       <span class="source-arrow">↗ Read original article</span>
     </a>
+  </div>
+  <% } %>
+
+  <% if (relatedStories.length) { %>
+  <div class="source-list" style="margin-top:1rem;">
+    <h3>Related now on TSquirrel</h3>
+    <% relatedStories.forEach(function(story) { %>
+      <a href="/story/<%= story.slug %>" class="source-item" data-ga-event="legacy_reco_click" data-ga-story-slug="<%= article.slug %>" data-ga-target-story-id="<%= story.id %>">
+        <span class="source-name"><%= catLabel(story.category) %></span>
+        <span class="source-title"><%= story.title %></span>
+        <span class="source-arrow">Read story →</span>
+      </a>
+    <% }); %>
   </div>
   <% } %>
 

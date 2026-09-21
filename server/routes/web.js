@@ -21,6 +21,46 @@ function xmlEscape(value = '') {
     .replace(/'/g, '&apos;');
 }
 
+const LEGACY_STOP = new Set([
+  'the','and','for','with','from','that','this','into','over','under','about','after','before','using','amid','says','said','will','would','could','should'
+]);
+
+function legacySeedQuery(article) {
+  const text = `${article?.title || ''} ${article?.description || ''}`.toLowerCase();
+  const tokens = text
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 4 && !LEGACY_STOP.has(t));
+  return [...new Set(tokens)].slice(0, 3).join(' ');
+}
+
+function legacyCategoryHint(article) {
+  const text = `${article?.title || ''} ${article?.description || ''}`.toLowerCase();
+  const hints = [
+    ['AI', [' ai ', 'openai', 'anthropic', 'llm', 'chatgpt', 'machine learning']],
+    ['Sports', ['football', 'soccer', 'fifa', 'nba', 'nfl', 'champions league', 'chelsea', 'barcelona']],
+    ['Entertainment', ['music', 'album', 'celebrity', 'dj', 'movie', 'film', 'actor']],
+    ['Politics', ['president', 'election', 'parliament', 'government']],
+    ['Business', ['market', 'earnings', 'stock', 'ipo', 'acquisition']],
+    ['Technology', ['software', 'apple', 'microsoft', 'google', 'cyber', 'chip']],
+  ];
+  for (const [category, words] of hints) {
+    if (words.some((w) => text.includes(w))) return category;
+  }
+  return null;
+}
+
+function mergeStories(target, incoming, max = 3) {
+  const seen = new Set(target.map((s) => s.id));
+  for (const story of incoming || []) {
+    if (!story || seen.has(story.id)) continue;
+    target.push(story);
+    seen.add(story.id);
+    if (target.length >= max) break;
+  }
+  return target;
+}
+
 // ── Legacy dead paths cleanup (SEO leakage guard) ─────────────────────
 router.get(Array.from(LEGACY_REDIRECTS.keys()), (req, res) => {
   const target = LEGACY_REDIRECTS.get(req.path) || '/';
@@ -135,6 +175,7 @@ router.get('/sitemap.xml', async (req, res) => {
 // e.g. /drapeau-francais-le-retour-dun-symbole-apres-les-attentats-55
 router.get('/:slug([a-z0-9][a-z0-9-]+-\\d+)', async (req, res) => {
   const pool = req.app.get('pool');
+  const dao = new NewsDAO(pool);
   const slug = req.params.slug;
 
   const { rows } = await pool.query(
@@ -145,6 +186,24 @@ router.get('/:slug([a-z0-9][a-z0-9-]+-\\d+)', async (req, res) => {
   if (!rows[0]) return res.redirect(301, '/archive'); // legacy-like slug but missing entry
 
   const article = rows[0];
+  const relatedStories = [];
+  const seed = legacySeedQuery(article);
+  if (seed) {
+    const byQuery = await dao.getTopStories({ limit: 3, q: seed });
+    mergeStories(relatedStories, byQuery, 3);
+  }
+  if (relatedStories.length < 3) {
+    const hintedCategory = legacyCategoryHint(article);
+    if (hintedCategory) {
+      const byCategory = await dao.getTopStories({ limit: 3, category: hintedCategory });
+      mergeStories(relatedStories, byCategory, 3);
+    }
+  }
+  if (relatedStories.length < 3) {
+    const latest = await dao.getTopStories({ limit: 3 });
+    mergeStories(relatedStories, latest, 3);
+  }
+
   res.set('X-Robots-Tag', 'noindex, nofollow');
   res.render('layout-main', {
     template: 'legacy-article-page',
@@ -152,7 +211,7 @@ router.get('/:slug([a-z0-9][a-z0-9-]+-\\d+)', async (req, res) => {
     pageDescription: article.description,
     pageUrl: 'https://tsquirrel.com/archive',
     noIndex: true,
-    pageData: { article },
+    pageData: { article, relatedStories },
   });
 });
 
