@@ -679,6 +679,7 @@ class StoryService {
     const tokens = String(tag || '')
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, ' ')
+      .replace(/-/g, ' ')
       .split(/\s+/)
       .filter((t) => t.length >= 2 && !/^\d+$/.test(t));
     return new Set(tokens);
