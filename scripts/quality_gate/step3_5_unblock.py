@@ -246,85 +246,88 @@ def _llm_correct(or_key, story, sources, blocker_details):
         "max_tokens": 500,
         "response_format": {"type": "json_object"},
     }
-    resp = api_req(
-        "POST",
-        f"{OR_BASE}/chat/completions",
-        token=or_key,
-        data=body,
-        headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
-        timeout=90,
-    )
-    if not (isinstance(resp, tuple) and len(resp) == 2):
-        return {
-            "ok": False,
-            "error": "openrouter_bad_response_shape",
-            "raw": str(resp)[:500],
-            "or_cost": 0.0,
-            "patch": {},
-            "remove_source_ids": [],
-            "hide_as_duplicate": False,
-        }
 
-    status, payload = resp
-    cost = _extract_or_cost(payload)
-    if status != 200:
-        return {
-            "ok": False,
-            "error": f"openrouter_error_http_{status}",
-            "raw": payload,
-            "or_cost": cost,
-            "patch": {},
-            "remove_source_ids": [],
-            "hide_as_duplicate": False,
-        }
+    total_cost = 0.0
+    last_error = "openrouter_unknown_error"
+    last_raw = None
 
-    choices = payload.get("choices") if isinstance(payload, dict) else []
-    first = choices[0] if isinstance(choices, list) and choices else {}
-    msg = first.get("message", {}) if isinstance(first, dict) else {}
-    content = msg.get("content") if isinstance(msg, dict) else ""
-    if isinstance(content, list):
-        content = "".join(str(block.get("text", "")) if isinstance(block, dict) else str(block) for block in content)
-    if content is None:
-        content = ""
+    # Single retry: 1 initial call + 1 retry if response shape/JSON is bad or non-200.
+    for attempt in range(2):
+        resp = api_req(
+            "POST",
+            f"{OR_BASE}/chat/completions",
+            token=or_key,
+            data=body,
+            headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
+            timeout=90,
+        )
 
-    try:
-        parsed = json.loads(content)
-    except Exception:
-        return {
-            "ok": False,
-            "error": "openrouter_non_json_response",
-            "raw": str(content)[:500],
-            "or_cost": cost,
-            "patch": {},
-            "remove_source_ids": [],
-            "hide_as_duplicate": False,
-        }
+        if not (isinstance(resp, tuple) and len(resp) == 2):
+            last_error = "openrouter_bad_response_shape"
+            last_raw = str(resp)[:500]
+            continue
 
-    patch = parsed.get("patch") if isinstance(parsed.get("patch"), dict) else {}
-    cleaned_patch = {}
-    for k in ("title", "summary", "squirrel_take", "why_it_matters", "category"):
-        v = patch.get(k)
-        if isinstance(v, str):
-            vv = _plain_text(v)
-            if vv:
-                cleaned_patch[k] = vv
+        status, payload = resp
+        total_cost += _extract_or_cost(payload)
 
-    remove_ids = []
-    for x in (parsed.get("remove_source_ids") or []):
+        if status != 200:
+            last_error = f"openrouter_error_http_{status}"
+            last_raw = payload
+            continue
+
+        choices = payload.get("choices") if isinstance(payload, dict) else []
+        first = choices[0] if isinstance(choices, list) and choices else {}
+        msg = first.get("message", {}) if isinstance(first, dict) else {}
+        content = msg.get("content") if isinstance(msg, dict) else ""
+        if isinstance(content, list):
+            content = "".join(str(block.get("text", "")) if isinstance(block, dict) else str(block) for block in content)
+        if content is None:
+            content = ""
+
         try:
-            remove_ids.append(int(x))
+            parsed = json.loads(content)
         except Exception:
-            pass
+            last_error = "openrouter_non_json_response"
+            last_raw = str(content)[:500]
+            continue
+
+        patch = parsed.get("patch") if isinstance(parsed.get("patch"), dict) else {}
+        cleaned_patch = {}
+        for k in ("title", "summary", "squirrel_take", "why_it_matters", "category"):
+            v = patch.get(k)
+            if isinstance(v, str):
+                vv = _plain_text(v)
+                if vv:
+                    cleaned_patch[k] = vv
+
+        remove_ids = []
+        for x in (parsed.get("remove_source_ids") or []):
+            try:
+                remove_ids.append(int(x))
+            except Exception:
+                pass
+
+        return {
+            "ok": True,
+            "error": None,
+            "raw": parsed,
+            "or_cost": total_cost,
+            "patch": cleaned_patch,
+            "remove_source_ids": sorted(set(remove_ids)),
+            "hide_as_duplicate": bool(parsed.get("hide_as_duplicate", False)),
+            "notes": str(parsed.get("notes") or "").strip(),
+            "retry_used": attempt == 1,
+        }
 
     return {
-        "ok": True,
-        "error": None,
-        "raw": parsed,
-        "or_cost": cost,
-        "patch": cleaned_patch,
-        "remove_source_ids": sorted(set(remove_ids)),
-        "hide_as_duplicate": bool(parsed.get("hide_as_duplicate", False)),
-        "notes": str(parsed.get("notes") or "").strip(),
+        "ok": False,
+        "error": last_error,
+        "raw": last_raw,
+        "or_cost": total_cost,
+        "patch": {},
+        "remove_source_ids": [],
+        "hide_as_duplicate": False,
+        "retry_used": True,
     }
 
 
