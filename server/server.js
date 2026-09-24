@@ -151,6 +151,7 @@ async function startServer() {
   // Health check
   app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
   app.get('/robots.txt', (req, res) => res.sendFile(path.join(__dirname, 'static', 'robots.txt')));
+  app.get('/ads.txt', (req, res) => res.sendFile(path.join(__dirname, 'static', 'ads.txt')));
 
   // Routes
   app.use('/auth', require('./routes/auth'));
