@@ -284,6 +284,21 @@ main.container, footer.container { max-width: 980px; }
 }
 .story-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
 
+.ad-card {
+  background: #fcfcfd;
+  border-style: dashed;
+}
+.ad-card .card-inner {
+  gap: .35rem;
+}
+.ad-card-body {
+  min-height: 92px;
+}
+.ad-badge {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .story-link { text-decoration: none; color: inherit; display: block; height: 100%; }
 
 .story-meta {

@@ -142,6 +142,7 @@ async function startServer() {
     res.locals.googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID || '';
     res.locals.googleAdsenseClient = process.env.GOOGLE_ADSENSE_CLIENT || (process.env.NODE_ENV === 'production' ? 'ca-pub-2362186025233604' : '');
     res.locals.googleAdsenseHomeEnabled = envBool('GOOGLE_ADSENSE_HOME_ENABLED', true);
+    res.locals.googleAdsenseHomeFeedSlot = String(process.env.GOOGLE_ADSENSE_HOME_FEED_SLOT || '').trim();
     res.locals.nutsToday = 0;
     res.locals.currentPath = req.path;
     res.locals.currentCategory = typeof req.query?.category === 'string' ? req.query.category : null;

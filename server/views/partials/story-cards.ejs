@@ -1,5 +1,6 @@
 <%
   const { stories } = pageData;
+  const adEnabled = Boolean(showHomeAdCard && googleAdsenseClient && googleAdsenseHomeFeedSlot);
 
   function timeAgo(date) {
     const now = new Date();
@@ -33,6 +34,26 @@
   const seenImageKeys = new Set();
 %>
 <% stories.forEach((story, idx) => { %>
+<% if (adEnabled && idx === 8) { %>
+<article class="story-card ad-card" aria-label="Sponsored content">
+  <div class="card-inner">
+    <div class="card-body ad-card-body">
+      <div class="story-meta">
+        <span class="badge badge-sources ad-badge">Sponsored</span>
+      </div>
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="<%= googleAdsenseClient %>"
+           data-ad-slot="<%= googleAdsenseHomeFeedSlot %>"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+    </div>
+  </div>
+</article>
+<script>
+  (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+<% } %>
 <% const meta = catMeta(story.category); %>
 <% const recentHrs = (Date.now() - new Date(story.published_at || story.updated_at || story.created_at)) / 3600000; %>
 <% const isBlowingUp = story.heat_score >= 30 && recentHrs <= 3; %>

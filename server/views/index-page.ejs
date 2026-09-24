@@ -59,7 +59,12 @@
 <!-- Story feed -->
 <section class="story-feed <%= activeQuery ? 'story-feed-search' : '' %>"
          id="story-feed">
-  <%- include('partials/story-cards', { pageData: { stories: feedStories } }) %>
+  <%- include('partials/story-cards', {
+        pageData: { stories: feedStories },
+        showHomeAdCard: Boolean(googleAdsenseClient && googleAdsenseHomeEnabled && googleAdsenseHomeFeedSlot),
+        googleAdsenseClient,
+        googleAdsenseHomeFeedSlot
+      }) %>
 
   <!-- HTMX load-more trigger -->
   <% if (stories.length === 30) { %>
