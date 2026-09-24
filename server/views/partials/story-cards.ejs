@@ -60,8 +60,12 @@
 
     function rowCards() {
       const cards = [...document.querySelectorAll('.story-feed > .story-card')];
-      const top = adCard.getBoundingClientRect().top;
-      return cards.filter(c => Math.abs(c.getBoundingClientRect().top - top) < 2);
+      const idx = cards.indexOf(adCard);
+      if (idx === -1) return [];
+      if (!window.matchMedia('(min-width: 760px)').matches) return [adCard];
+      const pairIndex = (idx % 2 === 0) ? idx + 1 : idx - 1;
+      const pair = cards[pairIndex];
+      return pair ? [adCard, pair] : [adCard];
     }
 
     function apply() {
