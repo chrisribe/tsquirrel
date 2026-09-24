@@ -78,7 +78,13 @@
     runLater();
     setTimeout(apply, 180);
     setTimeout(apply, 700);
+    setTimeout(apply, 1500);
+    const intervalId = setInterval(apply, 500);
+    setTimeout(() => clearInterval(intervalId), 6000);
     window.addEventListener('load', apply, { once: true });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(apply).catch(() => {});
+    }
     window.addEventListener('resize', runLater, { passive: true });
 
     if ('ResizeObserver' in window) {
