@@ -54,48 +54,6 @@
 </article>
 <script>
   (adsbygoogle = window.adsbygoogle || []).push({});
-  (function syncSponsoredCardHeight(){
-    const adCard = document.querySelector('.story-feed > .story-card.ad-card');
-    if (!adCard) return;
-
-    function rowCards() {
-      const cards = [...document.querySelectorAll('.story-feed > .story-card')];
-      const idx = cards.indexOf(adCard);
-      if (idx === -1) return [];
-      if (!window.matchMedia('(min-width: 760px)').matches) return [adCard];
-      const pairIndex = (idx % 2 === 0) ? idx + 1 : idx - 1;
-      const pair = cards[pairIndex];
-      return pair ? [adCard, pair] : [adCard];
-    }
-
-    function apply() {
-      adCard.style.height = '';
-      if (window.matchMedia('(max-width: 759px)').matches) return;
-      const row = rowCards();
-      if (!row.length) return;
-      const maxH = Math.max(...row.map(c => c.getBoundingClientRect().height));
-      if (Number.isFinite(maxH) && maxH > 0) adCard.style.height = `${Math.round(maxH)}px`;
-    }
-
-    const runLater = () => requestAnimationFrame(apply);
-    apply();
-    runLater();
-    setTimeout(apply, 180);
-    setTimeout(apply, 700);
-    setTimeout(apply, 1500);
-    const intervalId = setInterval(apply, 500);
-    setTimeout(() => clearInterval(intervalId), 6000);
-    window.addEventListener('load', apply, { once: true });
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(apply).catch(() => {});
-    }
-    window.addEventListener('resize', runLater, { passive: true });
-
-    if ('ResizeObserver' in window) {
-      const ro = new ResizeObserver(runLater);
-      rowCards().forEach(c => ro.observe(c));
-    }
-  })();
 </script>
 <% } %>
 <% const meta = catMeta(story.category); %>
