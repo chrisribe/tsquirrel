@@ -125,6 +125,10 @@
   <script defer src="/static/js/analytics.js?v=<%= assetVersion %>"></script>
   <% } %>
 
+  <% if (googleAdsenseClient && googleAdsenseHomeEnabled && template === 'index-page') { %>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=<%= googleAdsenseClient %>" crossorigin="anonymous"></script>
+  <% } %>
+
   <link rel="stylesheet" href="/static/css/pico.min.css?v=<%= assetVersion %>">
   <link rel="stylesheet" href="/static/css/styles.css?v=<%= assetVersion %>">
   <script defer src="/static/js/htmx.min.js?v=<%= assetVersion %>"></script>

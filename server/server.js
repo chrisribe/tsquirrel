@@ -44,6 +44,12 @@ function resolveAssetVersion() {
   return Date.now().toString();
 }
 
+function envBool(name, fallback = false) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === null || String(raw).trim() === '') return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(String(raw).trim().toLowerCase());
+}
+
 const ASSET_VERSION = resolveAssetVersion();
 
 async function startServer() {
@@ -134,6 +140,8 @@ async function startServer() {
   app.use(async (req, res, next) => {
     res.locals.assetVersion = ASSET_VERSION;
     res.locals.googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID || '';
+    res.locals.googleAdsenseClient = process.env.GOOGLE_ADSENSE_CLIENT || (process.env.NODE_ENV === 'production' ? 'ca-pub-2362186025233604' : '');
+    res.locals.googleAdsenseHomeEnabled = envBool('GOOGLE_ADSENSE_HOME_ENABLED', true);
     res.locals.nutsToday = 0;
     res.locals.currentPath = req.path;
     res.locals.currentCategory = typeof req.query?.category === 'string' ? req.query.category : null;
