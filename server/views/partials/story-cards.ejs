@@ -58,19 +58,33 @@
     const adCard = document.querySelector('.story-feed > .story-card.ad-card');
     if (!adCard) return;
 
+    function rowCards() {
+      const cards = [...document.querySelectorAll('.story-feed > .story-card')];
+      const top = adCard.getBoundingClientRect().top;
+      return cards.filter(c => Math.abs(c.getBoundingClientRect().top - top) < 2);
+    }
+
     function apply() {
       adCard.style.height = '';
       if (window.matchMedia('(max-width: 759px)').matches) return;
-      const cards = [...document.querySelectorAll('.story-feed > .story-card')];
-      const top = adCard.getBoundingClientRect().top;
-      const row = cards.filter(c => Math.abs(c.getBoundingClientRect().top - top) < 2);
+      const row = rowCards();
       if (!row.length) return;
       const maxH = Math.max(...row.map(c => c.getBoundingClientRect().height));
       if (Number.isFinite(maxH) && maxH > 0) adCard.style.height = `${Math.round(maxH)}px`;
     }
 
+    const runLater = () => requestAnimationFrame(apply);
     apply();
-    window.addEventListener('resize', apply, { passive: true });
+    runLater();
+    setTimeout(apply, 180);
+    setTimeout(apply, 700);
+    window.addEventListener('load', apply, { once: true });
+    window.addEventListener('resize', runLater, { passive: true });
+
+    if ('ResizeObserver' in window) {
+      const ro = new ResizeObserver(runLater);
+      rowCards().forEach(c => ro.observe(c));
+    }
   })();
 </script>
 <% } %>
