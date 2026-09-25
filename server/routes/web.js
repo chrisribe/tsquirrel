@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const NewsDAO = require('../dao/NewsDAO');
+const StoryService = require('../services/StoryService');
 
 const LEGACY_REDIRECTS = new Map([
   ['/external', '/archive'],
@@ -296,14 +297,17 @@ router.get('/story/:slug', async (req, res) => {
     });
   }
 
-  const articles = await dao.getStoryArticles(story.id);
-  const related = await dao.getRelatedStories(story.id, { category: story.category, tags: story.tags || [] });
+  const [articles, related, extraContext] = await Promise.all([
+    dao.getStoryArticles(story.id),
+    dao.getRelatedStories(story.id, { category: story.category, tags: story.tags || [] }),
+    new StoryService(pool).getPublishedExtraContext(story.id),
+  ]);
   res.render('layout-main', {
     template: 'story-page',
     pageTitle: `${story.title} | TSquirrel`,
     pageDescription: story.summary || story.title,
     pageUrl: `https://tsquirrel.com/story/${story.slug}`,
-    pageData: { story, articles, related },
+    pageData: { story, articles, related, extraContext },
   });
 });
 

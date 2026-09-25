@@ -8,6 +8,7 @@ const storyAdminController = require('../controllers/StoryAdminController');
 const sourceAdminController = require('../controllers/SourceAdminController');
 const tokenController = require('../controllers/TokenController');
 const signalController = require('../controllers/SignalController');
+const { requireCsrf } = require('../middleware/csrfMiddleware');
 
 router.use(requireAuth, requireAdmin);
 
@@ -37,6 +38,7 @@ router.post('/stories/:id/unpublish', storyAdminController.unpublish);
 router.post('/stories/:id/hide', storyAdminController.hide);
 router.post('/stories/:id/feature', storyAdminController.feature);
 router.post('/stories/:id/delete', storyAdminController.delete);
+router.post('/stories/:id/extra-context', requireCsrf, storyAdminController.mutateExtraContext);
 
 // ── Radar signals ────────────────────────────────────────────────────────
 

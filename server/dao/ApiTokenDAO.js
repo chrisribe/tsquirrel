@@ -7,19 +7,19 @@ class ApiTokenDAO {
 
   async listApiTokens() {
     const { rows } = await this.pool.query(`
-      SELECT id, label, token_hash, created_at, revoked_at
+      SELECT id, label, purpose, token_hash, created_at, revoked_at, last_used_at
       FROM api_tokens
       ORDER BY created_at DESC
     `);
     return rows;
   }
 
-  async createApiToken({ label, tokenHash }) {
+  async createApiToken({ label, tokenHash, purpose }) {
     const { rows } = await this.pool.query(`
-      INSERT INTO api_tokens (label, token_hash)
-      VALUES ($1, $2)
-      RETURNING id, label, token_hash, created_at, revoked_at
-    `, [label, tokenHash]);
+      INSERT INTO api_tokens (label, token_hash, purpose)
+      VALUES ($1, $2, $3)
+      RETURNING id, label, purpose, token_hash, created_at, revoked_at
+    `, [label, tokenHash, purpose]);
     return rows[0] || null;
   }
 
@@ -28,14 +28,14 @@ class ApiTokenDAO {
       UPDATE api_tokens
       SET revoked_at = COALESCE(revoked_at, NOW())
       WHERE id = $1
-      RETURNING id, label, token_hash, created_at, revoked_at
+      RETURNING id, label, purpose, token_hash, created_at, revoked_at
     `, [id]);
     return rows[0] || null;
   }
 
   async getApiTokenByHash(tokenHash) {
     const { rows } = await this.pool.query(`
-      SELECT id, label, token_hash, created_at, revoked_at, last_used_at
+      SELECT id, label, purpose, token_hash, created_at, revoked_at, last_used_at
       FROM api_tokens
       WHERE token_hash = $1
       LIMIT 1

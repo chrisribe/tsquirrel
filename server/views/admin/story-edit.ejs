@@ -76,6 +76,7 @@
   <% if (isEdit) { %>
     <%- include('partials/_suggested-sources', { pageData: { story, suggestions: pageData.suggestions } }) %>
     <%- include('partials/_story-sources', { pageData: { story, attached: pageData.attached } }) %>
+    <%- include('partials/_extra-context', { pageData: { story, extraContext: pageData.extraContext, extraContextMessage: pageData.extraContextMessage, extraContextError: pageData.extraContextError } }) %>
     <%- include('partials/_story-actions', { pageData: { story, returnTo: pageData.returnTo } }) %>
   <% } %>
 </section>

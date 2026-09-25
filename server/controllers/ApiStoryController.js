@@ -58,9 +58,41 @@ const ApiStoryController = {
       if (id === null) return res.status(400).json({ error: 'invalid story id' });
 
       const result = await serviceFor(req).getStory(id);
-      if (!result) return res.status(404).json({ error: 'story not found' });
+      if (!result || (req.apiToken.purpose === 'research_draft' && result.story.status !== 'published')) return res.status(404).json({ error: 'story not found' });
       return res.json({ ok: true, story: result.story, sources: result.sources });
     } catch (error) { return next(error); }
+  },
+
+  async getExtraContext(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+      const context = await serviceFor(req).getExtraContext(id, { publishedStoryOnly: req.apiToken.purpose === 'research_draft' });
+      if (!context) return res.status(404).json({ error: 'story not found' });
+      return res.json({ ok: true, draft_content: context.draft_content, published_content: context.published_content, revision: context.revision, draft_updated_at: context.draft_updated_at, published_at: context.published_at });
+    } catch (error) { return next(error); }
+  },
+
+  async putExtraContext(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+      const allowed = new Set(['expected_revision', 'content']);
+      if (!req.body || Object.keys(req.body).some(key => !allowed.has(key))) {
+        return res.status(400).json({ error: 'Only expected_revision and content are allowed.' });
+      }
+      const result = await serviceFor(req).saveExtraContextDraft(
+        id,
+        req.body.expected_revision,
+        req.body.content,
+        req.apiToken.id,
+        { publishedStoryOnly: req.apiToken.purpose === 'research_draft' }
+      );
+      return res.json({ ok: true, ...result, admin_preview_url: `/admin/stories/${id}/edit` });
+    } catch (error) {
+      if ([400, 404, 409].includes(error.status)) return res.status(error.status).json({ error: error.message });
+      return next(error);
+    }
   },
 
   async patch(req, res, next) {

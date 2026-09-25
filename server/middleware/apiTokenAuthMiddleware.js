@@ -24,6 +24,7 @@ module.exports = async function apiTokenAuthMiddleware(req, res, next) {
     req.apiToken = {
       id: row.id,
       label: row.label,
+      purpose: row.purpose || 'editorial',
     };
 
     return next();

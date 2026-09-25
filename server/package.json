@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon -L server.js",
+    "test": "node --test test/**/*.test.js",
     "create-user": "node scripts/create-user.js",
     "upscale-images": "node scripts/upscale-images.js",
     "backfill-legacy-images": "node scripts/backfill-legacy-images.js"

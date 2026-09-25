@@ -54,6 +54,14 @@ class ApiStoryService {
     return { story, sources };
   }
 
+  async getExtraContext(storyId, options = {}) {
+    return this.stories.getExtraContext(storyId, options);
+  }
+
+  async saveExtraContextDraft(storyId, expectedRevision, content, tokenId, options = {}) {
+    return this.stories.saveExtraContextDraft(storyId, expectedRevision, content, tokenId, options);
+  }
+
   async patchStory(storyId, body = {}) {
     const current = await this.stories.getById(storyId);
     if (!current) return null;
