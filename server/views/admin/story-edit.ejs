@@ -32,6 +32,9 @@
     <label>Squirrel Take <small>(short editorial one-liner, optional)</small>
       <input type="text" name="squirrel_take" value="<%= story.squirrel_take || '' %>" placeholder="Punchy opinionated take">
     </label>
+    <label>Why it matters <small>(required for publish)</small>
+      <textarea name="why_it_matters" rows="3" placeholder="What changes for people, institutions, or markets because of this?"><%= story.why_it_matters || '' %></textarea>
+    </label>
     <div class="grid">
       <label>Category
         <select name="category">
