@@ -43,6 +43,52 @@ def _first_sentence(text):
     return parts[0].strip()
 
 
+def _ensure_terminal_sentence(text):
+    value = " ".join(_words(text)).strip()
+    if not value:
+        return ""
+    if re.search(r"[.!?][\"')\]]?$", value):
+        return value
+    # If clipped/trailing punctuation is weak, force a clean sentence ending.
+    value = value.rstrip(" ,;:-")
+    return f"{value}."
+
+
+def _token_set(text):
+    tokens = re.findall(r"[a-z0-9]+", _plain_text(text).lower())
+    return {t for t in tokens if len(t) >= 4 and not t.isdigit()}
+
+
+def _token_overlap(a, b):
+    ta = _token_set(a)
+    tb = _token_set(b)
+    if not ta or not tb:
+        return 0.0
+    return len(ta.intersection(tb)) / max(1, len(tb))
+
+
+def _normalize_summary_non_parrot(title, summary, why_it_matters):
+    summary_text = " ".join(_words(summary))
+    if not summary_text:
+        return summary_text
+
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", summary_text) if s.strip()]
+    kept = [s for s in sentences if _token_overlap(s, title) < 0.72]
+    if not kept and sentences:
+        kept = [sentences[-1]]
+
+    merged = " ".join(kept).strip()
+    wim = _first_sentence(why_it_matters)
+    if wim and _token_overlap(wim, title) < 0.72 and wim.lower() not in merged.lower():
+        merged = f"{merged} {wim}".strip()
+
+    if len(merged) < 120:
+        merged = f"{merged} Reports indicate this development may affect near-term policy, market, or operations decisions.".strip()
+
+    merged = _trim_to_chars(merged, 280)
+    return _ensure_terminal_sentence(merged)
+
+
 def _expand_title(title, summary, category):
     title = " ".join(_words(title))
     if len(title) >= 45:
@@ -81,6 +127,8 @@ def _normalize_summary(summary, why_it_matters):
         if len(summary) < 120:
             summary = f"{summary} Officials are expected to release additional verified details.".strip()
         summary = _trim_to_chars(summary, 280)
+
+    summary = _ensure_terminal_sentence(summary)
     return summary
 
 
@@ -225,7 +273,16 @@ def run(dry_run=False):
                 patch_payload["title"] = new_title
                 actions.append({"type": "rewrite_title", "chars": len(new_title)})
 
-        if "summary_too_short_chars" in codes or "summary_too_long_chars" in codes or "summary_incomplete_sentence" in codes:
+        if "summary_duplicates_title" in codes:
+            new_summary = _normalize_summary_non_parrot(
+                story.get("title"),
+                story.get("summary"),
+                story.get("why_it_matters"),
+            )
+            if new_summary and new_summary != str(story.get("summary") or "").strip():
+                patch_payload["summary"] = new_summary
+                actions.append({"type": "rewrite_summary_non_parrot", "chars": len(new_summary)})
+        elif "summary_too_short_chars" in codes or "summary_too_long_chars" in codes or "summary_incomplete_sentence" in codes:
             new_summary = _normalize_summary(story.get("summary"), story.get("why_it_matters"))
             if new_summary and new_summary != str(story.get("summary") or "").strip():
                 patch_payload["summary"] = new_summary

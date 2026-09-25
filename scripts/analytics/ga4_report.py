@@ -174,7 +174,75 @@ def analyze(rows: List[Dict], exclude_prefixes: List[str], totals: Dict) -> Dict
     }
 
 
-def render_markdown(meta: Dict, rows: List[Dict], analysis: Dict) -> str:
+def detect_likely_bot_signature(signature_report: Dict, total_sessions: int) -> Dict:
+    """Estimate likely bot/crawler sessions using a conservative signature.
+
+    Current signature (heuristic):
+    - source/medium == (direct) / (none)
+    - device == desktop
+    - browser == Chrome
+    - OS == Windows
+    - averageSessionDuration < 1s
+    - sessions >= 5 for the fingerprint row
+    """
+
+    suspicious_rows: List[Dict] = []
+    rows = signature_report.get("rows", [])
+    for row in rows:
+        dvals = [v.get("value", "") for v in row.get("dimensionValues", [])]
+        mvals = [v.get("value", "0") for v in row.get("metricValues", [])]
+
+        country = dvals[0] if len(dvals) > 0 else ""
+        source = dvals[1] if len(dvals) > 1 else ""
+        device = dvals[2] if len(dvals) > 2 else ""
+        browser = dvals[3] if len(dvals) > 3 else ""
+        os_name = dvals[4] if len(dvals) > 4 else ""
+
+        sessions = int(mvals[0]) if len(mvals) > 0 else 0
+        engaged_sessions = int(mvals[1]) if len(mvals) > 1 else 0
+        avg_session_duration = float(mvals[2]) if len(mvals) > 2 else 0.0
+
+        if (
+            source == "(direct) / (none)"
+            and device == "desktop"
+            and browser == "Chrome"
+            and os_name == "Windows"
+            and avg_session_duration < 1.0
+            and sessions >= 5
+        ):
+            suspicious_rows.append(
+                {
+                    "country": country,
+                    "source": source,
+                    "device": device,
+                    "browser": browser,
+                    "operating_system": os_name,
+                    "sessions": sessions,
+                    "engaged_sessions": engaged_sessions,
+                    "average_session_duration_s": avg_session_duration,
+                }
+            )
+
+    suspicious_rows.sort(key=lambda r: r["sessions"], reverse=True)
+    suspicious_sessions = sum(r["sessions"] for r in suspicious_rows)
+    likely_human_sessions = max(0, total_sessions - suspicious_sessions)
+    suspicious_share_pct = (
+        round((suspicious_sessions / total_sessions) * 100, 1) if total_sessions else 0.0
+    )
+
+    return {
+        "rule": (
+            "direct+desktop+chrome+windows with avg_session_duration<1s and sessions>=5"
+        ),
+        "total_sessions": total_sessions,
+        "likely_human_sessions": likely_human_sessions,
+        "likely_bot_sessions": suspicious_sessions,
+        "likely_bot_share_pct": suspicious_share_pct,
+        "suspicious_fingerprints": suspicious_rows,
+    }
+
+
+def render_markdown(meta: Dict, rows: List[Dict], analysis: Dict, traffic_quality: Dict) -> str:
     lines = []
     lines.append(f"# TSquirrel GA4 Report ({meta['days']}d)")
     lines.append("")
@@ -199,6 +267,29 @@ def render_markdown(meta: Dict, rows: List[Dict], analysis: Dict) -> str:
 
     lines.append("")
     lines.append("## Signals")
+    lines.append("")
+
+    lines.append("### Traffic quality split (heuristic)")
+    lines.append(
+        f"- Raw sessions (all traffic): {traffic_quality['total_sessions']}"
+    )
+    lines.append(
+        f"- Likely human sessions: {traffic_quality['likely_human_sessions']}"
+    )
+    lines.append(
+        f"- Likely bot/crawler sessions: {traffic_quality['likely_bot_sessions']} ({traffic_quality['likely_bot_share_pct']}%)"
+    )
+    lines.append(f"- Rule: `{traffic_quality['rule']}`")
+
+    if traffic_quality["suspicious_fingerprints"]:
+        lines.append("- Top suspicious fingerprints:")
+        for fp in traffic_quality["suspicious_fingerprints"][:5]:
+            lines.append(
+                "  - "
+                f"{fp['country']} | {fp['source']} | {fp['device']} | {fp['browser']} {fp['operating_system']} "
+                f"=> {fp['sessions']} sessions, avg {fp['average_session_duration_s']:.2f}s"
+            )
+
     lines.append("")
 
     if analysis["homepage_title_variants"]:
@@ -349,6 +440,28 @@ def main() -> int:
     totals_all_report = run_report(token, str(args.property_id), totals_all_payload)
     totals_excluded_report = run_report(token, str(args.property_id), totals_excluded_payload)
 
+    signature_payload: Dict[str, object] = {
+        "dateRanges": [{"startDate": f"{args.days}daysAgo", "endDate": "today"}],
+        "dimensions": [
+            {"name": "country"},
+            {"name": "sessionSourceMedium"},
+            {"name": "deviceCategory"},
+            {"name": "browser"},
+            {"name": "operatingSystem"},
+        ],
+        "metrics": [
+            {"name": "sessions"},
+            {"name": "engagedSessions"},
+            {"name": "averageSessionDuration"},
+            {"name": "screenPageViews"},
+            {"name": "activeUsers"},
+            {"name": "eventCount"},
+        ],
+        "orderBys": [{"metric": {"metricName": "sessions"}, "desc": True}],
+        "limit": 250,
+    }
+    signature_report = run_report(token, str(args.property_id), signature_payload)
+
     totals_all = {
         "screen_page_views": metric_int(totals_all_report.get("rows", []), 0),
         "sessions": metric_int(totals_all_report.get("rows", []), 1),
@@ -367,6 +480,7 @@ def main() -> int:
 
     totals = {"all": totals_all, "excluded": totals_excluded, "public": totals_public}
     analysis = analyze(rows, exclude_prefixes, totals)
+    traffic_quality = detect_likely_bot_signature(signature_report, totals_all["sessions"])
 
     generated_at = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -385,16 +499,34 @@ def main() -> int:
         "exclude_prefixes": exclude_prefixes,
     }
 
-    md = render_markdown(meta, rows, analysis)
+    md = render_markdown(meta, rows, analysis, traffic_quality)
     out_md.write_text(md)
     out_json.write_text(
-        json.dumps({"meta": meta, "analysis": analysis, "rows": rows}, indent=2)
+        json.dumps(
+            {
+                "meta": meta,
+                "analysis": analysis,
+                "traffic_quality": traffic_quality,
+                "rows": rows,
+            },
+            indent=2,
+        )
     )
 
     print(f"OK report_md={out_md}")
     print(f"OK report_json={out_json}")
     print(f"rows={len(rows)}")
     print(f"excluded_share_pct={analysis['excluded_share_pct']}")
+    print(
+        "traffic_quality="
+        + json.dumps(
+            {
+                "likely_human_sessions": traffic_quality["likely_human_sessions"],
+                "likely_bot_sessions": traffic_quality["likely_bot_sessions"],
+                "likely_bot_share_pct": traffic_quality["likely_bot_share_pct"],
+            }
+        )
+    )
     if analysis["homepage_title_variants"]:
         print("homepage_title_variants=" + json.dumps(analysis["homepage_title_variants"]))
     print(f"error_404_views={analysis['error_404_views']}")
