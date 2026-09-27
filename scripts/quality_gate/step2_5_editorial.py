@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import html
 import json
+import os
 import re
 
 from common import (
@@ -25,11 +27,15 @@ STOP = {
 }
 
 ALLOWED_CATEGORIES = {
-    "Politics", "Business", "Technology", "Science", "Health", "Sports",
+    "AI", "Politics", "Business", "Technology", "Science", "Health", "Sports",
     "Entertainment", "World", "Environment", "Crime", "Other",
 }
 
 CATEGORY_ALIASES = {
+    "ai": "AI",
+    "artificial intelligence": "AI",
+    "machine learning": "AI",
+    "llm": "AI",
     "tech": "Technology",
     "technology": "Technology",
     "international affairs": "World",
@@ -40,6 +46,16 @@ CATEGORY_ALIASES = {
     "climate": "Environment",
     "legal": "Crime",
 }
+
+
+def _plain_text(value):
+    s = str(value or "")
+    # Some payloads arrive double-escaped (e.g., &amp;lt;p&amp;gt;)
+    for _ in range(2):
+        s = html.unescape(s)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
 
 def _needs_editorial(story):
@@ -53,12 +69,11 @@ def _needs_editorial(story):
 
 
 def _title_fallback(story, sources):
-    current = str((story or {}).get("title") or "").strip()
+    current = _plain_text((story or {}).get("title"))
     if len(current.split()) >= 4:
         return current
     if sources:
-        src = str(sources[0].get("title") or "").strip()
-        src = re.sub(r"\s+", " ", src)
+        src = _plain_text(sources[0].get("title"))
         if len(src.split()) >= 4:
             return " ".join(src.split()[:12])
     return current or "Breaking story update pending review"
@@ -100,6 +115,35 @@ def _normalize_category(raw):
     return title_cased if title_cased in ALLOWED_CATEGORIES else "Other"
 
 
+def _extract_or_cost(payload):
+    if not isinstance(payload, dict):
+        return 0.0
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return 0.0
+    try:
+        return float(usage.get("cost", 0.0) or 0.0)
+    except Exception:
+        return 0.0
+
+
+def _clean_summary_text(summary, sources):
+    s = _plain_text(summary)
+    if not s:
+        return ""
+    if s[-1] in ".!?":
+        return s
+
+    # If model output got cut mid-sentence, fall back to a safe factual line
+    # from first source title rather than publishing dangling text.
+    fallback_title = ""
+    if sources:
+        fallback_title = _plain_text(sources[0].get("title"))
+    if fallback_title:
+        return f"{fallback_title}."
+    return f"{s}."
+
+
 def _needs_category_refresh(story):
     category = _normalize_category((story or {}).get("category"))
     return category == "Other"
@@ -128,7 +172,7 @@ def _llm_category(or_key, story, sources):
                 "content": (
                     "Classify one TSquirrel story into exactly one category using source URLs and metadata. "
                     "Return STRICT JSON only: {\"category\":\"...\",\"confidence\":0..1,\"theme\":\"<=8 words\"}. "
-                    "Allowed categories only: Politics, Business, Technology, Science, Health, Sports, "
+                    "Allowed categories only: AI, Politics, Business, Technology, Science, Health, Sports, "
                     "Entertainment, World, Environment, Crime, Other. Use Other only when nothing fits."
                 ),
             },
@@ -158,8 +202,9 @@ def _llm_category(or_key, story, sources):
         headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
         timeout=60,
     )
+    cost = _extract_or_cost(out)
     if status != 200 or not isinstance(out, dict):
-        return {}
+        return {"__or_cost": cost}
 
     content = out.get("choices", [{}])[0].get("message", {}).get("content", "{}")
     if isinstance(content, list):
@@ -169,11 +214,15 @@ def _llm_category(or_key, story, sources):
 
     start, end = content.find("{"), content.rfind("}")
     if start < 0 or end < 0:
-        return {}
+        return {"__or_cost": cost}
     try:
-        return json.loads(content[start : end + 1])
+        parsed = json.loads(content[start : end + 1])
+        if isinstance(parsed, dict):
+            parsed["__or_cost"] = cost
+            return parsed
+        return {"__or_cost": cost}
     except Exception:
-        return {}
+        return {"__or_cost": cost}
 
 
 def _llm_editor(or_key, story, sources):
@@ -229,8 +278,9 @@ def _llm_editor(or_key, story, sources):
         headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
         timeout=90,
     )
+    cost = _extract_or_cost(out)
     if status != 200 or not isinstance(out, dict):
-        return {}
+        return {"__or_cost": cost}
 
     content = out.get("choices", [{}])[0].get("message", {}).get("content", "{}")
     if isinstance(content, list):
@@ -240,11 +290,108 @@ def _llm_editor(or_key, story, sources):
 
     start, end = content.find("{"), content.rfind("}")
     if start < 0 or end < 0:
-        return {}
+        return {"__or_cost": cost}
     try:
-        return json.loads(content[start : end + 1])
+        parsed = json.loads(content[start : end + 1])
+        if isinstance(parsed, dict):
+            parsed["__or_cost"] = cost
+            return parsed
+        return {"__or_cost": cost}
     except Exception:
-        return {}
+        return {"__or_cost": cost}
+
+
+def _llm_review_tags(or_key, story, sources, tags):
+    source_lines = []
+    for i, s in enumerate(sources[:6], 1):
+        source_lines.append(
+            {
+                "i": i,
+                "source": s.get("source_name"),
+                "title": s.get("title"),
+                "url": s.get("url"),
+                "description": s.get("description"),
+            }
+        )
+
+    payload = {
+        "model": QG_MODEL,
+        "temperature": 0.0,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You validate TSquirrel tags against sources. Return STRICT JSON only with keys: "
+                    "tags (array), changed (boolean), reason (<=14 words). "
+                    "Rules: keep only tags directly supported by source titles/descriptions/URLs; "
+                    "replace weak tags with better supported topical tags; output 3-5 lowercase tags; "
+                    "no generic tags like news, update, article, ai, tech, world."
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "story": {
+                            "id": story.get("id"),
+                            "title": story.get("title"),
+                            "summary": story.get("summary"),
+                            "category": story.get("category"),
+                        },
+                        "proposed_tags": tags,
+                        "sources": source_lines,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+    }
+
+    response = api_req(
+        "POST",
+        f"{OR_BASE}/chat/completions",
+        token=or_key,
+        data=payload,
+        headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
+        timeout=60,
+    )
+    if not isinstance(response, tuple) or len(response) != 2:
+        return {"tags": tags, "changed": False, "reason": "invalid_response", "__or_cost": 0.0}
+
+    status, out = response
+    cost = _extract_or_cost(out)
+    if status != 200 or not isinstance(out, dict):
+        return {"tags": tags, "changed": False, "reason": f"http_{status}", "__or_cost": cost}
+
+    choices = out.get("choices")
+    first = choices[0] if isinstance(choices, list) and len(choices) > 0 else {}
+    message = first.get("message") if isinstance(first, dict) else {}
+    content = message.get("content", "{}") if isinstance(message, dict) else "{}"
+    if isinstance(content, list):
+        content = "".join(str(block.get("text", "")) if isinstance(block, dict) else str(block) for block in content)
+    if not isinstance(content, str):
+        content = str(content)
+
+    start, end = content.find("{"), content.rfind("}")
+    if start < 0 or end < 0:
+        return {"tags": tags, "changed": False, "reason": "parse_missing_json", "__or_cost": cost}
+    try:
+        parsed = json.loads(content[start : end + 1])
+        if not isinstance(parsed, dict):
+            return {"tags": tags, "changed": False, "reason": "parse_not_object", "__or_cost": cost}
+        reviewed = _clean_tags(parsed.get("tags"), story.get("title"))
+        if len(reviewed) < 3:
+            reviewed = tags
+        changed = reviewed != tags
+        return {
+            "tags": reviewed,
+            "changed": bool(parsed.get("changed")) or changed,
+            "reason": str(parsed.get("reason") or "")[:120],
+            "__or_cost": cost,
+        }
+    except Exception:
+        return {"tags": tags, "changed": False, "reason": "parse_error", "__or_cost": cost}
 
 
 def run(limit=50, dry_run=False):
@@ -252,8 +399,13 @@ def run(limit=50, dry_run=False):
     state = load_state()
     candidates = (state.get("candidates_step") or {}).get("candidates", [])[: int(limit)]
 
+    tag_review_enabled = str(os.environ.get("TSQ_TAG_LLM_REVIEW", "1")).strip().lower() not in {"0", "false", "no"}
+    tag_review_count = 0
+    tag_review_changed_count = 0
+
     edited = []
     skipped = []
+    openrouter_usage_cost_sum = 0.0
     for c in candidates:
         sid = c.get("id")
         if not sid:
@@ -268,6 +420,8 @@ def run(limit=50, dry_run=False):
         if not _needs_editorial(story):
             if _needs_category_refresh(story):
                 cat = _llm_category(or_key, story, sources)
+                if isinstance(cat, dict):
+                    openrouter_usage_cost_sum += float(cat.get("__or_cost", 0.0) or 0.0)
                 new_category = _normalize_category(cat.get("category") if isinstance(cat, dict) else None)
                 old_category = _normalize_category(story.get("category"))
                 if new_category != old_category and new_category != "Other":
@@ -294,17 +448,37 @@ def run(limit=50, dry_run=False):
             continue
 
         gen = _llm_editor(or_key, story, sources)
+        if isinstance(gen, dict):
+            openrouter_usage_cost_sum += float(gen.get("__or_cost", 0.0) or 0.0)
         if not isinstance(gen, dict):
             gen = {}
-        title = str(gen.get("title") or "").strip() or _title_fallback(story, sources)
+        title = _plain_text(gen.get("title")) or _title_fallback(story, sources)
         if len(title.split()) < 4:
             title = _title_fallback({"title": " ".join(title.split()[:12])}, sources)
 
-        summary = str(gen.get("summary") or "").strip()
-        squirrel_take = str(gen.get("squirrel_take") or "").strip()
-        why = str(gen.get("why_it_matters") or "").strip()
+        summary = _clean_summary_text(gen.get("summary"), sources)
+        squirrel_take = _plain_text(gen.get("squirrel_take"))
+        why = _plain_text(gen.get("why_it_matters"))
         category = _normalize_category(gen.get("category") or story.get("category") or "Other")
         tags = _clean_tags(gen.get("tags"), title)
+        if tag_review_enabled and tags and sources:
+            review_story = {
+                "id": sid,
+                "title": title,
+                "summary": summary,
+                "category": category,
+            }
+            reviewed = _llm_review_tags(or_key, review_story, sources, tags)
+            if isinstance(reviewed, dict):
+                openrouter_usage_cost_sum += float(reviewed.get("__or_cost", 0.0) or 0.0)
+                tag_review_count += 1
+                next_tags = reviewed.get("tags")
+                if isinstance(next_tags, list) and len(next_tags) >= 3:
+                    next_clean = _clean_tags(next_tags, title)
+                    if len(next_clean) >= 3:
+                        if next_clean != tags:
+                            tag_review_changed_count += 1
+                        tags = next_clean
 
         patch_payload = {
             "title": title,
@@ -334,13 +508,18 @@ def run(limit=50, dry_run=False):
         "started_at": utc_now(),
         "model": QG_MODEL,
         "dry_run": bool(dry_run),
+        "tag_review_enabled": bool(tag_review_enabled),
+        "tag_review_count": int(tag_review_count),
+        "tag_review_changed_count": int(tag_review_changed_count),
         "edited": edited,
         "skipped": skipped,
         "edited_count": sum(1 for e in edited if e.get("ok") or e.get("dry_run")),
+        "openrouter_usage_cost_sum": round(openrouter_usage_cost_sum, 9),
     }
     save_state(state)
     print(
-        f"editorial_step done | edited={len(edited)} skipped={len(skipped)} dry_run={str(bool(dry_run)).lower()} model={QG_MODEL}"
+        f"editorial_step done | edited={len(edited)} skipped={len(skipped)} tag_reviewed={tag_review_count} "
+        f"tag_changed={tag_review_changed_count} dry_run={str(bool(dry_run)).lower()} model={QG_MODEL}"
     )
 
 

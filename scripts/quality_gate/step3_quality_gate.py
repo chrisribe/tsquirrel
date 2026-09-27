@@ -40,6 +40,18 @@ def _heuristics(story, sources):
     return issues
 
 
+def _extract_or_cost(payload):
+    if not isinstance(payload, dict):
+        return 0.0
+    usage = payload.get("usage")
+    if not isinstance(usage, dict):
+        return 0.0
+    try:
+        return float(usage.get("cost", 0.0) or 0.0)
+    except Exception:
+        return 0.0
+
+
 def _llm_gate(or_key, story, sources):
     src_titles = [str(s.get("title") or "").strip() for s in sources][:6]
     prompt = {
@@ -75,8 +87,9 @@ def _llm_gate(or_key, story, sources):
         headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
         timeout=90,
     )
+    cost = _extract_or_cost(payload)
     if status != 200:
-        return {"pass": False, "issues": [f"openrouter_error_http_{status}"], "raw": payload}
+        return {"pass": False, "issues": [f"openrouter_error_http_{status}"], "raw": payload, "or_cost": cost}
 
     msg = payload.get("choices", [{}])[0].get("message", {})
     content = msg.get("content")
@@ -88,12 +101,13 @@ def _llm_gate(or_key, story, sources):
     try:
         parsed = json.loads(content)
     except Exception:
-        return {"pass": False, "issues": ["openrouter_non_json_response"], "raw": str(content)[:300]}
+        return {"pass": False, "issues": ["openrouter_non_json_response"], "raw": str(content)[:300], "or_cost": cost}
 
     return {
         "pass": bool(parsed.get("pass", False)),
         "issues": [str(i) for i in (parsed.get("issues") or [])],
         "raw": parsed,
+        "or_cost": cost,
     }
 
 
@@ -147,6 +161,7 @@ def run():
     llm_shadow = os.environ.get("TSQ_QG_LLM_SHADOW", "0").strip().lower() in ("1", "true", "yes", "on")
 
     results = []
+    openrouter_usage_cost_sum = 0.0
     for c in candidates:
         sid = c.get("id")
         status, payload = api_req("GET", f"{BASE}/api/v1/stories/{sid}", token=tsq)
@@ -165,10 +180,12 @@ def run():
             passed = bool(audit.get("pass", False))
             if llm_shadow:
                 llm = _llm_gate(or_key, story, sources)
+                openrouter_usage_cost_sum += float(llm.get("or_cost", 0.0) or 0.0)
         else:
             used = "legacy_heuristic_llm"
             heuristic_issues = _heuristics(story, sources)
             llm = _llm_gate(or_key, story, sources)
+            openrouter_usage_cost_sum += float(llm.get("or_cost", 0.0) or 0.0)
             merged_issues = list(dict.fromkeys(heuristic_issues + llm.get("issues", [])))
             passed = len(merged_issues) == 0 and llm.get("pass", False)
 
@@ -187,6 +204,7 @@ def run():
         "model": QG_MODEL,
         "gate_source": "editorial_audit_with_legacy_fallback",
         "llm_shadow_enabled": bool(llm_shadow),
+        "openrouter_usage_cost_sum": round(openrouter_usage_cost_sum, 9),
         "count": len(results),
         "results": results,
     }

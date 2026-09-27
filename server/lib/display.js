@@ -4,6 +4,7 @@
 // emoji labels + thumbnail treatments used across the views (matches mockups).
 
 const CATEGORY_META = {
+  AI:            { emoji: '🤖', thumb: '🧠', cls: 'thumb-nuts',  badge: 'badge-cat-nuts'  },
   Technology:    { emoji: '💻', thumb: '🤖', cls: 'thumb-nuts',  badge: 'badge-cat-nuts'  },
   World:         { emoji: '🌍', thumb: '🕊️', cls: 'thumb-world', badge: 'badge-cat-world' },
   Business:      { emoji: '💰', thumb: '💰', cls: 'thumb-acorn', badge: 'badge-cat-acorn' },

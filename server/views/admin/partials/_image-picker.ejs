@@ -6,7 +6,6 @@
     return true;
   });
   const currentImage = pageData.story?.image_url || pageData.prefill?.image_url || null;
-  const currentIsCandidate = currentImage && imageCandidates.some(article => article.image_url === currentImage);
 %>
 <fieldset id="story-image-picker"<%= pageData.oob ? ' hx-swap-oob="outerHTML"' : '' %>>
   <legend>Story image <small>(hotlinked from a source article, or paste your own)</small></legend>
@@ -26,8 +25,8 @@
       </label>
     <% }); %>
   </div>
-  <label>Or paste a custom image URL <small>(overrides the selection above)</small>
-    <input type="url" name="image_url_manual" form="story-form" placeholder="https://…"
-      value="<%= (!currentIsCandidate && currentImage) ? currentImage : '' %>">
+  <input type="hidden" name="image_url_existing" form="story-form" value="<%= currentImage || '' %>">
+  <label>Or paste a custom image URL <small>(optional)</small>
+    <input type="url" name="image_url_manual" form="story-form" placeholder="https://…" value="">
   </label>
 </fieldset>

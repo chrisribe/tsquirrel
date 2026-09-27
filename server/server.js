@@ -3,9 +3,37 @@
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const { execSync } = require('child_process');
 
+function hashAssetFiles() {
+  const assetPaths = [
+    path.join(__dirname, 'static', 'css', 'styles.css'),
+    path.join(__dirname, 'static', 'css', 'pico.min.css'),
+    path.join(__dirname, 'static', 'js', 'analytics.js'),
+    path.join(__dirname, 'static', 'js', 'htmx.min.js'),
+    path.join(__dirname, 'static', 'js', 'feed-load-cycle.js'),
+    path.join(__dirname, 'static', 'js', 'nav-menu.js'),
+  ];
+  const h = crypto.createHash('sha1');
+  let added = 0;
+  for (const p of assetPaths) {
+    try {
+      h.update(fs.readFileSync(p));
+      added += 1;
+    } catch (_) {
+      // Ignore missing files; we still hash what exists.
+    }
+  }
+  if (added > 0) return h.digest('hex').slice(0, 12);
+  return null;
+}
+
 function resolveAssetVersion() {
+  const assetsHash = hashAssetFiles();
+  if (assetsHash) return assetsHash;
+
   if (process.env.ASSET_VERSION) return String(process.env.ASSET_VERSION).trim();
   const ciCommit = process.env.GIT_COMMIT || process.env.RENDER_GIT_COMMIT || process.env.RAILWAY_GIT_COMMIT_SHA;
   if (ciCommit) return String(ciCommit).trim().slice(0, 12);
@@ -14,6 +42,12 @@ function resolveAssetVersion() {
     if (sha) return sha;
   } catch (_) {}
   return Date.now().toString();
+}
+
+function envBool(name, fallback = false) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === null || String(raw).trim() === '') return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(String(raw).trim().toLowerCase());
 }
 
 const ASSET_VERSION = resolveAssetVersion();
@@ -106,10 +140,11 @@ async function startServer() {
 
   // Inject globals into all views
   app.use(async (req, res, next) => {
-    res.locals.assetVersion = process.env.NODE_ENV === 'development'
-      ? Date.now().toString()
-      : ASSET_VERSION;
+    res.locals.assetVersion = ASSET_VERSION;
     res.locals.googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID || '';
+    res.locals.googleAdsenseClient = process.env.GOOGLE_ADSENSE_CLIENT || (process.env.NODE_ENV === 'production' ? 'ca-pub-2362186025233604' : '');
+    res.locals.googleAdsenseHomeEnabled = envBool('GOOGLE_ADSENSE_HOME_ENABLED', true);
+    res.locals.googleAdsenseHomeFeedSlot = String(process.env.GOOGLE_ADSENSE_HOME_FEED_SLOT || '').trim();
     res.locals.nutsToday = 0;
     res.locals.currentPath = req.path;
     res.locals.currentCategory = typeof req.query?.category === 'string' ? req.query.category : null;
@@ -127,6 +162,7 @@ async function startServer() {
   // Health check
   app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
   app.get('/robots.txt', (req, res) => res.sendFile(path.join(__dirname, 'static', 'robots.txt')));
+  app.get('/ads.txt', (req, res) => res.sendFile(path.join(__dirname, 'static', 'ads.txt')));
 
   // Routes
   app.use('/auth', require('./routes/auth'));
