@@ -330,6 +330,25 @@ const migrations = [
       console.log('Migration 19: story_slug_redirects table created');
     }
   },
+  {
+    version: 20,
+    description: 'Agent API monetization primitives — token plans/quotas + daily usage ledger',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS plan VARCHAR(40) DEFAULT 'internal'`);
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS monthly_quota INTEGER`);
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS api_token_usage_daily (
+          token_id INTEGER NOT NULL REFERENCES api_tokens(id) ON DELETE CASCADE,
+          day DATE NOT NULL,
+          request_count INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (token_id, day)
+        )
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_api_token_usage_daily_day ON api_token_usage_daily(day DESC)`);
+      console.log('Migration 20: api token plan/quota columns + usage ledger created');
+    }
+  },
   // Future migrations go here
 ];
 

@@ -14,6 +14,10 @@ router.get('/me', async (req, res) => {
   });
 });
 
+// ── Agent API MVP (paid structured feed) ───────────────────────────────────
+router.get('/signals', apiStoryController.listSignalFeed);
+router.get('/changes', apiStoryController.listChanges);
+
 router.get('/stories', apiStoryController.list);
 router.post('/stories', apiStoryController.create);
 router.post('/stories/bulk', apiStoryController.bulkAction);

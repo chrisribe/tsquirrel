@@ -174,6 +174,56 @@ class ApiStoryService {
     return rows[0] || null;
   }
 
+  // ── Agent API (paid-API MVP) ────────────────────────────────────────────
+
+  _safeEvidence(raw) {
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+    try { return JSON.parse(raw); } catch (_) { return {}; }
+  }
+
+  async listSignalFeed({ status = 'active', limit = 50 } = {}) {
+    const rows = await this.dao.listSignalFeed({ status, limit });
+    const signals = rows.map((r) => ({
+      id: r.id,
+      detector: r.detector,
+      topic: r.topic,
+      strength: r.strength,
+      status: r.status,
+      fired_at: r.fired_at,
+      expires_at: r.expires_at,
+      evidence: this._safeEvidence(r.evidence),
+      story: r.story_id ? {
+        id: r.story_id,
+        slug: r.story_slug,
+        title: r.story_title,
+        summary: r.story_summary,
+        why_it_matters: r.why_it_matters,
+        category: r.category,
+        tags: r.tags,
+        published_at: r.published_at,
+        source_count: r.source_count,
+      } : null,
+    }));
+    return { count: signals.length, signals };
+  }
+
+  async listChanges({ since, limit = 100 } = {}) {
+    const rows = await this.dao.listChangesSince({ since, limit });
+    const changes = rows.map((r) => ({
+      kind: r.kind,
+      id: r.id,
+      changed_at: r.changed_at,
+      payload: r.payload,
+    }));
+
+    let nextSince = since;
+    if (changes.length > 0) {
+      nextSince = changes[0].changed_at;
+    }
+    return { count: changes.length, since, next_since: nextSince, changes };
+  }
+
   // ── Missing API surface: radar signals ──────────────────────────────────
 
   _parseEvidence(raw) {
