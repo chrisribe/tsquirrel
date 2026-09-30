@@ -1,8 +1,8 @@
 'use strict';
 
-// Lightweight anonymous traffic shield (single-instance in-memory)
-// - Fast-fails common junk probe paths
-// - Applies per-IP throttles with stricter limits on bot-heavy paths
+// Anonymous traffic shield (single-instance in-memory)
+// - Fast-fails known junk probe paths aggressively
+// - Rate-limits ONLY repeated odd-access patterns (not normal browsing)
 
 const buckets = new Map();
 
@@ -46,34 +46,42 @@ function isJunkPath(pathname) {
   return false;
 }
 
-function decideLimit(pathname, query) {
-  // Defaults tuned for human traffic first; probe paths are fast-failed separately.
-  const defaultMax = envInt('TS_ANON_DEFAULT_MAX', 120);
-  const defaultWindowSec = envInt('TS_ANON_DEFAULT_WINDOW_SEC', 60);
+function looksOddHomepageQuery(query) {
+  const tag = String(query?.tag || '').trim().toLowerCase();
+  const q = String(query?.q || '').trim().toLowerCase();
 
-  const homepageMax = envInt('TS_ANON_HOME_MAX', 30);
-  const homepageWindowSec = envInt('TS_ANON_HOME_WINDOW_SEC', 60);
+  if (!tag && !q) return false;
 
-  const storyMax = envInt('TS_ANON_STORY_MAX', 60);
-  const storyWindowSec = envInt('TS_ANON_STORY_WINDOW_SEC', 60);
+  const v = tag || q;
+  // keep this intentionally conservative: only unusual/noisy query shapes.
+  if (v.length > 40) return true;
+  if (/[%<>{}\\]/.test(v)) return true;
+  if (/\b(?:free\s+live\s+stream|watch\s*live|xxx|casino|viagra|hack|crack)\b/i.test(v)) return true;
+  return false;
+}
 
-  const sectionMax = envInt('TS_ANON_SECTION_MAX', 40);
-  const sectionWindowSec = envInt('TS_ANON_SECTION_WINDOW_SEC', 60);
-
-  if (pathname === '/' && (Object.prototype.hasOwnProperty.call(query || {}, 'tag') || Object.prototype.hasOwnProperty.call(query || {}, 'q'))) {
-    return { max: homepageMax, windowSec: homepageWindowSec, scope: 'home-query' };
-  }
+function isOddAccess(pathname, query) {
+  // Normal user paths: never treated as odd.
   if (pathname === '/') {
-    return { max: homepageMax * 2, windowSec: homepageWindowSec, scope: 'home' };
+    return looksOddHomepageQuery(query);
   }
-  if (pathname.startsWith('/story/')) {
-    return { max: storyMax, windowSec: storyWindowSec, scope: 'story' };
-  }
-  if (pathname.startsWith('/section/')) {
-    return { max: sectionMax, windowSec: sectionWindowSec, scope: 'section' };
+  if (pathname.startsWith('/story/')) return false;
+  if (pathname.startsWith('/section/')) return false;
+  if (pathname === '/archive' || pathname === '/about' || pathname === '/contact' || pathname === '/privacy-policy' || pathname === '/terms-of-service') {
+    return false;
   }
 
-  return { max: defaultMax, windowSec: defaultWindowSec, scope: 'default' };
+  // Public paths outside normal browsing surfaces are treated as odd.
+  // (admin/auth/api excluded earlier in middleware flow)
+  return true;
+}
+
+function oddRule() {
+  return {
+    windowSec: envInt('TS_ODD_WINDOW_SEC', 60),
+    max: envInt('TS_ODD_MAX', 20),
+    uniqueMax: envInt('TS_ODD_UNIQUE_MAX', 12),
+  };
 }
 
 function botShield(req, res, next) {
@@ -96,20 +104,30 @@ function botShield(req, res, next) {
     return next();
   }
 
+  // Only limit repeated ODD accesses.
+  if (!isOddAccess(pathname, req.query || {})) {
+    return next();
+  }
+
   const ip = getClientIp(req);
-  const rule = decideLimit(pathname, req.query || {});
-  const key = `${rule.scope}:${ip}`;
+  const rule = oddRule();
+  const key = `odd:${ip}`;
   const now = Date.now();
+  const fingerprint = `${pathname}?tag=${String(req.query?.tag || '')}&q=${String(req.query?.q || '')}`;
 
   let row = buckets.get(key);
   if (!row || now > row.resetAt) {
-    row = { count: 0, resetAt: now + (rule.windowSec * 1000) };
+    row = { count: 0, resetAt: now + (rule.windowSec * 1000), unique: new Set() };
   }
 
   row.count += 1;
+  row.unique.add(fingerprint);
   buckets.set(key, row);
 
-  if (row.count > rule.max) {
+  const overCount = row.count > rule.max;
+  const overUnique = row.unique.size > rule.uniqueMax;
+
+  if (overCount || overUnique) {
     const retryAfter = Math.max(1, Math.ceil((row.resetAt - now) / 1000));
     res.set('Retry-After', String(retryAfter));
     res.set('Cache-Control', 'private, no-store');
