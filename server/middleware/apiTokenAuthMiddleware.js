@@ -20,7 +20,10 @@ module.exports = async function apiTokenAuthMiddleware(req, res, next) {
       return res.status(401).json({ error: 'Invalid, inactive, or revoked token' });
     }
 
-    const monthlyQuota = Number.isFinite(Number(row.monthly_quota)) ? Number(row.monthly_quota) : null;
+    const parsedQuota = (row.monthly_quota === null || row.monthly_quota === undefined || row.monthly_quota === '')
+      ? null
+      : Number(row.monthly_quota);
+    const monthlyQuota = Number.isFinite(parsedQuota) ? parsedQuota : null;
     const monthlyUsed = await dao.getMonthlyUsage(row.id);
     if (monthlyQuota !== null && monthlyUsed >= monthlyQuota) {
       return res.status(429).json({
