@@ -129,6 +129,10 @@ async function startServer() {
     next();
   });
 
+  // Public traffic shield (fast-fail junk probes + anonymous throttling)
+  const { botShield } = require('./middleware/botShield');
+  app.use(botShield);
+
   // Category display helpers available in every template
   const { catMeta, catLabel, displaySourceName, secureUrl } = require('./lib/display');
   app.locals.catMeta = catMeta;
