@@ -38,6 +38,7 @@ function isJunkPath(pathname) {
   if (pathname === '/null') return true;
   if (pathname.startsWith('/_data/')) return true;
   if (pathname.startsWith('/wp-') || pathname.startsWith('/wp/')) return true;
+  if (pathname.includes('/wp-admin') || pathname.includes('/wp-login')) return true;
   if (pathname.startsWith('/xmlrpc')) return true;
   if (pathname.startsWith('/cgi-bin/')) return true;
   if (pathname.startsWith('/.env')) return true;
@@ -46,17 +47,17 @@ function isJunkPath(pathname) {
 }
 
 function decideLimit(pathname, query) {
-  // Defaults tuned for anonymous read traffic.
-  const defaultMax = envInt('TS_ANON_DEFAULT_MAX', 60);
+  // Defaults tuned for human traffic first; probe paths are fast-failed separately.
+  const defaultMax = envInt('TS_ANON_DEFAULT_MAX', 120);
   const defaultWindowSec = envInt('TS_ANON_DEFAULT_WINDOW_SEC', 60);
 
-  const homepageMax = envInt('TS_ANON_HOME_MAX', 10);
-  const homepageWindowSec = envInt('TS_ANON_HOME_WINDOW_SEC', 30);
+  const homepageMax = envInt('TS_ANON_HOME_MAX', 30);
+  const homepageWindowSec = envInt('TS_ANON_HOME_WINDOW_SEC', 60);
 
-  const storyMax = envInt('TS_ANON_STORY_MAX', 24);
+  const storyMax = envInt('TS_ANON_STORY_MAX', 60);
   const storyWindowSec = envInt('TS_ANON_STORY_WINDOW_SEC', 60);
 
-  const sectionMax = envInt('TS_ANON_SECTION_MAX', 20);
+  const sectionMax = envInt('TS_ANON_SECTION_MAX', 40);
   const sectionWindowSec = envInt('TS_ANON_SECTION_WINDOW_SEC', 60);
 
   if (pathname === '/' && (Object.prototype.hasOwnProperty.call(query || {}, 'tag') || Object.prototype.hasOwnProperty.call(query || {}, 'q'))) {
