@@ -182,8 +182,8 @@ class ApiStoryService {
     try { return JSON.parse(raw); } catch (_) { return {}; }
   }
 
-  async listSignalFeed({ status = 'active', limit = 50 } = {}) {
-    const rows = await this.dao.listSignalFeed({ status, limit });
+  async listSignalFeed({ status = 'active', limit = 50, since = null, until = null } = {}) {
+    const rows = await this.dao.listSignalFeed({ status, limit, since, until });
     const signals = rows.map((r) => ({
       id: r.id,
       detector: r.detector,
@@ -205,7 +205,18 @@ class ApiStoryService {
         source_count: r.source_count,
       } : null,
     }));
-    return { count: signals.length, signals };
+
+    const fired = signals
+      .map((s) => s.fired_at)
+      .filter(Boolean)
+      .map((d) => new Date(d).toISOString());
+
+    let nextSince = since;
+    if (fired.length > 0) {
+      nextSince = fired.reduce((maxV, curr) => (curr > maxV ? curr : maxV));
+    }
+
+    return { count: signals.length, since, until, next_since: nextSince, signals };
   }
 
   async listChanges({ since, limit = 100 } = {}) {

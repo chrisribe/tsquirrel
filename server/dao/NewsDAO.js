@@ -832,17 +832,35 @@ class NewsDAO {
   }
 
   // Feed-oriented signal view for external agents.
-  async listSignalFeed({ status = 'active', limit = 50 } = {}) {
-    const params = [limit];
-    let whereClause;
+  async listSignalFeed({ status = 'active', limit = 50, since = null, until = null } = {}) {
+    const params = [];
+    const whereParts = [];
+
     if (!status || status === 'active') {
-      whereClause = `WHERE s.status NOT IN ('used', 'dismissed') AND (s.expires_at IS NULL OR s.expires_at > NOW())`;
-    } else if (status === 'all') {
-      whereClause = '';
-    } else {
+      whereParts.push(`s.status NOT IN ('used', 'dismissed')`);
+      whereParts.push(`(s.expires_at IS NULL OR s.expires_at > NOW())`);
+    } else if (status !== 'all') {
       params.push(status);
-      whereClause = `WHERE s.status = $2`;
+      whereParts.push(`s.status = $${params.length}`);
     }
+
+    if (since) {
+      params.push(since);
+      whereParts.push(`s.fired_at > $${params.length}::timestamptz`);
+    }
+
+    if (until) {
+      params.push(until);
+      whereParts.push(`s.fired_at <= $${params.length}::timestamptz`);
+    }
+
+    const whereClause = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+    const orderBy = (since || until)
+      ? `ORDER BY s.fired_at DESC, s.id DESC`
+      : `ORDER BY s.strength DESC, s.fired_at DESC, s.id DESC`;
+
+    params.push(limit);
+    const limitParam = `$${params.length}`;
 
     const { rows } = await this.pool.query(`
       SELECT
@@ -871,8 +889,8 @@ class NewsDAO {
         WHERE sa.story_id = s.story_id
       ) src ON TRUE
       ${whereClause}
-      ORDER BY s.strength DESC, s.fired_at DESC
-      LIMIT $1
+      ${orderBy}
+      LIMIT ${limitParam}
     `, params);
     return rows;
   }

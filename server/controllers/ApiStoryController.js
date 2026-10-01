@@ -42,7 +42,20 @@ const ApiStoryController = {
     try {
       const status = req.query.status || 'active';
       const limit = parseBoundedInt(req.query.limit, 50, { min: 1, max: 200 });
-      const payload = await serviceFor(req).listSignalFeed({ status, limit });
+
+      const sinceRaw = req.query.since;
+      const untilRaw = req.query.until;
+      const since = sinceRaw === undefined ? null : parseIsoDate(sinceRaw);
+      const until = untilRaw === undefined ? null : parseIsoDate(untilRaw);
+
+      if (sinceRaw !== undefined && !since) {
+        return res.status(400).json({ error: 'since must be ISO datetime' });
+      }
+      if (untilRaw !== undefined && !until) {
+        return res.status(400).json({ error: 'until must be ISO datetime' });
+      }
+
+      const payload = await serviceFor(req).listSignalFeed({ status, limit, since, until });
       return res.json({ ok: true, ...payload });
     } catch (error) { return next(error); }
   },
