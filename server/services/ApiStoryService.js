@@ -54,6 +54,20 @@ class ApiStoryService {
     return { story, sources };
   }
 
+  async getBrief(storyId) {
+    const story = await this.stories.getById(storyId);
+    if (!story) return undefined;
+    return this.stories.getBrief(storyId);
+  }
+
+  async replaceBrief(storyId, input) {
+    return this.stories.replaceBrief(storyId, input);
+  }
+
+  async registerResearchSource(storyId, input) {
+    return this.stories.registerResearchSource(storyId, input);
+  }
+
   async patchStory(storyId, body = {}) {
     const current = await this.stories.getById(storyId);
     if (!current) return null;

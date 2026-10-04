@@ -30,6 +30,9 @@ router.get('/stories/:id/attach-picker', storyAdminController.attachPicker);
 router.post('/stories/:id', storyAdminController.update);
 router.post('/stories/:id/attach', storyAdminController.attach);
 router.post('/stories/:id/detach', storyAdminController.detach);
+router.post('/stories/:id/brief', storyAdminController.saveBrief);
+router.post('/stories/:id/brief/publish', storyAdminController.publishBrief);
+router.post('/stories/:id/brief/withdraw', storyAdminController.withdrawBrief);
 router.post('/stories/:id/suggestions/:articleId/accept', storyAdminController.acceptSuggestion);
 router.post('/stories/:id/suggestions/:articleId/reject', storyAdminController.rejectSuggestion);
 router.post('/stories/:id/publish', storyAdminController.publish);
@@ -46,4 +49,3 @@ router.post('/signals/:id/create-story', signalController.createStory);
 router.post('/signals/:id/dismiss', signalController.dismiss);
 
 module.exports = router;
-

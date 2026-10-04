@@ -107,6 +107,49 @@ const ApiStoryController = {
     } catch (error) { return next(error); }
   },
 
+  async getBrief(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+      const brief = await serviceFor(req).getBrief(id);
+      if (brief === undefined) return res.status(404).json({ error: 'story not found' });
+      return res.json({ ok: true, brief });
+    } catch (error) { return next(error); }
+  },
+
+  async putBrief(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+      const forbidden = ['status', 'reviewed_by', 'reviewed_at', 'reviewedBy', 'reviewedAt'].find(key =>
+        Object.prototype.hasOwnProperty.call(req.body || {}, key)
+      );
+      if (forbidden) {
+        return res.status(400).json({ error: `${forbidden} cannot be set through the API`, code: 'brief_review_fields_forbidden' });
+      }
+      const brief = await serviceFor(req).replaceBrief(id, req.body || {});
+      return res.json({ ok: true, brief });
+    } catch (error) {
+      if (![400, 404, 409].includes(error.status)) return next(error);
+      const payload = { error: error.message };
+      if (error.code) payload.code = error.code;
+      if (error.currentRevision !== undefined) payload.current_revision = error.currentRevision;
+      return res.status(error.status).json(payload);
+    }
+  },
+
+  async registerResearchSource(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+      const article = await serviceFor(req).registerResearchSource(id, req.body || {});
+      return res.status(201).json({ ok: true, article });
+    } catch (error) {
+      if (![400, 404, 409].includes(error.status)) return next(error);
+      return res.status(error.status).json({ error: error.message, code: error.code });
+    }
+  },
+
   async patch(req, res, next) {
     try {
       const id = parseId(req.params.id);

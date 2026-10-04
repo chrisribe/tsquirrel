@@ -427,6 +427,50 @@ const migrations = [
       console.log('Migration 23: agent API quota schema reconciled');
     }
   },
+  {
+    version: 24,
+    description: 'Cited story briefs with explicit review lifecycle',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_briefs (
+          story_id INTEGER PRIMARY KEY REFERENCES stories(id) ON DELETE CASCADE,
+          introduction TEXT NOT NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'draft'
+            CHECK (status IN ('draft', 'published')),
+          revision INTEGER NOT NULL DEFAULT 1,
+          reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          reviewed_at TIMESTAMP,
+          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_brief_facts (
+          id SERIAL PRIMARY KEY,
+          story_id INTEGER NOT NULL REFERENCES story_briefs(story_id) ON DELETE CASCADE,
+          position INTEGER NOT NULL CHECK (position >= 1),
+          heading TEXT,
+          text TEXT NOT NULL,
+          UNIQUE (story_id, position)
+        )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_brief_fact_sources (
+          fact_id INTEGER NOT NULL REFERENCES story_brief_facts(id) ON DELETE CASCADE,
+          article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE RESTRICT,
+          PRIMARY KEY (fact_id, article_id)
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_story_brief_fact_sources_article
+        ON story_brief_fact_sources(article_id)
+      `);
+      await pool.query(`ALTER TABLE stories DROP COLUMN IF EXISTS rd_brief_markdown`);
+      await pool.query(`ALTER TABLE stories DROP COLUMN IF EXISTS rd_brief_generated_at`);
+      await pool.query(`ALTER TABLE stories DROP COLUMN IF EXISTS rd_brief_model`);
+      console.log('Migration 24: cited story briefs added; obsolete generated-brief columns removed');
+    }
+  },
   // Future migrations go here
 ];
 

@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('crypto');
 const NewsDAO = require('../dao/NewsDAO');
 const { slugify } = require('../lib/slug');
 const { isLowQualityImage, fetchOgImage } = require('./IngestionService');
@@ -147,6 +148,10 @@ class StoryService {
     return this.dao.getArticlesByIds(ids);
   }
 
+  getBrief(storyId, options = {}) {
+    return this.dao.getStoryBrief(storyId, options);
+  }
+
   // ── Mutations ──────────────────────────────────────────────────────────────
   async create(values, { authorType, authorId }) {
     const draft = await this.dao.createDraft({
@@ -171,6 +176,107 @@ class StoryService {
 
   update(storyId, values) {
     return this.dao.updateDraft(storyId, values);
+  }
+
+  async replaceBrief(storyId, input = {}) {
+    const introduction = String(input.introduction || '').trim();
+    const expectedRevision = Number(input.expectedRevision ?? input.expected_revision);
+    const rawFacts = Array.isArray(input.facts) ? input.facts : [];
+
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
+      throw this._briefError('expected_revision must be a non-negative integer', 'brief_revision_required');
+    }
+    if (!introduction || introduction.length > 2000) {
+      throw this._briefError('introduction is required and must be at most 2000 characters', 'brief_introduction_invalid');
+    }
+    if (rawFacts.length < 1 || rawFacts.length > 8) {
+      throw this._briefError('brief must contain between 1 and 8 findings', 'brief_facts_invalid');
+    }
+
+    const facts = rawFacts.map((rawFact, index) => {
+      const heading = String(rawFact.heading || '').trim() || null;
+      const text = String(rawFact.text || '').trim();
+      const articleIds = Array.from(new Set(
+        [].concat(rawFact.articleIds ?? rawFact.article_ids ?? [])
+          .map(value => Number.parseInt(value, 10))
+          .filter(Number.isFinite)
+      ));
+      if (heading && heading.length > 160) {
+        throw this._briefError(`finding ${index + 1} heading must be at most 160 characters`, 'brief_heading_too_long');
+      }
+      if (!text || text.length > 4000) {
+        throw this._briefError(`finding ${index + 1} text is required and must be at most 4000 characters`, 'brief_fact_invalid');
+      }
+      if (articleIds.length < 1 || articleIds.length > 12) {
+        throw this._briefError(`finding ${index + 1} must cite between 1 and 12 sources`, 'brief_fact_uncited');
+      }
+      return { heading, text, articleIds };
+    });
+
+    return this.dao.replaceStoryBrief(storyId, { introduction, facts, expectedRevision });
+  }
+
+  publishBrief(storyId, { expectedRevision, reviewedBy }) {
+    const revision = Number(expectedRevision);
+    if (!Number.isInteger(revision) || revision < 1) {
+      throw this._briefError('expected_revision must identify the reviewed brief', 'brief_revision_required');
+    }
+    return this.dao.publishStoryBrief(storyId, { expectedRevision: revision, reviewedBy });
+  }
+
+  withdrawBrief(storyId) {
+    return this.dao.withdrawStoryBrief(storyId);
+  }
+
+  async registerResearchSource(storyId, input = {}) {
+    const title = String(input.title || '').trim();
+    const sourceName = String(input.publisher_name || input.publisherName || '').trim();
+    const rawUrl = String(input.url || '').trim();
+    if (!title || title.length > 500) {
+      throw this._briefError('title is required and must be at most 500 characters', 'research_source_title_invalid');
+    }
+    if (!sourceName || sourceName.length > 100) {
+      throw this._briefError('publisher_name is required and must be at most 100 characters', 'research_source_publisher_invalid');
+    }
+    if (rawUrl.length > 4000) {
+      throw this._briefError('url must be at most 4000 characters', 'research_source_url_invalid');
+    }
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(rawUrl);
+    } catch (_) {
+      throw this._briefError('url must be a valid HTTP(S) URL', 'research_source_url_invalid');
+    }
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      throw this._briefError('url must be a valid HTTP(S) URL', 'research_source_url_invalid');
+    }
+    if (parsedUrl.username || parsedUrl.password) {
+      throw this._briefError('url must not include credentials', 'research_source_url_invalid');
+    }
+    parsedUrl.hash = '';
+    const url = parsedUrl.toString();
+    const sourceUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
+    const digest = crypto.createHash('sha256').update(url).digest('hex');
+    const sourceDigest = crypto.createHash('sha256').update(sourceUrl).digest('hex');
+    const hostSlug = parsedUrl.hostname.toLowerCase().replace(/^www\./, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const sourceSlug = `research-${(hostSlug || 'source').slice(0, 72)}-${sourceDigest.slice(0, 8)}`;
+    const publishedAt = input.published_at || input.publishedAt
+      ? new Date(input.published_at || input.publishedAt)
+      : null;
+    if (publishedAt && Number.isNaN(publishedAt.getTime())) {
+      throw this._briefError('published_at must be a valid date', 'research_source_date_invalid');
+    }
+
+    return this.dao.registerResearchSource(storyId, {
+      sourceName,
+      sourceSlug,
+      sourceUrl,
+      externalId: digest,
+      title,
+      url,
+      publishedAt,
+    });
   }
 
   async attach(storyId, articleId) {
@@ -556,6 +662,13 @@ class StoryService {
     if (field) out.field = field;
     if (meta && typeof meta === 'object' && Object.keys(meta).length > 0) out.meta = meta;
     return out;
+  }
+
+  _briefError(message, code) {
+    const error = new Error(message);
+    error.status = 400;
+    error.code = code;
+    return error;
   }
 
   _normalizeUrlForDedup(url) {

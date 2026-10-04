@@ -269,18 +269,6 @@ router.get('/archive', async (req, res) => {
 });
 
 // ── Story detail ───────────────────────────────────────────────────────
-router.post('/story/:slug/rd-brief', async (req, res) => {
-  const svc = req.app.get('researchBriefService');
-  try {
-    const story = await svc.generateBySlug(req.params.slug);
-    if (!story) return res.status(404).redirect('/');
-    return res.redirect(303, `/story/${encodeURIComponent(req.params.slug)}?rd=generated#rd-brief`);
-  } catch (err) {
-    console.error('[rd-brief] generation failed:', err.message);
-    return res.redirect(303, `/story/${encodeURIComponent(req.params.slug)}?rd=error#rd-brief`);
-  }
-});
-
 router.get('/story/:slug', async (req, res) => {
   const pool = req.app.get('pool');
   const dao = new NewsDAO(pool);
@@ -309,15 +297,17 @@ router.get('/story/:slug', async (req, res) => {
     });
   }
 
-  const articles = await dao.getStoryArticles(story.id);
-  const related = await dao.getRelatedStories(story.id, { category: story.category, tags: story.tags || [] });
-  const rdStatus = String(req.query.rd || '').trim();
+  const [articles, related, brief] = await Promise.all([
+    dao.getStoryArticles(story.id),
+    dao.getRelatedStories(story.id, { category: story.category, tags: story.tags || [] }),
+    dao.getStoryBrief(story.id, { publishedOnly: true }),
+  ]);
   res.render('layout-main', {
     template: 'story-page',
     pageTitle: `${story.title} | TSquirrel`,
     pageDescription: story.summary || story.title,
     pageUrl: `https://tsquirrel.com/story/${story.slug}`,
-    pageData: { story, articles, related, rdStatus },
+    pageData: { story, articles, related, brief },
   });
 });
 

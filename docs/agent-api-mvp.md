@@ -34,6 +34,22 @@ Returns mixed change events ordered by newest first:
 Plus:
 - `next_since` cursor for next poll
 
+### Optional "Dig deeper" research workflow
+
+An internal Hermes instance can attach additional research and submit a cited brief
+for owner review. These endpoints never publish the brief:
+
+- `POST /api/v1/stories/:id/research-sources` registers and attaches a source using
+  `title`, `url`, `publisher_name`, and optional `published_at`.
+- `GET /api/v1/stories/:id/brief` returns the current draft or published brief and
+  its `revision`; it returns `brief: null` when none exists.
+- `PUT /api/v1/stories/:id/brief` replaces the complete brief as a draft. Send
+  `expected_revision`, `introduction`, and cited `facts[]`. A stale revision returns
+  HTTP `409`.
+
+Only the session-authenticated admin workflow can publish or withdraw a brief.
+See `FREE-STORY-BRIEF.md` for the request shape and review lifecycle.
+
 ## Quota + metering
 Token auth now supports:
 - plan metadata (`api_tokens.plan`)

@@ -1365,8 +1365,8 @@ a.signal-meta-chip:hover {
 .why-it-matters-label { font-size: .65rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: .25rem; }
 .why-it-matters-text { font-size: .88rem; color: var(--brand); line-height: 1.5; }
 
-/* ── R&D brief card ── */
-.rd-brief-card {
+/* ── Dig deeper brief ── */
+.story-brief-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -1374,33 +1374,31 @@ a.signal-meta-chip:hover {
   margin: 0 0 .75rem;
   box-shadow: 0 2px 10px rgba(26, 22, 18, .05);
 }
-.rd-brief-top {
+.story-brief-header {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
   gap: .75rem;
   flex-wrap: wrap;
+  margin-bottom: .55rem;
 }
-.rd-brief-label { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-mid); }
-.rd-brief-sub { margin: .3rem 0 0; font-size: .82rem; color: var(--muted); }
-.rd-brief-btn { margin: 0; white-space: nowrap; }
-.rd-brief-status { margin-top: .6rem; font-size: .8rem; padding: .45rem .55rem; border-radius: 8px; }
-.rd-brief-ok { background: #ebf8ec; color: #245a2a; border: 1px solid #cde9d1; }
-.rd-brief-error { background: #fff2f2; color: #8b1d1d; border: 1px solid #f7c8c8; }
-.rd-brief-empty { margin: .75rem 0 0; font-size: .84rem; color: var(--muted); }
-.rd-brief-content {
-  margin: .75rem 0 0;
-  white-space: pre-wrap;
-  font-size: .84rem;
-  line-height: 1.5;
-  background: #f9fafb;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: .7rem;
-  max-height: 38rem;
-  overflow: auto;
+.story-brief-label { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-mid); }
+.story-brief-reviewed { font-size: .72rem; color: var(--muted); }
+.story-brief-introduction { margin: 0 0 .75rem; font-size: .9rem; line-height: 1.55; }
+.story-brief-findings { margin: 0; padding-left: 1.3rem; }
+.story-brief-findings li { padding-left: .15rem; margin-bottom: .75rem; }
+.story-brief-findings li:last-child { margin-bottom: 0; }
+.story-brief-findings h2 { margin: 0 0 .2rem; font-size: .92rem; }
+.story-brief-findings p { margin: 0; font-size: .86rem; line-height: 1.55; }
+.story-brief-citations {
+  white-space: nowrap;
 }
-.rd-brief-meta { margin-top: .45rem; font-size: .72rem; color: var(--muted); }
+.story-brief-citations a { margin-left: .2rem; font-weight: 700; }
+
+.admin-brief-editor { margin-top: 1rem; }
+.admin-brief-fact { margin: .8rem 0; }
+.admin-brief-citations > label { display: flex; gap: .5rem; align-items: flex-start; font-size: .82rem; }
+.admin-brief-citations input { flex: 0 0 auto; margin-top: .2rem; }
 
 /* ── Forest mood ── */
 .sentiment-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: .85rem; margin-bottom: .75rem; box-shadow: 0 2px 10px rgba(26, 22, 18, .05); }
@@ -1506,4 +1504,3 @@ a.signal-meta-chip:hover {
 .footer-tagline strong { color: var(--brand); }
 .footer-sub { display: block; font-size: .65rem; color: var(--muted); margin-top: .2rem; }
 footer.container { text-align: center; padding-top: 1.5rem; padding-bottom: 1.5rem; }
-
