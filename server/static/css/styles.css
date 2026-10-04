@@ -905,6 +905,8 @@ main.container, footer.container { max-width: 980px; }
 /* Story editor workspace */
 .story-editor-tabs {
   display: flex;
+  justify-content: flex-start;
+  align-items: flex-end;
   gap: .35rem;
   margin: 0 0 -.05rem;
   padding-left: .4rem;
@@ -922,10 +924,18 @@ main.container, footer.container { max-width: 980px; }
   border-bottom-color: var(--admin-line);
   border-radius: 7px 7px 0 0;
   font-weight: 700;
+  white-space: nowrap;
+  touch-action: manipulation;
 }
 .admin-body button.story-editor-tab:hover {
   color: var(--brand);
   border-color: var(--brand-light);
+}
+.admin-body button.story-editor-tab:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 .admin-body button.story-editor-tab.active {
   position: relative;

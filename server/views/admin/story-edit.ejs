@@ -15,7 +15,7 @@
 
   <% if (isEdit) { %>
     <%- include('partials/_story-meta', { pageData: { story } }) %>
-    <nav class="story-editor-tabs" aria-label="Story editor sections" role="tablist" hidden>
+    <div class="story-editor-tabs" aria-label="Story editor sections" role="tablist" hidden>
       <button type="button" id="story-details-tab" class="story-editor-tab active"
               role="tab" aria-selected="true" aria-controls="story-details-panel">
         Story
@@ -31,7 +31,7 @@
           <span class="story-editor-tab-state is-<%= brief.status %>"><%= brief.status %></span>
         <% } %>
       </button>
-    </nav>
+    </div>
     <section id="story-details-panel" class="story-editor-panel" role="tabpanel"
              aria-labelledby="story-details-tab">
   <% } %>
