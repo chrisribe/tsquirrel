@@ -137,6 +137,8 @@ class NewsDAO {
       SELECT category, COUNT(*) AS count
       FROM stories
       WHERE category IS NOT NULL
+        AND BTRIM(category) <> ''
+        AND category <> 'News'
         AND created_at > NOW() - INTERVAL '48 hours'
       GROUP BY category
       ORDER BY count DESC

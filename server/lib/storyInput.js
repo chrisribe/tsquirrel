@@ -23,7 +23,7 @@ function normalizeStoryInput(input = {}) {
     summary: String(input.summary || '').trim() || null,
     squirrelTake: String(input.squirrel_take || '').trim() || null,
     whyItMatters: String(input.why_it_matters || '').trim() || null,
-    category: String(input.category || 'Other').trim() || 'Other',
+    category: normalizeCategoryValue(input.category),
     tags: String(input.tags || '').split(',').map(tag => tag.trim()).filter(Boolean),
     imageUrl,
     articleIds: [].concat(input.articleIds || [])
@@ -32,4 +32,26 @@ function normalizeStoryInput(input = {}) {
   };
 }
 
-module.exports = { normalizeStoryInput };
+function normalizeCategoryValue(rawCategory) {
+  const raw = String(rawCategory || '').trim();
+  if (!raw) return 'Other';
+
+  const aliases = {
+    ai: 'AI',
+    'artificial intelligence': 'AI',
+    'machine learning': 'AI',
+    llm: 'AI',
+    tech: 'Technology',
+    technology: 'Technology',
+    news: 'Other',
+  };
+
+  const canon = aliases[raw.toLowerCase()] || raw;
+  const allowed = new Set([
+    'AI', 'Politics', 'Business', 'Technology', 'Science', 'Health',
+    'Sports', 'Entertainment', 'World', 'Environment', 'Crime', 'Other',
+  ]);
+  return allowed.has(canon) ? canon : 'Other';
+}
+
+module.exports = { normalizeStoryInput, normalizeCategoryValue };

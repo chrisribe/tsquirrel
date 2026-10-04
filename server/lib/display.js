@@ -21,7 +21,8 @@ function catMeta(category) {
 
 // "💻 Technology" style label for pills and badges
 function catLabel(category) {
-  return `${catMeta(category).emoji} ${category || 'News'}`;
+  const label = String(category || '').trim() || 'Other';
+  return `${catMeta(label).emoji} ${label}`;
 }
 
 // Aggregator sources (Google Trends, etc.) don't publish the article — they

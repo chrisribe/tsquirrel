@@ -3,7 +3,7 @@
 const StoryService = require('./StoryService');
 const SignalService = require('./SignalService');
 const NewsDAO = require('../dao/NewsDAO');
-const { normalizeStoryInput } = require('../lib/storyInput');
+const { normalizeStoryInput, normalizeCategoryValue } = require('../lib/storyInput');
 
 // Story service for the JSON API. Shares the core StoryService (DAO access,
 // slug, attach loop) with StoryAdminService but returns plain data — story,
@@ -69,7 +69,7 @@ class ApiStoryService {
     const summary = has('summary') ? (String(body.summary || '').trim() || null) : current.summary;
     const squirrelTake = has('squirrel_take') ? (String(body.squirrel_take || '').trim() || null) : current.squirrel_take;
     const whyItMatters = has('why_it_matters') ? (String(body.why_it_matters || '').trim() || null) : current.why_it_matters;
-    const category = has('category') ? (String(body.category || 'Other').trim() || 'Other') : current.category;
+    const category = has('category') ? normalizeCategoryValue(body.category) : current.category;
     const tags = has('tags') ? String(body.tags || '').split(',').map(t => t.trim()).filter(Boolean) : current.tags;
     const imageUrl = has('image_url') ? (String(body.image_url || '').trim() || null) : undefined;
 
