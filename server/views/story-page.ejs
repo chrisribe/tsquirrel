@@ -54,7 +54,13 @@
   <% if (brief) { %>
     <section id="dig-deeper" class="story-brief-card">
       <div class="story-brief-header">
-        <div class="story-brief-label">🔎 Dig deeper</div>
+        <div class="story-brief-heading">
+          <span class="story-brief-icon" aria-hidden="true">🔎</span>
+          <div>
+            <div class="story-brief-label">Dig deeper</div>
+            <div class="story-brief-subtitle">Evidence-backed context</div>
+          </div>
+        </div>
         <% if (brief.reviewed_at) { %>
           <div class="story-brief-reviewed">Reviewed <%= new Date(brief.reviewed_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
         <% } %>

@@ -1471,33 +1471,151 @@ a.signal-meta-chip:hover {
 
 /* ── Dig deeper brief ── */
 .story-brief-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--brand-pale) 0, var(--card-bg) 108px);
+  border: 1px solid var(--brand-light);
   border-radius: 14px;
-  padding: .85rem;
+  padding: 1rem;
   margin: 0 0 .75rem;
-  box-shadow: 0 2px 10px rgba(26, 22, 18, .05);
+  box-shadow: 0 5px 18px rgba(26, 22, 18, .07);
+}
+.story-brief-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--brand-mid);
 }
 .story-brief-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: .75rem;
   flex-wrap: wrap;
-  margin-bottom: .55rem;
+  margin-bottom: .8rem;
 }
-.story-brief-label { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-mid); }
-.story-brief-reviewed { font-size: .72rem; color: var(--muted); }
-.story-brief-introduction { margin: 0 0 .75rem; font-size: .9rem; line-height: 1.55; }
-.story-brief-findings { margin: 0; padding-left: 1.3rem; }
-.story-brief-findings li { padding-left: .15rem; margin-bottom: .75rem; }
+.story-brief-heading {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.story-brief-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 1px solid var(--brand-light);
+  box-shadow: 0 2px 6px rgba(26, 22, 18, .08);
+}
+.story-brief-label {
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+.story-brief-subtitle {
+  margin-top: .05rem;
+  font-size: .7rem;
+  color: var(--muted);
+}
+.story-brief-reviewed {
+  padding: .2rem .55rem;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, .75);
+  border: 1px solid var(--brand-light);
+  font-size: .7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.story-brief-introduction {
+  margin: 0 0 .85rem;
+  padding: .7rem .8rem;
+  border-left: 3px solid var(--brand-mid);
+  border-radius: 0 8px 8px 0;
+  background: rgba(255, 255, 255, .72);
+  font-size: .9rem;
+  line-height: 1.55;
+}
+.story-brief-findings {
+  counter-reset: brief-finding;
+  display: grid;
+  gap: .6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.story-brief-findings li {
+  counter-increment: brief-finding;
+  position: relative;
+  margin: 0;
+  padding: .75rem .8rem .75rem 2.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .86);
+}
+.story-brief-findings li::before {
+  content: counter(brief-finding);
+  position: absolute;
+  top: .72rem;
+  left: .75rem;
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
 .story-brief-findings li:last-child { margin-bottom: 0; }
-.story-brief-findings h2 { margin: 0 0 .2rem; font-size: .92rem; }
+.story-brief-findings h2 {
+  margin: 0 0 .25rem;
+  color: var(--brand);
+  font-size: .92rem;
+  line-height: 1.35;
+}
 .story-brief-findings p { margin: 0; font-size: .86rem; line-height: 1.55; }
 .story-brief-citations {
   white-space: nowrap;
 }
-.story-brief-citations a { margin-left: .2rem; font-weight: 700; }
+.story-brief-citations a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.25rem;
+  margin-left: .18rem;
+  padding: 0 .3rem;
+  border-radius: 99px;
+  background: var(--brand-pale);
+  color: var(--brand);
+  font-size: .7rem;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+}
+.story-brief-citations a:hover {
+  background: var(--brand);
+  color: #fff;
+}
+.story-brief-citations a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .story-brief-card { padding: .85rem; }
+  .story-brief-header { align-items: flex-start; }
+  .story-brief-reviewed { margin-left: 2.6rem; }
+  .story-brief-findings li { padding: .7rem .7rem .7rem 2.65rem; }
+  .story-brief-findings li::before { left: .65rem; }
+}
 
 .admin-brief-editor { margin-top: 1rem; }
 .admin-brief-fact { margin: .8rem 0; }
