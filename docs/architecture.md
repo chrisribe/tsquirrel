@@ -138,7 +138,7 @@ Reviewed by Opus (use GitHub Models or OpenRouter `anthropic/claude-opus-4.8`).
 | 15 | Publishing model: manual + API first, retire auto-curation (see design note below) | 🟡 partial | **Manual flow DONE** (migration v8: status/author/published_at + api_tokens; dynamic heat_score; `/admin/stories` compose/edit/publish/unpublish/hide/feature/delete; homepage published-only; SummaryService retired from cron; existing stories hidden on cutover). **API `/api/v1` + token auth still TODO.** |
 | 16 | Article retention: tombstone-and-prune (see design note below) | ⬜ todo | Keep full rows 30d; after that, if unlinked, move `(source_id, external_id)` to `seen_ids` tombstone (60–90d) + delete heavy row. Linked/cited articles never pruned. **Implement AFTER manual flow.** |
 | 17 | Feed-image capture for live articles (see design note below) | ✅ done | Migration v12 (`articles.image_url`). RSS/Atom parser extracts `media:thumbnail`/`media:content`/`enclosure`/`itunes:image`/`<img>` — zero extra HTTP. Google Trends captures `ht:news_item_picture`. Radar-created drafts auto-seed `stories.image_url` from first evidence article w/ image. Admin can override via a thumbnail picker + custom-URL field on the story editor. Hotlinked images rendered (with `referrerpolicy="no-referrer"` + emoji fallback on load error) in signals list, story-edit attached-sources, `/admin/stories` list, homepage cards, featured strip, and story detail hero. |
-| 18 | Free Story Brief: optional Hermes-authored "Dig deeper" research with citations | ✅ done | Owner asks Hermes to research a selected story; token-authenticated API registers additional sources and replaces a revision-guarded draft. Admin explicitly reviews/publishes or withdraws it. Public stories render only approved cited findings. No mandatory coverage, server-side generation, premium gate, or automatic publication. See `docs/FREE-STORY-BRIEF.md`. |
+| 18 | Free Story Brief: optional "Dig deeper" research with citations | ✅ done | A human or external system can research a selected story; the token-authenticated API registers additional sources and replaces a revision-guarded draft. Admin explicitly reviews/publishes or withdraws it. Public stories render only approved cited findings. No mandatory coverage, server-side generation, premium gate, or automatic publication. See `docs/FREE-STORY-BRIEF.md`. |
 
 ---
 
@@ -617,4 +617,3 @@ IngestionService dedup check becomes: skip insert if `(source_id, external_id)` 
 rules depend on `story_articles` linkage being the source of truth for "is this article cited," which
 the manual flow finalizes. Documenting now because it interacts with the dynamic-heat_score /
 late-linking design; not building yet.
-

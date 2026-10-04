@@ -36,8 +36,9 @@ Plus:
 
 ### Optional "Dig deeper" research workflow
 
-An internal Hermes instance can attach additional research and submit a cited brief
-for owner review. These endpoints never publish the brief:
+An authenticated contributor can attach additional research and submit a cited
+brief for editorial review. The contributor may be a person, script, or agent.
+These endpoints never publish the brief:
 
 - `POST /api/v1/stories/:id/research-sources` registers and attaches a source using
   `title`, `url`, `publisher_name`, and optional `published_at`.

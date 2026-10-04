@@ -5,26 +5,27 @@ Status: **initial workflow implemented**
 ## Purpose
 
 Add an optional, cited research brief to an existing TSquirrel story.
-The owner chooses a story and asks Hermes to investigate the event more deeply.
-Hermes researches and submits the findings; TSquirrel stores them for review and
-displays them after explicit approval.
+An editor chooses a story for deeper research. A human or external system submits
+cited findings; TSquirrel stores them for review and displays them after explicit
+approval.
 
-> I asked Hermes to research a story, reviewed its findings, and published useful
-> additional context with receipts.
+> I researched a story, reviewed the evidence, and published useful additional
+> context with receipts.
 
 This replaces the earlier mandatory multi-source brief plan. Briefs are free to
 read, but not required on every story. Stories without one remain unchanged.
 
 ## First workflow
 
-1. The owner tells Hermes: "Dig deeper into this TSquirrel story."
-2. Hermes reads the existing coverage and researches additional sources.
-3. Hermes registers and attaches any new sources, then submits a draft brief.
-4. The owner reviews the findings and citations in the existing admin editor.
-5. The owner explicitly publishes the brief. The story gains a "Dig deeper" section.
+1. An editor selects an existing story for deeper research.
+2. A contributor reads the existing coverage and researches additional sources.
+3. The contributor registers and attaches any new sources, then submits a draft brief.
+4. An editor reviews the findings and citations in the existing admin editor.
+5. The editor explicitly publishes the brief. The story gains a "Dig deeper" section.
 
-Hermes does the research outside TSquirrel. No server-side LLM calls, background
-generation, or automatic publishing are needed.
+The contributor may be a person or an external system. Research happens outside
+TSquirrel; no server-side LLM calls, background generation, or automatic publishing
+are needed.
 
 ## Content
 
@@ -82,7 +83,7 @@ DAO SQL stays in `NewsDAO`; shared validation and operations stay in `StoryServi
 
 ## API and research sources
 
-Use the existing token-authenticated API for Hermes:
+External contributors use the existing token-authenticated API:
 
 | Operation | Proposed endpoint |
 |---|---|
@@ -93,13 +94,13 @@ Use the existing token-authenticated API for Hermes:
 Research sources may be official statements, filings, studies, or articles not in
 the feeds. Accept URL, title, publisher name, and optional publication date. Reuse
 the existing `articles`, `sources`, and `story_articles` model; return an article ID
-that Hermes can cite. Reuse matching records on retry rather than duplicating them.
+that the contributor can cite. Reuse matching records on retry rather than duplicating them.
 Registering a publisher must not automatically subscribe it to ingestion.
 
 Only accept HTTP(S) URLs. TSquirrel stores metadata and links; it does not fetch
-these pages or pretend it verified their contents. Hermes reads the originals and
-the owner checks the evidence. Source attachment follows existing story behavior;
-it is not a private evidence store.
+these pages or pretend it verified their contents. The contributor reads the
+originals and the reviewing editor checks the evidence. Source attachment follows
+existing story behavior; it is not a private evidence store.
 
 Example brief submission:
 
@@ -129,8 +130,8 @@ middleware to cover PUT; replay handling does not replace revision checks.
 
 - Every successful content edit sets the brief to `draft`, clears review metadata,
   and increments the revision. Failed edits leave the previous brief untouched.
-- Only an authenticated admin can publish or withdraw a brief. Hermes cannot set
-  status or review metadata; reject those fields in submissions.
+- Only an authenticated admin can publish or withdraw a brief. API submissions
+  cannot set status or review metadata; reject those fields.
 - Publishing records the reviewing user and time. Approval checks the revision the
   reviewer actually saw. Withdrawing returns the brief to draft and clears approval.
 - A public page shows the section only when both the story and brief are published.
@@ -183,15 +184,15 @@ on stories without a published brief.
    and draft submission. Verify complete round trips, retry behavior, rollback,
    stale-revision rejection, and citation membership under concurrent detachment.
 2. **Review and display:** add admin editing/approval and the public section. Verify
-   that Hermes cannot publish, stale approvals fail, edits hide only the brief, and
+   that API clients cannot publish, stale approvals fail, edits hide only the brief, and
    existing stories still render unchanged without one.
-3. **Small pilot:** use Hermes on a handful of selected stories. Check each finding
+3. **Small pilot:** research a handful of selected stories. Check each finding
    against its citations, assess whether it adds information beyond the summary,
-   and note the owner's review effort before expanding the workflow.
+   and note the editor's review effort before expanding the workflow.
 
-The first release is complete when the owner can request research from Hermes,
-receive a cited draft, review and publish it, and see the approved findings on the
-original story page.
+The first release is complete when an editor can initiate research, receive a cited
+draft from a human or external system, review and publish it, and see the approved
+findings on the original story page.
 
 ## Later, only if needed
 

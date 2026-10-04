@@ -10,7 +10,7 @@
 %>
 <section id="story-brief-editor" class="admin-brief-editor">
   <h2>Dig deeper</h2>
-  <p class="hint">Optional cited research submitted by Hermes. Saving any change returns it to draft.</p>
+  <p class="hint">Optional cited research. Saving any change returns it to draft.</p>
 
   <form method="POST" action="/admin/stories/<%= pageData.story.id %>/brief">
     <input type="hidden" name="expected_revision" value="<%= brief.revision || 0 %>">
