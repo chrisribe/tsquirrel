@@ -4,6 +4,7 @@
   const prefill = pageData.prefill || {};
   const cats = ['AI','Technology','World','Business','Science','Politics','Sports','Entertainment','Other'];
   const attachedIds = pageData.attached.map(article => article.id);
+  const brief = pageData.briefForm || pageData.brief;
 %>
 <section class="admin-story-edit" id="story-edit-section">
   <a href="<%= pageData.returnTo || '/admin/stories' %>" class="admin-back">&larr; Back to Stories</a>
@@ -14,6 +15,25 @@
 
   <% if (isEdit) { %>
     <%- include('partials/_story-meta', { pageData: { story } }) %>
+    <nav class="story-editor-tabs" aria-label="Story editor sections" role="tablist" hidden>
+      <button type="button" id="story-details-tab" class="story-editor-tab active"
+              role="tab" aria-selected="true" aria-controls="story-details-panel">
+        Story
+      </button>
+      <button type="button" id="story-sources-tab" class="story-editor-tab"
+              role="tab" aria-selected="false" aria-controls="story-sources-panel" tabindex="-1">
+        Sources <span class="story-editor-tab-count"><%= pageData.attached.length %></span>
+      </button>
+      <button type="button" id="story-brief-tab" class="story-editor-tab"
+              role="tab" aria-selected="false" aria-controls="story-brief-panel" tabindex="-1">
+        Dig deeper
+        <% if (brief?.revision) { %>
+          <span class="story-editor-tab-state is-<%= brief.status %>"><%= brief.status %></span>
+        <% } %>
+      </button>
+    </nav>
+    <section id="story-details-panel" class="story-editor-panel" role="tabpanel"
+             aria-labelledby="story-details-tab">
   <% } %>
 
   <form id="story-form" method="POST"
@@ -77,15 +97,73 @@
   <%- include('partials/_image-picker', { pageData: { story: pageData.story, prefill, attached: pageData.attached } }) %>
 
   <% if (isEdit) { %>
-    <%- include('partials/_suggested-sources', { pageData: { story, suggestions: pageData.suggestions } }) %>
-    <%- include('partials/_story-sources', { pageData: { story, attached: pageData.attached } }) %>
-    <%- include('partials/_story-brief', {
-      pageData: {
-        story,
-        attached: pageData.attached,
-        brief: pageData.briefForm || pageData.brief
-      }
-    }) %>
     <%- include('partials/_story-actions', { pageData: { story, returnTo: pageData.returnTo } }) %>
+    </section>
+
+    <section id="story-sources-panel" class="story-editor-panel" role="tabpanel"
+             aria-labelledby="story-sources-tab">
+      <%- include('partials/_suggested-sources', { pageData: { story, suggestions: pageData.suggestions } }) %>
+      <%- include('partials/_story-sources', { pageData: { story, attached: pageData.attached } }) %>
+    </section>
+
+    <section id="story-brief-panel" class="story-editor-panel" role="tabpanel"
+             aria-labelledby="story-brief-tab">
+      <%- include('partials/_story-brief', {
+        pageData: {
+          story,
+          attached: pageData.attached,
+          brief
+        }
+      }) %>
+    </section>
   <% } %>
 </section>
+
+<% if (isEdit) { %>
+  <script>
+    (function () {
+      const tabList = document.querySelector('.story-editor-tabs');
+      if (!tabList) return;
+
+      const tabs = Array.from(tabList.querySelectorAll('[role="tab"]'));
+      const panels = tabs.map(tab => document.getElementById(tab.getAttribute('aria-controls')));
+
+      function activate(tab, moveFocus) {
+        tabs.forEach((candidate, index) => {
+          const selected = candidate === tab;
+          candidate.classList.toggle('active', selected);
+          candidate.setAttribute('aria-selected', String(selected));
+          candidate.tabIndex = selected ? 0 : -1;
+          panels[index].hidden = !selected;
+        });
+        if (moveFocus) tab.focus();
+      }
+
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', function () {
+          activate(tab, false);
+          history.replaceState(null, '', '#' + tab.getAttribute('aria-controls'));
+        });
+        tab.addEventListener('keydown', function (event) {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          let nextIndex = index;
+          if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+          if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+          if (event.key === 'Home') nextIndex = 0;
+          if (event.key === 'End') nextIndex = tabs.length - 1;
+          activate(tabs[nextIndex], true);
+          history.replaceState(null, '', '#' + tabs[nextIndex].getAttribute('aria-controls'));
+        });
+      });
+
+      const hashTarget = location.hash
+        ? document.getElementById(decodeURIComponent(location.hash.slice(1)))
+        : null;
+      const initialPanel = hashTarget?.closest('[role="tabpanel"]') || panels[0];
+      const initialTab = tabs.find(tab => tab.getAttribute('aria-controls') === initialPanel.id) || tabs[0];
+      activate(initialTab, false);
+      tabList.hidden = false;
+    })();
+  </script>
+<% } %>

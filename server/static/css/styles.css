@@ -902,6 +902,63 @@ main.container, footer.container { max-width: 980px; }
   border-color: var(--brand);
 }
 
+/* Story editor workspace */
+.story-editor-tabs {
+  display: flex;
+  gap: .35rem;
+  margin: 0 0 -.05rem;
+  padding-left: .4rem;
+  overflow-x: auto;
+}
+.story-editor-tabs[hidden] { display: none; }
+.admin-body button.story-editor-tab {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: .55rem .8rem;
+  color: var(--muted);
+  background: var(--admin-row-alt);
+  border: 1px solid var(--admin-line);
+  border-bottom-color: var(--admin-line);
+  border-radius: 7px 7px 0 0;
+  font-weight: 700;
+}
+.admin-body button.story-editor-tab:hover {
+  color: var(--brand);
+  border-color: var(--brand-light);
+}
+.admin-body button.story-editor-tab.active {
+  position: relative;
+  z-index: 1;
+  color: var(--brand);
+  background: var(--card-bg);
+  border-bottom-color: var(--card-bg);
+}
+.story-editor-tab-count,
+.story-editor-tab-state {
+  display: inline-flex;
+  margin-left: .3rem;
+  padding: .06rem .38rem;
+  border-radius: 99px;
+  font-size: .65rem;
+  line-height: 1.35;
+  background: #ece8e1;
+  color: var(--muted);
+}
+.story-editor-tab-state { text-transform: capitalize; }
+.story-editor-tab-state.is-published { background: #dcfce7; color: #15803d; }
+.story-editor-tab-state.is-draft { background: #fef9c3; color: #92400e; }
+.story-editor-panel {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  background: var(--card-bg);
+}
+.story-editor-panel[hidden] { display: none; }
+.story-editor-panel > :first-child { margin-top: 0; }
+.story-editor-panel > section:first-child > h2:first-child { margin-top: 0; }
+
 /* Compact buttons — Pico's role="button" is padded like a marketing CTA */
 .admin-body button,
 .admin-body [role="button"] {
