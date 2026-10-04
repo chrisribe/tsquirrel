@@ -59,7 +59,6 @@
 <% const meta = catMeta(story.category); %>
 <% const recentHrs = (Date.now() - new Date(story.published_at || story.updated_at || story.created_at)) / 3600000; %>
 <% const isBlowingUp = story.heat_score >= 30 && recentHrs <= 3; %>
-<% const showTake = !!String(story.squirrel_take || '').trim(); %>
 <% const originalImageUrl = String(story.image_url || '').trim(); %>
 <% const imageChoice = chooseStoryImage(story, seenImageKeys); %>
 <% const showImageThumb = imageChoice.hasImage; %>
@@ -83,10 +82,6 @@
 
         <% if (story.summary) { %>
           <p class="story-summary"><%= story.summary %></p>
-        <% } %>
-
-        <% if (showTake) { %>
-          <p class="card-take-note">🐿️ <%= story.squirrel_take %></p>
         <% } %>
 
         <div class="story-footer">
