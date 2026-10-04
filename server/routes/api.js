@@ -26,6 +26,7 @@ router.post('/stories/bulk', apiStoryController.bulkAction);
 router.get('/stories/:id', apiStoryController.get);
 router.patch('/stories/:id', apiStoryController.patch);
 router.delete('/stories/:id', apiStoryController.delete);
+router.get('/stories/:storyRef/research-context', apiStoryController.researchContext);
 router.get('/stories/:id/brief', apiStoryController.getBrief);
 router.put('/stories/:id/brief', apiStoryController.putBrief);
 router.post('/stories/:id/research-sources', apiStoryController.registerResearchSource);

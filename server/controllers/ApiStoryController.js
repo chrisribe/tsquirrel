@@ -107,6 +107,20 @@ const ApiStoryController = {
     } catch (error) { return next(error); }
   },
 
+  async researchContext(req, res, next) {
+    try {
+      const ref = req.params.storyRef;
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(ref) || ref.length > 255 ||
+          (/^\d+$/.test(ref) && (!Number.isSafeInteger(Number(ref)) || Number(ref) < 1 || Number(ref) > 2147483647))) {
+        return res.status(400).json({ error: 'invalid story id or slug' });
+      }
+      const context = await serviceFor(req).getResearchContext(ref);
+      if (!context) return res.status(404).json({ error: 'story not found' });
+      res.set('Cache-Control', 'no-store');
+      return res.json({ ok: true, ...context });
+    } catch (error) { return next(error); }
+  },
+
   async getBrief(req, res, next) {
     try {
       const id = parseId(req.params.id);

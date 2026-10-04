@@ -40,6 +40,11 @@ An authenticated contributor can attach additional research and submit a cited
 brief for editorial review. The contributor may be a person, script, or agent.
 These endpoints never publish the brief:
 
+- `GET /api/v1/stories/:idOrSlug/research-context` bundles the current story and
+  brief, attached source links, pending suggestions, a research checklist, a
+  revision-aware submission example, and relative next-step links. Start here
+  with the numeric ID or final slug from a public story URL. This is stored
+  editorial context, not a fact-check or live web search.
 - `POST /api/v1/stories/:id/research-sources` registers and attaches a source using
   `title`, `url`, `publisher_name`, and optional `published_at`.
 - `GET /api/v1/stories/:id/brief` returns the current draft or published brief and
@@ -50,6 +55,8 @@ These endpoints never publish the brief:
 
 Only the session-authenticated admin workflow can publish or withdraw a brief.
 See `FREE-STORY-BRIEF.md` for the request shape and review lifecycle.
+That document also describes the opt-in local HTTP workflow test, which creates
+its token and content via the running app rather than inserting fixtures with SQL.
 
 ## Quota + metering
 Token auth now supports:
