@@ -9,7 +9,7 @@
     </div>
     <h1><%= article.title %></h1>
     <% if (article.description) { %>
-      <p class="story-summary-large"><%= article.description %></p>
+      <p class="story-summary-large"><%= plainText(article.description) %></p>
     <% } %>
   </header>
 

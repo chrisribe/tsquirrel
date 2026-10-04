@@ -1377,6 +1377,43 @@ a.signal-meta-chip:hover {
 }
 .source-material-detach { margin: 0; align-self: center; }
 .source-material-detach button { margin: 0; width: auto; white-space: nowrap; }
+.source-attach {
+  margin-top: .9rem;
+  padding-top: .8rem;
+  border-top: 1px solid var(--admin-line);
+}
+.source-attach > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  width: auto;
+  padding: .42rem .75rem;
+  border: 1px solid var(--brand);
+  border-radius: 6px;
+  background: var(--brand);
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  cursor: pointer;
+  list-style: none;
+  touch-action: manipulation;
+}
+.source-attach > summary::-webkit-details-marker { display: none; }
+.source-attach > summary:hover { background: var(--brand-mid); }
+.source-attach > summary:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.source-attach[open] > summary {
+  background: var(--card-bg);
+  color: var(--brand);
+}
+.source-attach-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+.source-attach > .article-picker { margin-top: .75rem; }
 
 @media (max-width: 640px) {
   .source-material-item { grid-template-columns: 1fr; }

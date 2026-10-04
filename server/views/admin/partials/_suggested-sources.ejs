@@ -15,7 +15,7 @@
               <% if (article.published_at) { %><span class="suggestion-date"><%= new Date(article.published_at).toLocaleDateString() %></span><% } %>
             </div>
             <a href="<%= article.url %>" target="_blank" rel="noopener noreferrer" class="suggestion-title"><%= article.title %></a>
-            <% if (article.description) { %><p class="suggestion-desc"><%= article.description %></p><% } %>
+            <% if (article.description) { %><p class="suggestion-desc"><%= plainText(article.description) %></p><% } %>
           </div>
           <div class="suggestion-actions">
             <form method="POST" action="/admin/stories/<%= pageData.story.id %>/suggestions/<%= article.id %>/accept"

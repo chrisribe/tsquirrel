@@ -134,10 +134,11 @@ async function startServer() {
   app.use(botShield);
 
   // Category display helpers available in every template
-  const { catMeta, catLabel, displaySourceName, secureUrl } = require('./lib/display');
+  const { catMeta, catLabel, displaySourceName, plainText, secureUrl } = require('./lib/display');
   app.locals.catMeta = catMeta;
   app.locals.catLabel = catLabel;
   app.locals.displaySourceName = displaySourceName;
+  app.locals.plainText = plainText;
   app.locals.secureUrl = secureUrl;
 
   // Inject globals into all views

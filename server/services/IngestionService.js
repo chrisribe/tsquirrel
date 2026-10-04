@@ -7,6 +7,7 @@ const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 const crypto = require('crypto');
+const { decodeHtmlEntities, plainText } = require('../lib/display');
 
 function fetchUrl(rawUrl, { timeoutMs } = {}) {
   return new Promise((resolve, reject) => {
@@ -45,20 +46,15 @@ function parseRss(xml) {
     const imageUrl = extractImage(inner);
     if (title && link) {
       items.push({
-        title,
-        url: link,
+        title: plainText(title),
+        url: decodeHtmlEntities(link),
         publishedAt: pubDate ? new Date(pubDate) : new Date(),
-        description: description ? stripTags(description).slice(0, 1000) : null,
+        description: description ? plainText(description).slice(0, 1000) : null,
         imageUrl,
       });
     }
   }
   return items;
-}
-
-// Strip HTML tags from a snippet (RSS descriptions often contain markup)
-function stripTags(html) {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 // Pull the first usable image URL out of an RSS/Atom item block.
@@ -169,7 +165,7 @@ async function fetchOgImage(pageUrl) {
 }
 
 function decodeEntities(s) {
-  return s.replace(/&amp;/g, '&').replace(/&#38;/g, '&').trim();
+  return decodeHtmlEntities(s).trim();
 }
 
 // Fetch HN top stories
@@ -224,7 +220,13 @@ function parseGoogleTrends(xml) {
       const title = getHt('news_item_title');
       const url = getHt('news_item_url');
       if (title && url) {
-        items.push({ title, url, publishedAt: pubDate, trendTopic: topic, imageUrl: getHt('news_item_picture') });
+        items.push({
+          title: plainText(title),
+          url: decodeHtmlEntities(url),
+          publishedAt: pubDate,
+          trendTopic: topic ? plainText(topic) : null,
+          imageUrl: getHt('news_item_picture'),
+        });
       }
     }
   }
