@@ -15,7 +15,7 @@ class NewsDAO {
       if (normalizedCategory === 'hot') {
         categoryClause = `AND s.heat_score >= 30`;
       } else if (normalizedCategory === 'blowing_up') {
-        categoryClause = `AND s.heat_score >= 30 AND COALESCE(s.published_at, s.updated_at, s.created_at) >= NOW() - INTERVAL '3 hours'`;
+        categoryClause = `AND s.heat_score >= 30 AND COALESCE(s.published_at, s.updated_at, s.created_at) >= NOW() - INTERVAL '12 hours'`;
       } else {
         params.push(category);
         categoryClause = `AND s.category = $${params.length}`;
