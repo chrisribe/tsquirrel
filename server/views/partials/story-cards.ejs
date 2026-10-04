@@ -57,8 +57,6 @@
 </script>
 <% } %>
 <% const meta = catMeta(story.category); %>
-<% const recentHrs = (Date.now() - new Date(story.published_at || story.updated_at || story.created_at)) / 3600000; %>
-<% const isBlowingUp = story.heat_score >= 30 && recentHrs <= 12; %>
 <% const originalImageUrl = String(story.image_url || '').trim(); %>
 <% const imageChoice = chooseStoryImage(story, seenImageKeys); %>
 <% const showImageThumb = imageChoice.hasImage; %>
@@ -68,8 +66,7 @@
       <div class="card-body">
         <div class="story-meta">
           <span class="badge <%= meta.badge %>"><%= catLabel(story.category) %></span>
-          <% if (isBlowingUp) { %><span class="badge badge-hot">🔥 blowing up</span>
-          <% } else if (story.heat_score >= 30) { %><span class="badge badge-hot">🔥 hot</span><% } %>
+          <% if (story.heat_score >= 30) { %><span class="badge badge-hot">🔥 hot</span><% } %>
           <% if (story.source_count > 1) { %>
             <span class="badge badge-sources"><%= story.source_count %> sources</span>
           <% } %>

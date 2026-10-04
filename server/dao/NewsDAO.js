@@ -12,10 +12,8 @@ class NewsDAO {
     let categoryClause = '';
     if (category) {
       const normalizedCategory = String(category).trim().toLowerCase();
-      if (normalizedCategory === 'hot') {
+      if (normalizedCategory === 'hot' || normalizedCategory === 'blowing_up') {
         categoryClause = `AND s.heat_score >= 30`;
-      } else if (normalizedCategory === 'blowing_up') {
-        categoryClause = `AND s.heat_score >= 30 AND COALESCE(s.published_at, s.updated_at, s.created_at) >= NOW() - INTERVAL '12 hours'`;
       } else {
         params.push(category);
         categoryClause = `AND s.category = $${params.length}`;

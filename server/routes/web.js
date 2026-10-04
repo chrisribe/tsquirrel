@@ -226,7 +226,8 @@ router.get('/', async (req, res) => {
   const pool = req.app.get('pool');
   const dao = new NewsDAO(pool);
 
-  const category = req.query.category || null;
+  const rawCategory = req.query.category || null;
+  const category = rawCategory === 'blowing_up' ? 'hot' : rawCategory;
   const tag = req.query.tag || null;
   const q = String(req.query.q || '').trim() || null;
   const [stories, categories] = await Promise.all([
@@ -312,7 +313,8 @@ router.get('/api/stories', async (req, res) => {
   const pool = req.app.get('pool');
   const dao = new NewsDAO(pool);
   const offset = parseInt(req.query.offset, 10) || 0;
-  const category = req.query.category || null;
+  const rawCategory = req.query.category || null;
+  const category = rawCategory === 'blowing_up' ? 'hot' : rawCategory;
   const tag = req.query.tag || null;
   const q = String(req.query.q || '').trim() || null;
 
