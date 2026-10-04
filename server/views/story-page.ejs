@@ -37,13 +37,6 @@
     </div>
     <h1><%= story.title %></h1>
 
-    <% if (story.squirrel_take) { %>
-      <div class="squirrel-take">
-        <div class="squirrel-take-label">🐿️ The Squirrel's Take</div>
-        <div class="squirrel-take-text"><%= story.squirrel_take %></div>
-      </div>
-    <% } %>
-
     <% if (story.why_it_matters) { %>
       <div class="why-it-matters">
         <div class="why-it-matters-label">💡 Why it matters</div>
@@ -106,13 +99,9 @@
   <div class="keep-digging-label">🐿️ Keep digging</div>
   <% related.forEach(r => { %>
     <% const rMeta = catMeta(r.category); %>
-    <% const rShowTake = !!String(r.squirrel_take || '').trim(); %>
     <a href="/story/<%= r.slug %>" class="keep-digging-row" data-ga-event="related_story_open" data-ga-story-id="<%= r.id %>" data-ga-story-slug="<%= r.slug %>" data-ga-location="keep_digging">
       <span class="keep-digging-icon"><%= rMeta.thumb %></span>
       <span class="keep-digging-body">
-        <% if (rShowTake) { %>
-          <span class="keep-digging-take">🐿️ <%= r.squirrel_take %></span>
-        <% } %>
         <span class="keep-digging-title"><%= r.title %></span>
       </span>
       <span class="keep-digging-arrow">›</span>
