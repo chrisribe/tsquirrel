@@ -12,7 +12,7 @@ const CATEGORY_META = {
   Politics:      { emoji: '🏛️', thumb: '🏛️', cls: 'thumb-world', badge: 'badge-cat-world' },
   Sports:        { emoji: '⚽', thumb: '🏆', cls: 'thumb-nuts',  badge: 'badge-cat-nuts'  },
   Entertainment: { emoji: '🎤', thumb: '🎬', cls: 'thumb-fire',  badge: 'badge-cat-fire'  },
-  Other:         { emoji: '🌰', thumb: '📰', cls: 'thumb-acorn', badge: 'badge-cat-acorn' },
+  Other:         { emoji: '🥜', thumb: '📰', cls: 'thumb-acorn', badge: 'badge-cat-acorn' },
 };
 
 function catMeta(category) {
@@ -21,7 +21,8 @@ function catMeta(category) {
 
 // "💻 Technology" style label for pills and badges
 function catLabel(category) {
-  return `${catMeta(category).emoji} ${category || 'News'}`;
+  const label = String(category || '').trim() || 'Other';
+  return `${catMeta(label).emoji} ${label}`;
 }
 
 // Aggregator sources (Google Trends, etc.) don't publish the article — they

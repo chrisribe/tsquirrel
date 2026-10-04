@@ -11,8 +11,13 @@ class NewsDAO {
     const params = [limit, offset];
     let categoryClause = '';
     if (category) {
-      params.push(category);
-      categoryClause = `AND s.category = $${params.length}`;
+      const normalizedCategory = String(category).trim().toLowerCase();
+      if (normalizedCategory === 'hot' || normalizedCategory === 'blowing_up') {
+        categoryClause = `AND s.heat_score >= 30`;
+      } else {
+        params.push(category);
+        categoryClause = `AND s.category = $${params.length}`;
+      }
     }
     let tagClause = '';
     if (tag) {
@@ -130,6 +135,8 @@ class NewsDAO {
       SELECT category, COUNT(*) AS count
       FROM stories
       WHERE category IS NOT NULL
+        AND BTRIM(category) <> ''
+        AND category <> 'News'
         AND created_at > NOW() - INTERVAL '48 hours'
       GROUP BY category
       ORDER BY count DESC
@@ -842,6 +849,123 @@ class NewsDAO {
       RETURNING *
     `, [detector, topic, strength, JSON.stringify(evidence), String(expiresInHours)]);
     return rows[0];
+  }
+
+  // Feed-oriented signal view for external agents.
+  async listSignalFeed({ status = 'active', limit = 50, since = null, until = null } = {}) {
+    const params = [];
+    const whereParts = [];
+
+    if (!status || status === 'active') {
+      whereParts.push(`s.status NOT IN ('used', 'dismissed')`);
+      whereParts.push(`(s.expires_at IS NULL OR s.expires_at > NOW())`);
+    } else if (status !== 'all') {
+      params.push(status);
+      whereParts.push(`s.status = $${params.length}`);
+    }
+
+    if (since) {
+      params.push(since);
+      whereParts.push(`s.fired_at > $${params.length}::timestamptz`);
+    }
+
+    if (until) {
+      params.push(until);
+      whereParts.push(`s.fired_at <= $${params.length}::timestamptz`);
+    }
+
+    const whereClause = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+    const orderBy = (since || until)
+      ? `ORDER BY s.fired_at DESC, s.id DESC`
+      : `ORDER BY s.strength DESC, s.fired_at DESC, s.id DESC`;
+
+    params.push(limit);
+    const limitParam = `$${params.length}`;
+
+    const { rows } = await this.pool.query(`
+      SELECT
+        s.id,
+        s.detector,
+        s.topic,
+        s.strength,
+        s.evidence,
+        s.status,
+        s.story_id,
+        s.fired_at,
+        s.expires_at,
+        st.slug AS story_slug,
+        st.title AS story_title,
+        st.summary AS story_summary,
+        st.why_it_matters,
+        st.category,
+        st.tags,
+        st.published_at,
+        COALESCE(src.source_count, 0)::int AS source_count
+      FROM signals s
+      LEFT JOIN stories st ON st.id = s.story_id
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS source_count
+        FROM story_articles sa
+        WHERE sa.story_id = s.story_id
+      ) src ON TRUE
+      ${whereClause}
+      ${orderBy}
+      LIMIT ${limitParam}
+    `, params);
+    return rows;
+  }
+
+  async listChangesSince({ since, limit = 100 } = {}) {
+    const { rows } = await this.pool.query(`
+      WITH story_changes AS (
+        SELECT
+          'story'::text AS kind,
+          s.id::text AS id,
+          COALESCE(s.updated_at, s.created_at) AS changed_at,
+          jsonb_build_object(
+            'id', s.id,
+            'slug', s.slug,
+            'title', s.title,
+            'summary', s.summary,
+            'why_it_matters', s.why_it_matters,
+            'category', s.category,
+            'tags', s.tags,
+            'status', s.status,
+            'published_at', s.published_at,
+            'updated_at', s.updated_at
+          ) AS payload
+        FROM stories s
+        WHERE COALESCE(s.updated_at, s.created_at) > $1::timestamptz
+      ),
+      signal_changes AS (
+        SELECT
+          'signal'::text AS kind,
+          sg.id::text AS id,
+          sg.fired_at AS changed_at,
+          jsonb_build_object(
+            'id', sg.id,
+            'detector', sg.detector,
+            'topic', sg.topic,
+            'strength', sg.strength,
+            'status', sg.status,
+            'story_id', sg.story_id,
+            'fired_at', sg.fired_at,
+            'expires_at', sg.expires_at,
+            'evidence', sg.evidence
+          ) AS payload
+        FROM signals sg
+        WHERE sg.fired_at > $1::timestamptz
+      )
+      SELECT kind, id, changed_at, payload
+      FROM (
+        SELECT * FROM story_changes
+        UNION ALL
+        SELECT * FROM signal_changes
+      ) all_changes
+      ORDER BY changed_at DESC
+      LIMIT $2
+    `, [since, limit]);
+    return rows;
   }
 
   // status: null/'active' → new+reviewed, not expired. 'all' → everything. else exact match.

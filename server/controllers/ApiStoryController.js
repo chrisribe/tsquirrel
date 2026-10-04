@@ -27,7 +27,51 @@ function parseIdList(value) {
   return Array.from(new Set(out.map(v => parseInt(v, 10)).filter(Number.isFinite)));
 }
 
+function parseIsoDate(value) {
+  const s = String(value || '').trim();
+  if (!s) return null;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 const ApiStoryController = {
+  // ── Agent API (paid-API MVP) ────────────────────────────────────────────
+
+  async listSignalFeed(req, res, next) {
+    try {
+      const status = req.query.status || 'active';
+      const limit = parseBoundedInt(req.query.limit, 50, { min: 1, max: 200 });
+
+      const sinceRaw = req.query.since;
+      const untilRaw = req.query.until;
+      const since = sinceRaw === undefined ? null : parseIsoDate(sinceRaw);
+      const until = untilRaw === undefined ? null : parseIsoDate(untilRaw);
+
+      if (sinceRaw !== undefined && !since) {
+        return res.status(400).json({ error: 'since must be ISO datetime' });
+      }
+      if (untilRaw !== undefined && !until) {
+        return res.status(400).json({ error: 'until must be ISO datetime' });
+      }
+
+      const payload = await serviceFor(req).listSignalFeed({ status, limit, since, until });
+      return res.json({ ok: true, ...payload });
+    } catch (error) { return next(error); }
+  },
+
+  async listChanges(req, res, next) {
+    try {
+      const since = parseIsoDate(req.query.since);
+      if (!since) {
+        return res.status(400).json({ error: 'since (ISO datetime) is required' });
+      }
+      const limit = parseBoundedInt(req.query.limit, 100, { min: 1, max: 500 });
+      const payload = await serviceFor(req).listChanges({ since, limit });
+      return res.json({ ok: true, ...payload });
+    } catch (error) { return next(error); }
+  },
+
   async list(req, res, next) {
     try {
       const status = req.query.status || null;

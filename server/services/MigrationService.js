@@ -332,16 +332,35 @@ const migrations = [
   },
   {
     version: 20,
-    description: 'R&D brief fields on stories',
+    description: 'Agent API monetization primitives — token plans/quotas + daily usage ledger',
     up: async (pool) => {
-      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_markdown TEXT`);
-      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_generated_at TIMESTAMP`);
-      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_model VARCHAR(120)`);
-      console.log('Migration 20: stories R&D brief fields added');
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS plan VARCHAR(40) DEFAULT 'internal'`);
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS monthly_quota INTEGER`);
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS api_token_usage_daily (
+          token_id INTEGER NOT NULL REFERENCES api_tokens(id) ON DELETE CASCADE,
+          day DATE NOT NULL,
+          request_count INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (token_id, day)
+        )
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_api_token_usage_daily_day ON api_token_usage_daily(day DESC)`);
+      console.log('Migration 20: api token plan/quota columns + usage ledger created');
     }
   },
   {
     version: 21,
+    description: 'Legacy R&D brief fields on stories',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_markdown TEXT`);
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_generated_at TIMESTAMP`);
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_model VARCHAR(120)`);
+      console.log('Migration 21: legacy stories R&D brief fields added');
+    }
+  },
+  {
+    version: 22,
     description: 'Rename old premium_* R&D columns to neutral rd_* names',
     up: async (pool) => {
       await pool.query(`
@@ -386,7 +405,26 @@ const migrations = [
           END IF;
         END $$;
       `);
-      console.log('Migration 21: ensured neutral rd_* story brief columns');
+      console.log('Migration 22: ensured neutral rd_* story brief columns');
+    }
+  },
+  {
+    version: 23,
+    description: 'Reconcile Agent API quota schema after migration-number collision',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS plan VARCHAR(40) DEFAULT 'internal'`);
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS monthly_quota INTEGER`);
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS api_token_usage_daily (
+          token_id INTEGER NOT NULL REFERENCES api_tokens(id) ON DELETE CASCADE,
+          day DATE NOT NULL,
+          request_count INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (token_id, day)
+        )
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_api_token_usage_daily_day ON api_token_usage_daily(day DESC)`);
+      console.log('Migration 23: agent API quota schema reconciled');
     }
   },
   // Future migrations go here

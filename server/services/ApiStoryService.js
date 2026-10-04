@@ -3,7 +3,7 @@
 const StoryService = require('./StoryService');
 const SignalService = require('./SignalService');
 const NewsDAO = require('../dao/NewsDAO');
-const { normalizeStoryInput } = require('../lib/storyInput');
+const { normalizeStoryInput, normalizeCategoryValue } = require('../lib/storyInput');
 
 // Story service for the JSON API. Shares the core StoryService (DAO access,
 // slug, attach loop) with StoryAdminService but returns plain data — story,
@@ -69,7 +69,7 @@ class ApiStoryService {
     const summary = has('summary') ? (String(body.summary || '').trim() || null) : current.summary;
     const squirrelTake = has('squirrel_take') ? (String(body.squirrel_take || '').trim() || null) : current.squirrel_take;
     const whyItMatters = has('why_it_matters') ? (String(body.why_it_matters || '').trim() || null) : current.why_it_matters;
-    const category = has('category') ? (String(body.category || 'Other').trim() || 'Other') : current.category;
+    const category = has('category') ? normalizeCategoryValue(body.category) : current.category;
     const tags = has('tags') ? String(body.tags || '').split(',').map(t => t.trim()).filter(Boolean) : current.tags;
     const imageUrl = has('image_url') ? (String(body.image_url || '').trim() || null) : undefined;
 
@@ -172,6 +172,67 @@ class ApiStoryService {
   async getArticle(articleId) {
     const rows = await this.stories.getArticlesByIds([articleId]);
     return rows[0] || null;
+  }
+
+  // ── Agent API (paid-API MVP) ────────────────────────────────────────────
+
+  _safeEvidence(raw) {
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+    try { return JSON.parse(raw); } catch (_) { return {}; }
+  }
+
+  async listSignalFeed({ status = 'active', limit = 50, since = null, until = null } = {}) {
+    const rows = await this.dao.listSignalFeed({ status, limit, since, until });
+    const signals = rows.map((r) => ({
+      id: r.id,
+      detector: r.detector,
+      topic: r.topic,
+      strength: r.strength,
+      status: r.status,
+      fired_at: r.fired_at,
+      expires_at: r.expires_at,
+      evidence: this._safeEvidence(r.evidence),
+      story: r.story_id ? {
+        id: r.story_id,
+        slug: r.story_slug,
+        title: r.story_title,
+        summary: r.story_summary,
+        why_it_matters: r.why_it_matters,
+        category: r.category,
+        tags: r.tags,
+        published_at: r.published_at,
+        source_count: r.source_count,
+      } : null,
+    }));
+
+    const fired = signals
+      .map((s) => s.fired_at)
+      .filter(Boolean)
+      .map((d) => new Date(d).toISOString());
+
+    let nextSince = since;
+    if (fired.length > 0) {
+      nextSince = fired.reduce((maxV, curr) => (curr > maxV ? curr : maxV));
+    }
+
+    return { count: signals.length, since, until, next_since: nextSince, signals };
+  }
+
+  async listChanges({ since, limit = 100 } = {}) {
+    const rows = await this.dao.listChangesSince({ since, limit });
+    const changes = rows.map((r) => ({
+      kind: r.kind,
+      id: r.id,
+      changed_at: r.changed_at,
+      payload: r.payload,
+    }));
+
+    let nextSince = since;
+    if (changes.length > 0) {
+      nextSince = changes[0].changed_at;
+    }
+    return { count: changes.length, since, next_since: nextSince, changes };
   }
 
   // ── Missing API surface: radar signals ──────────────────────────────────
