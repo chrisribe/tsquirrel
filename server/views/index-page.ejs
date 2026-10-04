@@ -28,7 +28,7 @@
 <!-- Category filter bar -->
 <section class="category-bar">
   <div class="category-scroll">
-    <a href="/" class="category-pill <%= !activeCategory ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="all" data-ga-location="top_bar">🌰 All</a>
+    <a href="/" class="category-pill <%= !activeCategory ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="all" data-ga-location="top_bar">🥜 All</a>
     <a href="/?category=blowing_up" class="category-pill <%= activeCategory === 'blowing_up' ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="blowing_up" data-ga-location="top_bar">🔥 Blowing up</a>
     <a href="/?category=hot" class="category-pill <%= activeCategory === 'hot' ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="hot" data-ga-location="top_bar">🔥 Hot</a>
     <% categories.forEach(c => { %>
@@ -56,7 +56,7 @@
   </a>
 <% } %>
 
-<p class="section-label">🌰 Fresh stash</p>
+<p class="section-label">🥜 Fresh stash</p>
 
 <!-- Story feed -->
 <section class="story-feed <%= activeQuery ? 'story-feed-search' : '' %>"
