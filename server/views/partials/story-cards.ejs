@@ -67,7 +67,7 @@
         <div class="story-meta">
           <span class="badge <%= meta.badge %>"><%= catLabel(story.category) %></span>
           <% if (story.heat_score >= 30) { %><span class="badge badge-hot">🔥 hot</span><% } %>
-          <% if (story.has_published_brief) { %><span class="badge badge-sources">🔎 evidence brief</span><% } %>
+          <% if (story.has_published_brief) { %><span class="badge badge-sources">🔎 deep dive</span><% } %>
           <% if (story.source_count > 1) { %>
             <span class="badge badge-sources"><%= story.source_count %> sources</span>
           <% } %>

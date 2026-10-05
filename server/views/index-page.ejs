@@ -27,7 +27,7 @@
 <% } %>
 
 <% if (activeBrief) { %>
-  <p class="chatter">Showing stories with <strong>Evidence Briefs</strong>.</p>
+  <p class="chatter">Showing stories with <strong>Deep Dive</strong>.</p>
 <% } %>
 
 <!-- Category filter bar -->
@@ -35,7 +35,7 @@
   <div class="category-scroll">
     <a href="/" class="category-pill <%= !activeCategory && !activeBrief ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="all" data-ga-location="top_bar">🥜 All</a>
     <a href="/?category=hot<%= activeBrief ? '&brief=1' : '' %>" class="category-pill <%= activeCategory === 'hot' ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="hot" data-ga-location="top_bar">🔥 Hot</a>
-    <a href="/?brief=1" class="category-pill <%= activeBrief ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="evidence_brief" data-ga-location="top_bar">🔎 Evidence Briefs</a>
+    <a href="/?brief=1" class="category-pill <%= activeBrief ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="evidence_brief" data-ga-location="top_bar">🔎 Deep Dive</a>
     <% categories.forEach(c => { %>
       <a href="/?category=<%= encodeURIComponent(c.category) %>"
          class="category-pill <%= activeCategory === c.category ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="<%= c.category %>" data-ga-location="top_bar">
