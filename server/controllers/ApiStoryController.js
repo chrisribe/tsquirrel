@@ -111,7 +111,11 @@ const ApiStoryController = {
     try {
       const limit = parseBoundedInt(req.query.limit, 30, { min: 1, max: 100 });
       const offset = parseBoundedInt(req.query.offset, 0, { min: 0, max: 1000000 });
-      const payload = await serviceFor(req).listResearchRequests({ limit, offset });
+      const status = req.query.status || 'needs_research';
+      if (!['needs_research', 'awaiting_review', 'all'].includes(status)) {
+        return res.status(400).json({ error: 'status must be needs_research, awaiting_review, or all' });
+      }
+      const payload = await serviceFor(req).listResearchRequests({ limit, offset, status });
       res.set('Cache-Control', 'no-store');
       return res.json({ ok: true, ...payload });
     } catch (error) { return next(error); }
@@ -145,14 +149,17 @@ const ApiStoryController = {
     try {
       const id = parseId(req.params.id);
       if (id === null) return res.status(400).json({ error: 'invalid story id' });
-      const forbidden = ['status', 'reviewed_by', 'reviewed_at', 'reviewedBy', 'reviewedAt'].find(key =>
+      const forbidden = [
+        'status', 'reviewed_by', 'reviewed_at', 'reviewedBy', 'reviewedAt',
+        'submitted_at', 'submittedAt', 'summary_base', 'summaryBase', 'summary_decision',
+      ].find(key =>
         Object.prototype.hasOwnProperty.call(req.body || {}, key)
       );
       if (forbidden) {
         return res.status(400).json({ error: `${forbidden} cannot be set through the API`, code: 'brief_review_fields_forbidden' });
       }
       const brief = await serviceFor(req).replaceBrief(id, req.body || {});
-      return res.json({ ok: true, brief });
+      return res.json({ ok: true, brief, research_status: 'awaiting_review' });
     } catch (error) {
       if (![400, 404, 409].includes(error.status)) return next(error);
       const payload = { error: error.message };

@@ -37,26 +37,30 @@ function parseStoryIdList(value) {
     else parts.push(s);
   }
 
-  function parseBriefInput(body = {}) {
-    const facts = [];
-    for (let index = 0; index < 8; index += 1) {
-      const text = String(body[`fact_${index}_text`] || '').trim();
-      if (!text) continue;
-      facts.push({
-        heading: String(body[`fact_${index}_heading`] || '').trim() || null,
-        text,
-        articleIds: [].concat(body[`fact_${index}_article_ids`] || [])
-          .map(value => parseInt(value, 10))
-          .filter(Number.isFinite),
-      });
-    }
-    return {
-      expectedRevision: parseInt(body.expected_revision, 10),
-      introduction: String(body.introduction || '').trim(),
-      facts,
-    };
-  }
   return Array.from(new Set(parts.map(id => parseInt(id, 10)).filter(Number.isFinite)));
+}
+
+function parseBriefInput(body = {}) {
+  const facts = [];
+  for (let index = 0; index < 8; index += 1) {
+    const text = String(body[`fact_${index}_text`] || '').trim();
+    if (!text) continue;
+    facts.push({
+      heading: String(body[`fact_${index}_heading`] || '').trim() || null,
+      text,
+      articleIds: [].concat(body[`fact_${index}_article_ids`] || [])
+        .map(value => parseInt(value, 10))
+        .filter(Number.isFinite),
+    });
+  }
+  return {
+    expectedRevision: parseInt(body.expected_revision, 10),
+    introduction: String(body.introduction || '').trim(),
+    proposed_summary: body.proposed_summary,
+    expected_summary: body.expected_summary,
+    editor_note: body.editor_note,
+    facts,
+  };
 }
 
 const StoryAdminController = {
@@ -113,7 +117,7 @@ const StoryAdminController = {
       if (!pageData) return notFound(res);
       if (req.query.brief === 'saved') pageData.message = 'Dig deeper draft saved.';
       if (req.query.brief === 'published') pageData.message = 'Dig deeper brief published.';
-      if (req.query.brief === 'withdrawn') pageData.message = 'Dig deeper brief withdrawn.';
+      if (req.query.brief === 'withdrawn') pageData.message = 'Dig deeper marked for more research. Any published brief was withdrawn.';
       return res.renderPage('admin/story-edit', pageData, {
         pageTitle: `Edit: ${pageData.story.title} — Admin — TSquirrel`,
       });
@@ -208,6 +212,10 @@ const StoryAdminController = {
         introduction: input.introduction,
         revision: Number.isFinite(input.expectedRevision) ? input.expectedRevision : 0,
         status: pageData.brief?.status || 'draft',
+        proposed_summary: input.proposed_summary,
+        summary_base: input.expected_summary,
+        editor_note: input.editor_note,
+        submitted_at: pageData.brief?.submitted_at || null,
         facts: input.facts.map((fact, index) => ({
           ...fact,
           position: index + 1,
@@ -226,7 +234,8 @@ const StoryAdminController = {
       await serviceFor(req).publishBrief(
         req.params.id,
         parseInt(req.body.expected_revision, 10),
-        req.session.user.id
+        req.session.user.id,
+        req.body.summary_decision
       );
       return res.redirect(303, `/admin/stories/${req.params.id}/edit?brief=published#story-brief-editor`);
     } catch (error) {

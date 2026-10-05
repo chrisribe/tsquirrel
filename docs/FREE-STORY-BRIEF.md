@@ -107,6 +107,7 @@ works. The authenticated response includes:
 - `story`: title, summary, why it matters, category, tags, status, and timestamps.
 - `brief`: the full current draft or published brief, with citations and revision;
   `null` if none exists.
+- `research_status`: `needs_research`, `awaiting_review`, or `published`.
 - `sources`: attached article IDs, titles, original URLs, publisher names,
   plain-text descriptions, publication times, and fetch times.
 - `suggestions`: pending source suggestions with article IDs, URLs, and reasons.
@@ -124,7 +125,9 @@ source pages, performs an LLM call, or promises that the evidence is current.
 Responses use `Cache-Control: no-store` and include drafts only behind token auth.
 Invalid references return `400`; unknown stories return `404`.
 
-Read the original sources before searching more widely. Add developments,
+Check for the newest event-status update before researching background: a search
+may have ended, a ruling changed, or an announcement been withdrawn since the
+existing summary. Read the original sources before searching more widely. Add developments,
 explanations, consequences, corrections, or useful unknowns rather than paraphrasing
 the summary. Open the supporting passages: search snippets and AI search summaries
 are not citations. Attribute allegations, distinguish analysis, and surface
@@ -143,13 +146,17 @@ counts and no automatic research trigger. A saved draft does not suppress the
 button, because readers cannot yet see it.
 
 `GET /api/v1/research-requests?limit=30&offset=0` requires the existing API token.
-It returns `{ ok, requests, limit, offset, has_more }`; limit is capped at 100.
+It defaults to `status=needs_research`, so contributors do not repeatedly work on
+a submitted draft. Use `status=awaiting_review` for review work or `status=all`
+to include both states. Invalid statuses return `400`.
+It returns `{ ok, requests, limit, offset, status, has_more }`; limit is capped at 100.
 Each queue item includes:
 
 - `story_id`, `slug`, `title`, `summary`, `category`, `published_at`, `updated_at`.
 - `request_count`: outstanding deduplicated requests, not verified unique people.
 - `recent_request_count`: outstanding requests made in the last seven days.
-- `last_requested_at`, `source_count`, `brief_status`, `brief_revision`.
+- `last_requested_at`, `source_count`, `brief_status`, `brief_revision`,
+  `brief_submitted_at`, and `research_status`.
 - `links.story`, `links.research_context`, and `links.editor`.
 
 The queue orders by recent request count, then most recent request time, then
@@ -157,6 +164,14 @@ total request count and story ID. An editor or external contributor can inspect
 the context and available evidence before choosing what to research. A high count
 does not establish newsworthiness or evidence quality. This is a discovery queue,
 not a work-claim/assignment system; draft status helps avoid duplicate effort.
+Every successful brief save records `submitted_at` and moves the story to
+`awaiting_review`; later reader clicks do not restart its research. Requests are
+still retained until approval. The editor can **Return for more research** (save
+any explanatory note first), which clears `submitted_at` without deleting the
+draft, note, or reader demand. Withdrawing a published brief also clears that
+timestamp. Existing drafts from before migration 26 start as `needs_research`
+because their submission intent cannot be inferred reliably; saving them records
+a new submission.
 
 Migration 25 adds `story_research_requests`, keyed by story ID and hashed browser
 session ID. Requests require a session-bound form token and are limited to ten
@@ -215,7 +230,9 @@ Example brief submission:
 `expected_revision: 0` means create only if absent; updates supply the revision from
 GET. Return `409` on a stale revision and structured `400` errors for invalid content.
 GET returns `brief: null` for an existing story without a brief and `404` for a
-missing story. PUT returns the stored brief and its new revision.
+missing story. PUT returns the stored brief, its new revision, and
+`research_status: "awaiting_review"`; no follow-up GET is needed to inspect the
+saved result.
 Use plain text: introduction up to 2,000 characters, 1-8 findings, headings up to
 160 characters, finding text up to 4,000 characters, and 1-12 attached citation IDs
 per finding. On `409`, retrieve context again and reconcile the current brief;
@@ -223,6 +240,51 @@ do not blindly retry an overwrite with a newer revision.
 
 Use the same operations from admin and API. Extend the existing idempotency
 middleware to cover PUT; replay handling does not replace revision checks.
+
+### Private editorial handoff
+
+A brief replacement may also contain:
+
+| Field | Behavior |
+|---|---|
+| `proposed_summary` | Optional replacement summary: plain text, 120-280 characters, complete sentence. |
+| `expected_summary` | Required when proposing a summary. Echo the current `story.summary` from research context exactly (`null` when absent). |
+| `editor_note` | Optional private review guidance, up to 2,000 characters. Explain corrections, source limitations, or conflicting accounts. |
+
+These are part of the complete replacement: omitting a proposal or note removes it
+from the new draft. They are shown in admin, not on public story pages. New columns
+in migration 26 store the proposal, its `summary_base`, the note, and `submitted_at`.
+The server controls `summary_base` and `submitted_at`; API clients cannot set them.
+
+Saving never applies a proposal to the live story. If the current summary differs
+from `expected_summary`, return `409 stale_story_summary` without replacing the
+brief. Reconcile the current summary rather than silently rebasing the proposal.
+
+When publishing a brief with a proposal, the editor must explicitly choose
+**Apply the proposed summary** or **Keep the current story summary**. The admin
+publication form sends `summary_decision=apply|keep`; an omitted decision returns
+`400`. Applying rechecks the saved summary baseline and returns `409` if another
+editor has changed the story since submission. Summary application, brief approval,
+and clearing reader requests occur in one transaction. Keeping the summary leaves
+the current text unchanged, including any concurrent correction. Both decisions
+consume the proposal; the private editor note remains available in admin.
+
+### Efficient contributor loop
+
+Use a configured token rather than creating a token or calling `/me` for every
+story. A normal run with two new sources needs five API calls:
+
+1. Read the `needs_research` queue.
+2. Read the selected story's research context.
+3. Register the first verified new source.
+4. Register the second verified new source.
+5. PUT the complete brief, including any proposed summary and review note.
+
+Inspect the PUT response instead of rereading the context and queue immediately.
+Refreshing context before submission is reasonable after lengthy research; stale
+brief revisions and summary baselines still protect against concurrent edits.
+Do not directly PATCH a published story just to reconcile new research. Propose
+the correction for review, and leave publication to the editor.
 
 ## Approval and integrity rules
 

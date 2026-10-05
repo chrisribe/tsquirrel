@@ -113,6 +113,8 @@ test('a contributor researches and submits a brief through the real API', {
     assert.equal(context.body.submission.path, `/api/v1/stories/${storyId}/brief`);
     assert.ok(context.body.research_checklist.some(item => item.id === 'verify-originals'));
     assert.ok(context.body.research_checklist.some(item => item.id === 'add-value'));
+    assert.equal(context.body.research_checklist[0].id, 'latest-status');
+    assert.equal(context.body.research_status, 'needs_research');
     assert.equal(context.body.links.editor, `/admin/stories/${storyId}/edit#story-brief-panel`);
     assert.equal(context.headers.get('cache-control'), 'no-store');
 
@@ -126,6 +128,7 @@ test('a contributor researches and submits a brief through the real API', {
       assert.equal((await api('/stories/2147483648/research-context')).status, 400);
       assert.equal((await api('/stories/0/research-context')).status, 400);
       assert.equal((await api('/stories/bad%20slug/research-context')).status, 400);
+      assert.equal((await api('/research-requests?status=invalid')).status, 400);
     });
 
     let articleId;
@@ -165,6 +168,9 @@ test('a contributor researches and submits a brief through the real API', {
       const forbidden = await api(`/stories/${storyId}/brief`, 'PUT', { ...briefInput, status: 'published' });
       assert.equal(forbidden.status, 400);
       assert.equal(forbidden.body.code, 'brief_review_fields_forbidden');
+      assert.equal((await api(`/stories/${storyId}/brief`, 'PUT', {
+        ...briefInput, submitted_at: null,
+      })).status, 400);
       const uncited = await api(`/stories/${storyId}/brief`, 'PUT', {
         ...briefInput, facts: [{ ...briefInput.facts[0], article_ids: [] }],
       });
@@ -183,6 +189,7 @@ test('a contributor researches and submits a brief through the real API', {
       assert.equal(submitted.body.brief.status, 'draft');
       assert.equal(submitted.body.brief.revision, 1);
       assert.equal(submitted.body.brief.reviewed_at, null);
+      assert.equal(submitted.body.research_status, 'awaiting_review');
       const stale = await api(`/stories/${storyId}/brief`, 'PUT', briefInput);
       assert.equal(stale.status, 409);
       assert.equal(stale.body.current_revision, 1);
@@ -195,7 +202,7 @@ test('a contributor researches and submits a brief through the real API', {
     let reader;
     const publicUrl = new URL(context.body.links.story, base);
     async function queuedStory() {
-      const queue = await api('/research-requests?limit=100');
+      const queue = await api('/research-requests?limit=100&status=all');
       assert.equal(queue.status, 200);
       assert.equal(queue.headers.get('cache-control'), 'no-store');
       return queue.body.requests.find(row => row.story_id === storyId);
@@ -222,6 +229,10 @@ test('a contributor researches and submits a brief through the real API', {
       assert.equal(queued.recent_request_count, 1);
       assert.equal(queued.brief_status, 'draft');
       assert.equal(queued.brief_revision, 1);
+      assert.equal(queued.research_status, 'awaiting_review');
+      assert.ok(queued.brief_submitted_at);
+      assert.ok(!(await api('/research-requests?limit=100')).body.requests.some(row => row.story_id === storyId));
+      assert.ok((await api('/research-requests?status=awaiting_review&limit=100')).body.requests.some(row => row.story_id === storyId));
       assert.equal(queued.source_count, 1);
       assert.equal(queued.links.research_context, `/api/v1/stories/${storyId}/research-context`);
       assert.equal(queued.reader_hash, undefined);
@@ -239,7 +250,7 @@ test('a contributor researches and submits a brief through the real API', {
       queued = await queuedStory();
       assert.equal(queued.request_count, 2);
       assert.equal(queued.recent_request_count, 2);
-      const page = await api('/research-requests?limit=1');
+      const page = await api('/research-requests?limit=1&status=all');
       assert.equal(page.body.limit, 1);
       assert.equal(page.body.requests.length, 1);
 
@@ -293,6 +304,108 @@ test('a contributor researches and submits a brief through the real API', {
       assert.equal(current.brief.status, 'published');
       assert.equal(current.submission.expected_revision, 2);
       assert.ok((await api('/me')).body.token.monthly_used > me.body.token.monthly_used);
+    });
+
+    await t.test('reviews private summary proposals without overwriting concurrent editorial changes', async () => {
+      const proposedSummary = 'Researchers suspended the trial after identifying an equipment problem. They are reviewing the recorded evidence before deciding whether further testing can safely resume.';
+      const editorNote = 'Private review note: the current summary needs a status correction.';
+      const proposal = {
+        ...briefInput, expected_revision: 2,
+        proposed_summary: proposedSummary, expected_summary: created.body.story.summary,
+        editor_note: editorNote,
+      };
+      const missingBase = { ...proposal };
+      delete missingBase.expected_summary;
+      assert.equal((await api(`/stories/${storyId}/brief`, 'PUT', missingBase)).status, 400);
+      const staleBase = await api(`/stories/${storyId}/brief`, 'PUT', { ...proposal, expected_summary: 'Outdated' });
+      assert.equal(staleBase.status, 409);
+      assert.equal(staleBase.body.code, 'stale_story_summary');
+
+      let saved = await api(`/stories/${storyId}/brief`, 'PUT', proposal);
+      assert.equal(saved.status, 200);
+      assert.equal(saved.body.brief.revision, 3);
+      assert.equal(saved.body.brief.proposed_summary, proposedSummary);
+      assert.equal(saved.body.brief.editor_note, editorNote);
+      assert.equal(saved.body.brief.summary_base, proposal.expected_summary);
+      assert.ok(saved.body.brief.submitted_at);
+      assert.equal((await api(`/stories/${storyId}`)).body.story.summary, proposal.expected_summary);
+      assert.ok(!(await (await fetch(publicUrl)).text()).includes(editorNote));
+      assert.equal((await requestResearch(reader)).status, 200);
+      assert.equal((await queuedStory()).research_status, 'awaiting_review');
+
+      const form = {
+        expected_revision: '3',
+        introduction: briefInput.introduction,
+        proposed_summary: proposedSummary,
+        expected_summary: proposal.expected_summary,
+        editor_note: editorNote,
+        fact_0_heading: briefInput.facts[0].heading,
+        fact_0_text: briefInput.facts[0].text,
+        fact_0_article_ids: String(articleId),
+      };
+      const invalidForm = await admin(`/admin/stories/${storyId}/brief`, { ...form, introduction: '' });
+      assert.equal(invalidForm.status, 400);
+      const invalidHtml = await invalidForm.text();
+      assert.ok(invalidHtml.includes(proposedSummary));
+      assert.ok(invalidHtml.includes(editorNote));
+      assert.ok(!invalidHtml.includes(`action="/admin/stories/${storyId}/brief/publish"`),
+        'Do not approve saved content while showing an invalid unsaved form');
+      assert.equal((await admin(`/admin/stories/${storyId}/brief`, form)).status, 303);
+      saved = await api(`/stories/${storyId}/brief`);
+      assert.equal(saved.body.brief.revision, 4);
+      assert.equal(saved.body.brief.editor_note, editorNote);
+
+      assert.equal((await admin(`/admin/stories/${storyId}/brief/withdraw`)).status, 303);
+      assert.equal((await queuedStory()).research_status, 'needs_research');
+      assert.ok((await api('/research-requests?limit=100')).body.requests.some(row => row.story_id === storyId));
+      let refreshed = (await api(`/stories/${storyId}/research-context`)).body;
+      assert.equal(refreshed.research_status, 'needs_research');
+      assert.equal(refreshed.brief.editor_note, editorNote);
+      saved = await api(`/stories/${storyId}/brief`, 'PUT', { ...proposal, expected_revision: 4 });
+      assert.equal(saved.body.brief.revision, 5);
+      assert.equal((await queuedStory()).research_status, 'awaiting_review');
+      assert.equal((await admin(`/admin/stories/${storyId}/brief/publish`, { expected_revision: '5' })).status, 400);
+
+      const concurrentSummary = 'Editors have added a separate update about the trial and its equipment checks. This version must remain intact unless the reviewer explicitly approves a reconciled replacement.';
+      assert.equal((await api(`/stories/${storyId}`, 'PATCH', { summary: concurrentSummary })).status, 200);
+      const staleApproval = await admin(`/admin/stories/${storyId}/brief/publish`, {
+        expected_revision: '5', summary_decision: 'apply',
+      });
+      assert.equal(staleApproval.status, 409);
+      assert.ok((await staleApproval.text()).includes('Story summary changed'));
+      assert.equal((await queuedStory()).request_count, 1);
+      assert.equal((await api(`/stories/${storyId}/brief`)).body.brief.status, 'draft');
+      assert.equal((await api(`/stories/${storyId}`)).body.story.summary, concurrentSummary);
+      assert.equal((await api(`/stories/${storyId}/brief`, 'PUT', { ...proposal, expected_revision: 5 })).status, 409);
+
+      assert.equal((await admin(`/admin/stories/${storyId}/brief/publish`, {
+        expected_revision: '5', summary_decision: 'keep',
+      })).status, 303);
+      assert.equal((await api(`/stories/${storyId}`)).body.story.summary, concurrentSummary);
+      assert.equal(await queuedStory(), undefined);
+      saved = await api(`/stories/${storyId}/brief`);
+      assert.equal(saved.body.brief.proposed_summary, null);
+      assert.equal(saved.body.brief.summary_base, null);
+      assert.ok(!(await (await fetch(publicUrl)).text()).includes(editorNote));
+
+      saved = await api(`/stories/${storyId}/brief`, 'PUT', {
+        ...proposal, expected_revision: 5, expected_summary: concurrentSummary,
+      });
+      assert.equal(saved.body.brief.revision, 6);
+      assert.equal((await requestResearch(reader)).status, 200);
+      assert.equal((await admin(`/admin/stories/${storyId}/brief/publish`, {
+        expected_revision: '6', summary_decision: 'apply',
+      })).status, 303);
+      refreshed = (await api(`/stories/${storyId}/research-context`)).body;
+      assert.equal(refreshed.story.summary, proposedSummary);
+      assert.equal(refreshed.brief.status, 'published');
+      assert.equal(refreshed.research_status, 'published');
+      assert.equal(refreshed.brief.proposed_summary, null);
+      assert.equal(await queuedStory(), undefined);
+      const publishedHtml = await (await fetch(publicUrl)).text();
+      assert.ok(publishedHtml.includes(proposedSummary));
+      assert.ok(publishedHtml.includes(briefInput.introduction));
+      assert.ok(!publishedHtml.includes(editorNote));
     });
 
     await t.test('rate limits requests with useful HTML feedback, not the login page', async () => {

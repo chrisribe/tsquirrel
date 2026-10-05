@@ -84,6 +84,7 @@ class ApiStoryService {
         status: story.status, published_at: story.published_at, updated_at: story.updated_at,
       },
       brief,
+      research_status: brief?.status === 'published' ? 'published' : brief?.submitted_at ? 'awaiting_review' : 'needs_research',
       sources: sources.map(sourceContext),
       suggestions: suggestions.map(article => ({
         ...sourceContext(article),
@@ -91,6 +92,7 @@ class ApiStoryService {
         suggested_at: article.suggested_at,
       })),
       research_checklist: [
+        { id: 'latest-status', instruction: 'Before researching background, check whether the event status has changed since the existing coverage. Look for the newest official update and distinguish it from older reports. Note a needed summary correction for the editor; do not directly change live copy.' },
         { id: 'start-here', instruction: 'Read the current story, brief, and attached sources first. Establish the event, people, location, and dates before searching.' },
         { id: 'add-value', instruction: 'Add a verified development, useful background, consequence, correction, or unresolved question beyond the summary. Do not just rewrite it.' },
         { id: 'verify-originals', instruction: 'Open and read the original supporting passage for each finding. Prefer relevant primary sources. Search snippets and AI search summaries are discovery aids, not evidence; omit claims you cannot verify.' },
@@ -105,10 +107,14 @@ class ApiStoryService {
         path: `${apiPath}/brief`,
         expected_revision: brief?.revision || 0,
         approval: 'Admin review and explicit publication are required. API submissions cannot set status or review metadata.',
+        editorial_handoff: 'Optional proposed_summary (120-280 characters, complete sentence) and editor_note (up to 2000 characters) remain private. When proposing a summary, echo expected_summary exactly from the story context. The editor must explicitly apply or decline the proposal.',
         example: {
           expected_revision: brief?.revision || 0,
           introduction: 'Frame what the additional research adds.',
           facts: [{ heading: 'What changed', text: 'A finding supported by the cited source.', article_ids: [] }],
+          proposed_summary: null,
+          expected_summary: story.summary,
+          editor_note: null,
         },
         citation_note: 'Fill article_ids with actual attached source IDs; the empty example is not a valid submission.',
       },
@@ -122,8 +128,8 @@ class ApiStoryService {
     };
   }
 
-  async listResearchRequests({ limit, offset }) {
-    const rows = await this.dao.getResearchRequests({ limit: limit + 1, offset });
+  async listResearchRequests({ limit, offset, status = 'needs_research' }) {
+    const rows = await this.dao.getResearchRequests({ limit: limit + 1, offset, status });
     return {
       requests: rows.slice(0, limit).map(row => ({
         ...row,
@@ -135,6 +141,7 @@ class ApiStoryService {
       })),
       limit,
       offset,
+      status,
       has_more: rows.length > limit,
     };
   }

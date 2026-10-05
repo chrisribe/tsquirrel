@@ -489,6 +489,19 @@ const migrations = [
       `);
     }
   },
+  {
+    version: 26,
+    description: 'Brief review proposals and research submission state',
+    up: async (pool) => {
+      await pool.query(`
+        ALTER TABLE story_briefs
+          ADD COLUMN IF NOT EXISTS proposed_summary TEXT,
+          ADD COLUMN IF NOT EXISTS summary_base TEXT,
+          ADD COLUMN IF NOT EXISTS editor_note TEXT,
+          ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ
+      `);
+    }
+  },
   // Future migrations go here
 ];
 

@@ -182,6 +182,29 @@ class StoryService {
     const introduction = String(input.introduction || '').trim();
     const expectedRevision = Number(input.expectedRevision ?? input.expected_revision);
     const rawFacts = Array.isArray(input.facts) ? input.facts : [];
+    for (const field of ['proposed_summary', 'editor_note', 'expected_summary']) {
+      if (input[field] != null && typeof input[field] !== 'string') {
+        throw this._briefError(`${field} must be text or null`, 'brief_review_text_invalid');
+      }
+    }
+    const proposedSummary = input.proposed_summary?.trim() || null;
+    const editorNote = input.editor_note?.trim() || null;
+    const expectedSummary = input.expected_summary || null;
+    if (proposedSummary) {
+      if (!Object.prototype.hasOwnProperty.call(input, 'expected_summary') || input.expected_summary === undefined) {
+        throw this._briefError('expected_summary is required with a proposed summary', 'brief_summary_base_required');
+      }
+      if (proposedSummary.length < SUMMARY_MIN_CHARS || proposedSummary.length > SUMMARY_MAX_CHARS ||
+          !this._isCompleteSentence(proposedSummary) || this._hasDanglingEnding(proposedSummary)) {
+        throw this._briefError(
+          `proposed_summary must be a complete sentence of ${SUMMARY_MIN_CHARS}-${SUMMARY_MAX_CHARS} characters`,
+          'brief_proposed_summary_invalid'
+        );
+      }
+    }
+    if (editorNote && editorNote.length > 2000) {
+      throw this._briefError('editor_note must be at most 2000 characters', 'brief_editor_note_invalid');
+    }
 
     if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
       throw this._briefError('expected_revision must be a non-negative integer', 'brief_revision_required');
@@ -213,15 +236,20 @@ class StoryService {
       return { heading, text, articleIds };
     });
 
-    return this.dao.replaceStoryBrief(storyId, { introduction, facts, expectedRevision });
+    return this.dao.replaceStoryBrief(storyId, {
+      introduction, facts, expectedRevision, proposedSummary, expectedSummary, editorNote,
+    });
   }
 
-  publishBrief(storyId, { expectedRevision, reviewedBy }) {
+  publishBrief(storyId, { expectedRevision, reviewedBy, summaryDecision }) {
     const revision = Number(expectedRevision);
     if (!Number.isInteger(revision) || revision < 1) {
       throw this._briefError('expected_revision must identify the reviewed brief', 'brief_revision_required');
     }
-    return this.dao.publishStoryBrief(storyId, { expectedRevision: revision, reviewedBy });
+    if (summaryDecision !== undefined && !['apply', 'keep'].includes(summaryDecision)) {
+      throw this._briefError('summary_decision must be apply or keep', 'brief_summary_decision_invalid');
+    }
+    return this.dao.publishStoryBrief(storyId, { expectedRevision: revision, reviewedBy, summaryDecision });
   }
 
   withdrawBrief(storyId) {

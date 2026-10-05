@@ -107,8 +107,8 @@ class StoryAdminService {
     return this.getEditorModel(storyId);
   }
 
-  async publishBrief(storyId, expectedRevision, reviewedBy) {
-    await this.stories.publishBrief(storyId, { expectedRevision, reviewedBy });
+  async publishBrief(storyId, expectedRevision, reviewedBy, summaryDecision) {
+    await this.stories.publishBrief(storyId, { expectedRevision, reviewedBy, summaryDecision });
     return this.getEditorModel(storyId);
   }
 

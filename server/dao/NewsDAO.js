@@ -1074,12 +1074,14 @@ class NewsDAO {
     };
   }
 
-  async replaceStoryBrief(storyId, { introduction, facts, expectedRevision }) {
+  async replaceStoryBrief(storyId, {
+    introduction, facts, expectedRevision, proposedSummary = null, expectedSummary = null, editorNote = null,
+  }) {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       const { rows: storyRows } = await client.query(
-        'SELECT id FROM stories WHERE id = $1 FOR UPDATE',
+        'SELECT id, summary FROM stories WHERE id = $1 FOR UPDATE',
         [storyId]
       );
       if (!storyRows[0]) {
@@ -1098,6 +1100,12 @@ class NewsDAO {
         error.status = 409;
         error.code = 'stale_brief_revision';
         error.currentRevision = currentRevision;
+        throw error;
+      }
+      if (proposedSummary && (storyRows[0].summary || null) !== expectedSummary) {
+        const error = new Error('Story summary changed. Reload the current summary and reconcile the proposal before saving.');
+        error.status = 409;
+        error.code = 'stale_story_summary';
         throw error;
       }
 
@@ -1119,9 +1127,10 @@ class NewsDAO {
       if (currentRevision === 0) {
         await client.query(`
           INSERT INTO story_briefs
-            (story_id, introduction, status, revision, reviewed_by, reviewed_at)
-          VALUES ($1, $2, 'draft', 1, NULL, NULL)
-        `, [storyId, introduction]);
+            (story_id, introduction, status, revision, reviewed_by, reviewed_at,
+             proposed_summary, summary_base, editor_note, submitted_at)
+          VALUES ($1, $2, 'draft', 1, NULL, NULL, $3, $4, $5, NOW())
+        `, [storyId, introduction, proposedSummary, proposedSummary ? expectedSummary : null, editorNote]);
       } else {
         await client.query(`
           UPDATE story_briefs
@@ -1130,9 +1139,13 @@ class NewsDAO {
               revision = revision + 1,
               reviewed_by = NULL,
               reviewed_at = NULL,
+              proposed_summary = $3,
+              summary_base = $4,
+              editor_note = $5,
+              submitted_at = NOW(),
               updated_at = NOW()
           WHERE story_id = $1
-        `, [storyId, introduction]);
+        `, [storyId, introduction, proposedSummary, proposedSummary ? expectedSummary : null, editorNote]);
       }
 
       await client.query('DELETE FROM story_brief_facts WHERE story_id = $1', [storyId]);
@@ -1208,11 +1221,13 @@ class NewsDAO {
     }
   }
 
-  async getResearchRequests({ limit, offset }) {
+  async getResearchRequests({ limit, offset, status }) {
     const { rows } = await this.pool.query(`
       SELECT s.id AS story_id, s.slug, s.title, s.summary, s.category,
              s.published_at, s.updated_at,
              b.status AS brief_status, b.revision AS brief_revision,
+             b.submitted_at AS brief_submitted_at,
+             CASE WHEN b.submitted_at IS NOT NULL THEN 'awaiting_review' ELSE 'needs_research' END AS research_status,
              COUNT(*)::int AS request_count,
              COUNT(*) FILTER (WHERE r.requested_at >= NOW() - INTERVAL '7 days')::int AS recent_request_count,
              MAX(r.requested_at) AS last_requested_at,
@@ -1221,20 +1236,22 @@ class NewsDAO {
       JOIN stories s ON s.id = r.story_id
       LEFT JOIN story_briefs b ON b.story_id = s.id
       WHERE s.status = 'published' AND (b.status IS NULL OR b.status <> 'published')
-      GROUP BY s.id, b.status, b.revision
+        AND ($3 = 'all' OR
+          CASE WHEN b.submitted_at IS NOT NULL THEN 'awaiting_review' ELSE 'needs_research' END = $3)
+      GROUP BY s.id, b.status, b.revision, b.submitted_at
       ORDER BY recent_request_count DESC, last_requested_at DESC, request_count DESC, s.id DESC
       LIMIT $1 OFFSET $2
-    `, [limit, offset]);
+    `, [limit, offset, status]);
     return rows;
   }
 
-  async publishStoryBrief(storyId, { expectedRevision, reviewedBy }) {
+  async publishStoryBrief(storyId, { expectedRevision, reviewedBy, summaryDecision }) {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query('SELECT id FROM stories WHERE id = $1 FOR UPDATE', [storyId]);
+      const { rows: stories } = await client.query('SELECT id, summary FROM stories WHERE id = $1 FOR UPDATE', [storyId]);
       const { rows } = await client.query(
-        'SELECT revision FROM story_briefs WHERE story_id = $1',
+        'SELECT revision, proposed_summary, summary_base FROM story_briefs WHERE story_id = $1',
         [storyId]
       );
       if (!rows[0]) {
@@ -1248,9 +1265,30 @@ class NewsDAO {
         error.code = 'stale_brief_revision';
         throw error;
       }
+      if (rows[0].proposed_summary) {
+        if (!['apply', 'keep'].includes(summaryDecision)) {
+          const error = new Error('Choose whether to apply the proposed summary or keep the current summary before publishing.');
+          error.status = 400;
+          error.code = 'brief_summary_decision_required';
+          throw error;
+        }
+        if (summaryDecision === 'apply') {
+          if ((stories[0].summary || null) !== rows[0].summary_base) {
+            const error = new Error('Story summary changed since this proposal. Reload and reconcile it, or explicitly keep the current summary.');
+            error.status = 409;
+            error.code = 'stale_story_summary';
+            throw error;
+          }
+          await client.query(
+            'UPDATE stories SET summary = $2, updated_at = NOW() WHERE id = $1',
+            [storyId, rows[0].proposed_summary]
+          );
+        }
+      }
       await client.query(`
         UPDATE story_briefs
-        SET status = 'published', reviewed_by = $2, reviewed_at = NOW(), updated_at = NOW()
+        SET status = 'published', reviewed_by = $2, reviewed_at = NOW(), updated_at = NOW(),
+            proposed_summary = NULL, summary_base = NULL
         WHERE story_id = $1
       `, [storyId, reviewedBy]);
       await client.query('DELETE FROM story_research_requests WHERE story_id = $1', [storyId]);
@@ -1271,7 +1309,7 @@ class NewsDAO {
       await client.query('SELECT id FROM stories WHERE id = $1 FOR UPDATE', [storyId]);
       const { rowCount } = await client.query(`
         UPDATE story_briefs
-        SET status = 'draft', reviewed_by = NULL, reviewed_at = NULL, updated_at = NOW()
+        SET status = 'draft', reviewed_by = NULL, reviewed_at = NULL, submitted_at = NULL, updated_at = NOW()
         WHERE story_id = $1
       `, [storyId]);
       if (rowCount === 0) {
