@@ -28,7 +28,7 @@
     <div class="story-meta">
       <span class="badge <%= meta.badge %>"><%= catLabel(story.category) %></span>
       <% if (story.heat_score >= 30) { %><span class="badge badge-hot">🔥 everyone's chattering</span><% } %>
-      <span class="story-time"><%= timeAgo(story.updated_at || story.created_at) %> · <%= story.source_count %> source<%= story.source_count != 1 ? 's' : '' %></span>
+      <span class="story-time">Published <%= timeAgo(story.published_at || story.created_at) %> · <%= story.source_count %> source<%= story.source_count != 1 ? 's' : '' %></span>
     </div>
     <h1><%= story.title %></h1>
 
