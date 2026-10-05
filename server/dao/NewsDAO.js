@@ -25,16 +25,44 @@ class NewsDAO {
       tagClause = `AND $${params.length} = ANY(s.tags)`;
     }
     let searchClause = '';
-    if (q && String(q).trim()) {
-      params.push(`%${String(q).trim()}%`);
-      const p = `$${params.length}`;
-      searchClause = `
-        AND (
+    const rawQuery = q && String(q).trim();
+    if (rawQuery) {
+      const tokens = [...new Set(
+        rawQuery
+          .toLowerCase()
+          .split(/\s+/)
+          .map((t) => t.trim())
+          .filter((t) => t.length >= 2)
+      )].slice(0, 6);
+
+      const perTokenClauses = [];
+      for (const token of tokens) {
+        params.push(`%${token}%`);
+        const p = `$${params.length}`;
+        perTokenClauses.push(`(
           s.title ILIKE ${p}
           OR COALESCE(s.summary, '') ILIKE ${p}
           OR COALESCE(s.squirrel_take, '') ILIKE ${p}
           OR COALESCE(s.why_it_matters, '') ILIKE ${p}
           OR COALESCE(array_to_string(s.tags, ' '), '') ILIKE ${p}
+        )`);
+      }
+
+      params.push(`%${rawQuery}%`);
+      const phraseP = `$${params.length}`;
+      const phraseClause = `(
+        s.title ILIKE ${phraseP}
+        OR COALESCE(s.summary, '') ILIKE ${phraseP}
+        OR COALESCE(s.squirrel_take, '') ILIKE ${phraseP}
+        OR COALESCE(s.why_it_matters, '') ILIKE ${phraseP}
+        OR COALESCE(array_to_string(s.tags, ' '), '') ILIKE ${phraseP}
+      )`;
+
+      const andTokensClause = perTokenClauses.length ? `(${perTokenClauses.join(' AND ')})` : phraseClause;
+      searchClause = `
+        AND (
+          ${phraseClause}
+          OR ${andTokensClause}
         )
       `;
     }
