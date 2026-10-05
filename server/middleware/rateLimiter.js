@@ -22,12 +22,14 @@ setInterval(() => {
  * @param {number} options.max - Max attempts per window (default: 5)
  * @param {string} options.message - Error message
  * @param {function} options.keyGenerator - Function to generate unique key (default: IP)
+ * @param {function} options.handler - Optional custom response for a rate-limited request
  */
 function rateLimit({
   windowMs = 15 * 60 * 1000,  // 15 minutes
   max = 5,
   message = 'Too many attempts, please try again later',
-  keyGenerator = (req) => req.ip
+  keyGenerator = (req) => req.ip,
+  handler = null
 } = {}) {
   return (req, res, next) => {
     const key = keyGenerator(req);
@@ -46,6 +48,7 @@ function rateLimit({
     if (data.count > max) {
       const retryAfter = Math.ceil((data.firstAttempt + windowMs - now) / 1000);
       res.set('Retry-After', retryAfter);
+      if (handler) return handler(req, res, retryAfter);
       if (req.accepts('html')) {
         return res.status(429).render('layout-main', {
           template: 'auth/login',

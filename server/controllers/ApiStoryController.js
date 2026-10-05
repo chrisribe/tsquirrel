@@ -107,6 +107,80 @@ const ApiStoryController = {
     } catch (error) { return next(error); }
   },
 
+  async researchRequests(req, res, next) {
+    try {
+      const limit = parseBoundedInt(req.query.limit, 30, { min: 1, max: 100 });
+      const offset = parseBoundedInt(req.query.offset, 0, { min: 0, max: 1000000 });
+      const status = req.query.status || 'needs_research';
+      if (!['needs_research', 'awaiting_review', 'all'].includes(status)) {
+        return res.status(400).json({ error: 'status must be needs_research, awaiting_review, or all' });
+      }
+      const payload = await serviceFor(req).listResearchRequests({ limit, offset, status });
+      res.set('Cache-Control', 'no-store');
+      return res.json({ ok: true, ...payload });
+    } catch (error) { return next(error); }
+  },
+
+  async researchContext(req, res, next) {
+    try {
+      const ref = req.params.storyRef;
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(ref) || ref.length > 255 ||
+          (/^\d+$/.test(ref) && (!Number.isSafeInteger(Number(ref)) || Number(ref) < 1 || Number(ref) > 2147483647))) {
+        return res.status(400).json({ error: 'invalid story id or slug' });
+      }
+      const context = await serviceFor(req).getResearchContext(ref);
+      if (!context) return res.status(404).json({ error: 'story not found' });
+      res.set('Cache-Control', 'no-store');
+      return res.json({ ok: true, ...context });
+    } catch (error) { return next(error); }
+  },
+
+  async getBrief(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+      const brief = await serviceFor(req).getBrief(id);
+      if (brief === undefined) return res.status(404).json({ error: 'story not found' });
+      return res.json({ ok: true, brief });
+    } catch (error) { return next(error); }
+  },
+
+  async putBrief(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+      const forbidden = [
+        'status', 'reviewed_by', 'reviewed_at', 'reviewedBy', 'reviewedAt',
+        'submitted_at', 'submittedAt', 'summary_base', 'summaryBase', 'summary_decision',
+      ].find(key =>
+        Object.prototype.hasOwnProperty.call(req.body || {}, key)
+      );
+      if (forbidden) {
+        return res.status(400).json({ error: `${forbidden} cannot be set through the API`, code: 'brief_review_fields_forbidden' });
+      }
+      const brief = await serviceFor(req).replaceBrief(id, req.body || {});
+      return res.json({ ok: true, brief, research_status: 'awaiting_review' });
+    } catch (error) {
+      if (![400, 404, 409].includes(error.status)) return next(error);
+      const payload = { error: error.message };
+      if (error.code) payload.code = error.code;
+      if (error.currentRevision !== undefined) payload.current_revision = error.currentRevision;
+      return res.status(error.status).json(payload);
+    }
+  },
+
+  async registerResearchSource(req, res, next) {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) return res.status(400).json({ error: 'invalid story id' });
+      const article = await serviceFor(req).registerResearchSource(id, req.body || {});
+      return res.status(201).json({ ok: true, article });
+    } catch (error) {
+      if (![400, 404, 409].includes(error.status)) return next(error);
+      return res.status(error.status).json({ error: error.message, code: error.code });
+    }
+  },
+
   async patch(req, res, next) {
     try {
       const id = parseId(req.params.id);

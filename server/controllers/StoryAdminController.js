@@ -36,7 +36,31 @@ function parseStoryIdList(value) {
     if (s.includes(',')) parts.push(...s.split(','));
     else parts.push(s);
   }
+
   return Array.from(new Set(parts.map(id => parseInt(id, 10)).filter(Number.isFinite)));
+}
+
+function parseBriefInput(body = {}) {
+  const facts = [];
+  for (let index = 0; index < 8; index += 1) {
+    const text = String(body[`fact_${index}_text`] || '').trim();
+    if (!text) continue;
+    facts.push({
+      heading: String(body[`fact_${index}_heading`] || '').trim() || null,
+      text,
+      articleIds: [].concat(body[`fact_${index}_article_ids`] || [])
+        .map(value => parseInt(value, 10))
+        .filter(Number.isFinite),
+    });
+  }
+  return {
+    expectedRevision: parseInt(body.expected_revision, 10),
+    introduction: String(body.introduction || '').trim(),
+    proposed_summary: body.proposed_summary,
+    expected_summary: body.expected_summary,
+    editor_note: body.editor_note,
+    facts,
+  };
 }
 
 const StoryAdminController = {
@@ -91,6 +115,9 @@ const StoryAdminController = {
       const returnTo = safeAdminStoriesReturnTo(req.query.returnTo || '/admin/stories');
       const pageData = await serviceFor(req).getEditorModel(req.params.id, { returnTo });
       if (!pageData) return notFound(res);
+      if (req.query.brief === 'saved') pageData.message = 'Dig deeper draft saved.';
+      if (req.query.brief === 'published') pageData.message = 'Dig deeper brief published.';
+      if (req.query.brief === 'withdrawn') pageData.message = 'Dig deeper marked for more research. Any published brief was withdrawn.';
       return res.renderPage('admin/story-edit', pageData, {
         pageTitle: `Edit: ${pageData.story.title} — Admin — TSquirrel`,
       });
@@ -155,7 +182,81 @@ const StoryAdminController = {
         url,
         { replaceUrl: url }
       );
-    } catch (error) { return next(error); }
+    } catch (error) {
+      if (error.status !== 409) return next(error);
+      if (req.isHtmx) {
+        return res.status(200).render('admin/partials/_save-status', {
+          pageData: { message: error.message, isError: true, oob: true },
+        });
+      }
+      const pageData = await serviceFor(req).getEditorModel(req.params.id);
+      if (!pageData) return notFound(res);
+      return res.renderPage('admin/story-edit', { ...pageData, error: error.message }, {
+        pageTitle: `Edit: ${pageData.story.title} — Admin — TSquirrel`,
+        status: 409,
+      });
+    }
+  },
+
+  async saveBrief(req, res, next) {
+    const input = parseBriefInput(req.body);
+    try {
+      const pageData = await serviceFor(req).saveBrief(req.params.id, input);
+      if (!pageData) return notFound(res);
+      return res.redirect(303, `/admin/stories/${req.params.id}/edit?brief=saved#story-brief-editor`);
+    } catch (error) {
+      if (![400, 404, 409].includes(error.status)) return next(error);
+      const pageData = await serviceFor(req).getEditorModel(req.params.id);
+      if (!pageData) return notFound(res);
+      pageData.briefForm = {
+        introduction: input.introduction,
+        revision: Number.isFinite(input.expectedRevision) ? input.expectedRevision : 0,
+        status: pageData.brief?.status || 'draft',
+        proposed_summary: input.proposed_summary,
+        summary_base: input.expected_summary,
+        editor_note: input.editor_note,
+        submitted_at: pageData.brief?.submitted_at || null,
+        facts: input.facts.map((fact, index) => ({
+          ...fact,
+          position: index + 1,
+          sources: fact.articleIds.map(articleId => ({ article_id: articleId })),
+        })),
+      };
+      return res.renderPage('admin/story-edit', { ...pageData, error: error.message }, {
+        pageTitle: `Edit: ${pageData.story.title} — Admin — TSquirrel`,
+        status: error.status,
+      });
+    }
+  },
+
+  async publishBrief(req, res, next) {
+    try {
+      await serviceFor(req).publishBrief(
+        req.params.id,
+        parseInt(req.body.expected_revision, 10),
+        req.session.user.id,
+        req.body.summary_decision
+      );
+      return res.redirect(303, `/admin/stories/${req.params.id}/edit?brief=published#story-brief-editor`);
+    } catch (error) {
+      if (![400, 404, 409].includes(error.status)) return next(error);
+      const pageData = await serviceFor(req).getEditorModel(req.params.id);
+      if (!pageData) return notFound(res);
+      return res.renderPage('admin/story-edit', { ...pageData, error: error.message }, {
+        pageTitle: `Edit: ${pageData.story.title} — Admin — TSquirrel`,
+        status: error.status,
+      });
+    }
+  },
+
+  async withdrawBrief(req, res, next) {
+    try {
+      await serviceFor(req).withdrawBrief(req.params.id);
+      return res.redirect(303, `/admin/stories/${req.params.id}/edit?brief=withdrawn#story-brief-editor`);
+    } catch (error) {
+      if (![404, 409].includes(error.status)) return next(error);
+      return notFound(res);
+    }
   },
 
   async acceptSuggestion(req, res, next) {

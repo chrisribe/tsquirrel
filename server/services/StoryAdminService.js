@@ -52,11 +52,12 @@ class StoryAdminService {
   async getEditorModel(storyId, { returnTo = '/admin/stories' } = {}) {
     const story = await this.stories.getById(storyId);
     if (!story) return null;
-    const [attached, suggestions] = await Promise.all([
+    const [attached, suggestions, brief] = await Promise.all([
       this.stories.getArticles(story.id),
       this.stories.getSuggestions(story.id),
+      this.stories.getBrief(story.id),
     ]);
-    return { story, attached, suggestions, recentArticles: [], returnTo, error: null };
+    return { story, attached, suggestions, brief, recentArticles: [], returnTo, error: null };
   }
 
   async getAttachPickerModel(storyId) {
@@ -98,6 +99,21 @@ class StoryAdminService {
 
   async detachSource(storyId, articleId) {
     await this.stories.detach(storyId, articleId);
+    return this.getEditorModel(storyId);
+  }
+
+  async saveBrief(storyId, input) {
+    await this.stories.replaceBrief(storyId, input);
+    return this.getEditorModel(storyId);
+  }
+
+  async publishBrief(storyId, expectedRevision, reviewedBy, summaryDecision) {
+    await this.stories.publishBrief(storyId, { expectedRevision, reviewedBy, summaryDecision });
+    return this.getEditorModel(storyId);
+  }
+
+  async withdrawBrief(storyId) {
+    await this.stories.withdrawBrief(storyId);
     return this.getEditorModel(storyId);
   }
 

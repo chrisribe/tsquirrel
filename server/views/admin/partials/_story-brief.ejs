@@ -1,0 +1,111 @@
+<%
+  const brief = pageData.brief || { introduction: '', revision: 0, status: 'draft', facts: [] };
+  const facts = Array.isArray(brief.facts) ? brief.facts : [];
+  const rows = Math.max(3, Math.min(8, facts.length + 1));
+  function citedIds(fact) {
+    if (!fact) return [];
+    if (Array.isArray(fact.articleIds)) return fact.articleIds;
+    return (fact.sources || []).map(source => Number(source.article_id));
+  }
+%>
+<section id="story-brief-editor" class="admin-brief-editor">
+  <h2>Dig deeper</h2>
+  <p class="hint">Optional cited research. Saving any change returns it to draft.</p>
+
+  <form method="POST" action="/admin/stories/<%= pageData.story.id %>/brief">
+    <input type="hidden" name="expected_revision" value="<%= brief.revision || 0 %>">
+    <label>Introduction
+      <textarea name="introduction" rows="3" maxlength="2000" required
+                placeholder="Frame what the additional research adds."><%= brief.introduction || '' %></textarea>
+    </label>
+
+    <details <%= brief.proposed_summary || brief.editor_note ? 'open' : '' %>>
+    <summary>Summary correction and editor note <small>(optional)</small></summary>
+    <fieldset class="admin-brief-fact">
+      <legend>Editorial handoff <small>(optional, not shown to readers)</small></legend>
+      <p class="hint">Use this when the findings change the story summary. Saving a proposal does not change the live story.</p>
+      <p><strong>Current story summary</strong><br><%= pageData.story.summary || 'No summary yet.' %></p>
+      <% if (brief.proposed_summary && (brief.summary_base || null) !== (pageData.story.summary || null)) { %>
+        <p class="admin-alert" role="alert">The story summary has changed since this proposal. Compare and reconcile it before saving or applying.</p>
+      <% } %>
+      <input type="hidden" name="expected_summary" value="<%= pageData.story.summary || '' %>">
+      <label>Proposed summary
+        <textarea name="proposed_summary" rows="3" minlength="120" maxlength="280"
+                  placeholder="A corrected summary, 120-280 characters."><%= brief.proposed_summary || '' %></textarea>
+      </label>
+      <label>Private note to the editor
+        <textarea name="editor_note" rows="3" maxlength="2000"
+                  placeholder="Explain the correction, source limitations, or what the reviewer should check."><%= brief.editor_note || '' %></textarea>
+      </label>
+    </fieldset>
+    </details>
+
+    <% for (let index = 0; index < rows; index += 1) { %>
+      <% const fact = facts[index] || {}; const selected = citedIds(fact); %>
+      <fieldset class="admin-brief-fact">
+        <legend>Finding <%= index + 1 %><%= index === 0 ? '' : ' (optional)' %></legend>
+        <label>Heading <small>(optional)</small>
+          <input type="text" name="fact_<%= index %>_heading" maxlength="160"
+                 value="<%= fact.heading || '' %>" placeholder="What was actually announced">
+        </label>
+        <label>Finding
+          <textarea name="fact_<%= index %>_text" rows="3" maxlength="4000"
+                    <%= index === 0 ? 'required' : '' %>><%= fact.text || '' %></textarea>
+        </label>
+        <div class="admin-brief-citations">
+          <strong>Citations</strong>
+          <% if (pageData.attached.length === 0) { %>
+            <p class="hint">Attach a source before saving a finding.</p>
+          <% } %>
+          <% pageData.attached.forEach(article => { %>
+            <label>
+              <input type="checkbox" name="fact_<%= index %>_article_ids" value="<%= article.id %>"
+                     <%= selected.includes(Number(article.id)) ? 'checked' : '' %>>
+              <span><%= displaySourceName(article) %> — <%= article.title %></span>
+            </label>
+          <% }); %>
+        </div>
+      </fieldset>
+    <% } %>
+
+    <div class="admin-actions-row">
+      <button type="submit">Save brief draft</button>
+    </div>
+  </form>
+
+  <% if (brief.revision) { %>
+    <p class="hint">
+      Status: <strong><%= brief.status === 'published' ? 'published' : brief.submitted_at ? 'awaiting review' : 'needs research' %></strong> · revision <%= brief.revision %>
+      <% if (brief.reviewed_at) { %> · reviewed <%= new Date(brief.reviewed_at).toLocaleString() %><% } %>
+    </p>
+    <% if (pageData.canReview) { %>
+    <div class="admin-actions-row">
+      <% if (brief.status !== 'published') { %>
+        <form method="POST" action="/admin/stories/<%= pageData.story.id %>/brief/publish">
+          <input type="hidden" name="expected_revision" value="<%= brief.revision %>">
+          <% if (brief.proposed_summary) { %>
+            <fieldset>
+              <legend>Summary decision <small>(required)</small></legend>
+              <p class="hint">This publishes the last saved draft. Save any edits above before choosing.</p>
+              <label><input type="radio" name="summary_decision" value="apply" required> Apply the proposed summary with this brief</label>
+              <label><input type="radio" name="summary_decision" value="keep" required> Keep the current story summary</label>
+            </fieldset>
+          <% } %>
+          <button type="submit">Publish Dig deeper</button>
+        </form>
+        <% if (brief.submitted_at) { %>
+          <form method="POST" action="/admin/stories/<%= pageData.story.id %>/brief/withdraw">
+            <button type="submit" class="secondary">Return for more research</button>
+          </form>
+        <% } %>
+      <% } else { %>
+        <form method="POST" action="/admin/stories/<%= pageData.story.id %>/brief/withdraw">
+          <button type="submit" class="secondary">Withdraw Dig deeper</button>
+        </form>
+      <% } %>
+    </div>
+    <% } else { %>
+      <p class="hint">Save a valid draft before approving it.</p>
+    <% } %>
+  <% } %>
+</section>

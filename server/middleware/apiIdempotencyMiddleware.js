@@ -2,12 +2,14 @@
 
 const crypto = require('crypto');
 
-const MUTATION_METHODS = new Set(['POST', 'PATCH', 'DELETE']);
+const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const MAX_STORED_BODY_BYTES = 256 * 1024;
 const RETENTION_DAYS = 30;
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 let lastPruneAt = 0;
 
+// Produces stable JSON-equivalent structures so semantically identical
+// payloads hash to the same fingerprint regardless of object key order.
 function canonicalize(value) {
   if (value === null || value === undefined) return null;
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -22,6 +24,8 @@ function canonicalize(value) {
 }
 
 function fingerprintFor(req, idempotencyKey) {
+  // Fingerprint scope includes token id, method, route path, key, and body.
+  // This lets clients safely reuse the same key in different contexts.
   const canonicalBody = canonicalize(req.body || {});
   const payload = JSON.stringify({
     token_id: req.apiToken?.id || null,
@@ -71,6 +75,22 @@ async function pruneExpired(pool, nowMs) {
   );
 }
 
+/**
+ * API idempotency middleware for mutation endpoints.
+ *
+ * Behavior:
+ * - Applies only to POST/PUT/PATCH/DELETE.
+ * - Requires Idempotency-Key; otherwise this middleware is a no-op.
+ * - Replays a stored response when the same request fingerprint is seen again.
+ * - Captures and stores first successful response (non-5xx) on finish.
+ *
+ * Notes:
+ * - Backed by api_request_idempotency (migration 18).
+ * - String response bodies are truncated to MAX_STORED_BODY_BYTES.
+ * - Pruning runs opportunistically once per process per hour.
+ * - Concurrent identical first-time requests are not mutexed here; both may
+ *   execute, though only one row persists due to unique fingerprint constraint.
+ */
 module.exports = async function apiIdempotencyMiddleware(req, res, next) {
   if (!MUTATION_METHODS.has(req.method)) return next();
 
@@ -111,6 +131,7 @@ module.exports = async function apiIdempotencyMiddleware(req, res, next) {
   };
 
   res.on('finish', async () => {
+    // Do not cache server-error responses so retried requests can re-execute.
     if (res.statusCode >= 500) return;
 
     let bodyToStore = capturedBody;

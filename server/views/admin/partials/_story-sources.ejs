@@ -16,7 +16,7 @@
               <% if (article.published_at) { %><span class="source-material-date"><%= new Date(article.published_at).toLocaleDateString() %></span><% } %>
             </div>
             <a href="<%= article.url %>" target="_blank" rel="noopener noreferrer" class="source-material-title"><%= article.title %></a>
-            <% if (article.description) { %><p class="source-material-desc"><%= article.description %></p><% } %>
+            <% if (article.description) { %><p class="source-material-desc"><%= plainText(article.description) %></p><% } %>
           </div>
           <form method="POST" action="/admin/stories/<%= pageData.story.id %>/detach"
                 class="source-material-detach"
@@ -31,11 +31,14 @@
     </ul>
   <% } %>
 
-  <details hx-get="/admin/stories/<%= pageData.story.id %>/attach-picker"
+  <details class="source-attach" hx-get="/admin/stories/<%= pageData.story.id %>/attach-picker"
            hx-trigger="toggle once"
            hx-target="find .article-picker"
            hx-swap="innerHTML">
-    <summary>Attach another source article</summary>
+    <summary>
+      <span class="source-attach-icon" aria-hidden="true">+</span>
+      <span>Attach Source Article</span>
+    </summary>
     <div class="article-picker"><p class="hint">Loading…</p></div>
   </details>
 </section>

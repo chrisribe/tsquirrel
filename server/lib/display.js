@@ -44,4 +44,58 @@ function secureUrl(url) {
   return url.replace(/^http:\/\//i, 'https://');
 }
 
-module.exports = { CATEGORY_META, catMeta, catLabel, displaySourceName, secureUrl };
+const HTML_ENTITIES = {
+  amp: '&',
+  apos: "'",
+  gt: '>',
+  hellip: '…',
+  ldquo: '“',
+  lsquo: '‘',
+  mdash: '—',
+  nbsp: ' ',
+  ndash: '–',
+  quot: '"',
+  rdquo: '”',
+  rsquo: '’',
+  lt: '<',
+};
+
+function decodeHtmlEntities(value) {
+  return String(value || '').replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entity, code) => {
+    if (code[0] !== '#') return HTML_ENTITIES[code.toLowerCase()] ?? entity;
+    const numeric = code[1].toLowerCase() === 'x'
+      ? Number.parseInt(code.slice(2), 16)
+      : Number.parseInt(code.slice(1), 10);
+    if (!Number.isInteger(numeric) || numeric < 0 || numeric > 0x10FFFF) return entity;
+    try {
+      return String.fromCodePoint(numeric);
+    } catch (_) {
+      return entity;
+    }
+  });
+}
+
+function plainText(value) {
+  let text = String(value || '');
+  for (let pass = 0; pass < 2; pass += 1) {
+    const decoded = decodeHtmlEntities(text);
+    if (decoded === text) break;
+    text = decoded;
+  }
+  return text
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+module.exports = {
+  CATEGORY_META,
+  catMeta,
+  catLabel,
+  decodeHtmlEntities,
+  displaySourceName,
+  plainText,
+  secureUrl,
+};

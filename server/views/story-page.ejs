@@ -1,5 +1,5 @@
 <%
-  const { story, articles, related } = pageData;
+  const { story, articles, related, brief, researchRequest } = pageData;
   function timeAgo(date) {
     const now = new Date();
     const diff = Math.floor((now - new Date(date)) / 1000);
@@ -9,12 +9,7 @@
     return `${Math.floor(diff/86400)}d ago`;
   }
   const meta = catMeta(story.category);
-  const sentiment = story.sentiment != null ? Number(story.sentiment) : null;
-  const needlePct = sentiment != null ? Math.round(((sentiment + 1) / 2) * 100) : 50;
-  const moodReading = sentiment == null ? 'No reading yet'
-    : sentiment > 0.3 ? 'Mostly excited'
-    : sentiment < -0.3 ? 'Mostly skeptical'
-    : 'Mixed feelings in the forest';
+  const articleNumberById = new Map(articles.map((article, index) => [Number(article.id), index + 1]));
 %>
 
 <article class="story-detail">
@@ -56,25 +51,55 @@
     <% } %>
   </header>
 
-  <!-- Forest mood -->
-  <% if (sentiment != null) { %>
-    <div class="sentiment-card">
-      <div class="sentiment-label">🌡️ Forest Mood</div>
-      <div class="sentiment-bar"><div class="sentiment-needle" style="left: <%= needlePct %>%"></div></div>
-      <div class="sentiment-meta">
-        <span>😤 Skeptical</span>
-        <span>😐 Mixed</span>
-        <span>🤩 Excited</span>
+  <% if (brief) { %>
+    <section id="dig-deeper" class="story-brief-card">
+      <div class="story-brief-header">
+        <div class="story-brief-heading">
+          <span class="story-brief-icon" aria-hidden="true">🔎</span>
+          <div>
+            <div class="story-brief-label">Dig deeper</div>
+            <div class="story-brief-subtitle">Evidence-backed context</div>
+          </div>
+        </div>
+        <% if (brief.reviewed_at) { %>
+          <div class="story-brief-reviewed">Reviewed <%= new Date(brief.reviewed_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
+        <% } %>
       </div>
-      <div class="sentiment-reading"><%= moodReading %></div>
-    </div>
+      <p class="story-brief-introduction"><%= brief.introduction %></p>
+      <ol class="story-brief-findings">
+        <% brief.facts.forEach(fact => { %>
+          <li>
+            <% if (fact.heading) { %><h2><%= fact.heading %></h2><% } %>
+            <p>
+              <%= fact.text %>
+              <span class="story-brief-citations">
+                <% fact.sources.forEach(source => { const number = articleNumberById.get(Number(source.article_id)); %>
+                  <% if (number) { %>
+                    <a href="#source-<%= source.article_id %>"
+                       aria-label="Source <%= number %>: <%= source.title %>"
+                       data-ga-event="story_brief_citation_open"
+                       data-ga-story-id="<%= story.id %>"
+                       data-ga-source-name="<%= source.source_name %>">[<%= number %>]</a>
+                  <% } %>
+                <% }); %>
+              </span>
+            </p>
+          </li>
+        <% }); %>
+      </ol>
+    </section>
+  <% } %>
+
+  <% if (!brief && researchRequest) { %>
+    <%- include('partials/research-request', { pageData: researchRequest }) %>
+    <script defer src="/static/js/research-request.js?v=<%= assetVersion %>"></script>
   <% } %>
 
   <!-- Sources -->
   <section class="sources-card">
     <div class="sources-label">📡 Where we spotted it (<%= articles.length %>)</div>
     <% articles.forEach(a => { %>
-      <a href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="source-row" data-ga-event="source_open" data-ga-source-name="<%= displaySourceName(a) %>" data-ga-story-id="<%= story.id %>" data-ga-story-slug="<%= story.slug %>">
+      <a id="source-<%= a.id %>" href="<%= a.url %>" target="_blank" rel="noopener noreferrer" class="source-row" data-ga-event="source_open" data-ga-source-name="<%= displaySourceName(a) %>" data-ga-story-id="<%= story.id %>" data-ga-story-slug="<%= story.slug %>">
         <div class="source-media">
           <% if (a.image_url) { %>
             <img src="<%= secureUrl(a.image_url) %>" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
@@ -84,7 +109,7 @@
           <% } %>
         </div>
         <div class="source-body">
-          <div class="source-name"><%= displaySourceName(a) %></div>
+          <div class="source-name"><% if (brief) { %>[<%= articleNumberById.get(Number(a.id)) %>] <% } %><%= displaySourceName(a) %></div>
           <div class="source-headline"><%= a.title %></div>
           <div class="source-time"><%= timeAgo(a.origin_at || a.fetched_at || a.published_at) %></div>
         </div>

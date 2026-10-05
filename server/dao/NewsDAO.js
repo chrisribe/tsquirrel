@@ -448,11 +448,40 @@ class NewsDAO {
   }
 
   async detachSource(storyId, articleId) {
-    await this.pool.query(
-      'DELETE FROM story_articles WHERE story_id = $1 AND article_id = $2',
-      [storyId, articleId]
-    );
-    await this.recomputeHeatScore(storyId);
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT id FROM stories WHERE id = $1 FOR UPDATE', [storyId]);
+      const { rows: citationRows } = await client.query(`
+        SELECT sbf.position, COALESCE(sbf.heading, sbf.text) AS label
+        FROM story_brief_fact_sources bfs
+        JOIN story_brief_facts sbf ON sbf.id = bfs.fact_id
+        WHERE sbf.story_id = $1 AND bfs.article_id = $2
+        ORDER BY sbf.position
+      `, [storyId, articleId]);
+      if (citationRows.length > 0) {
+        const references = citationRows.map(row => `#${row.position} ${row.label}`).join('; ');
+        const error = new Error(`source is cited by the story brief: ${references}`);
+        error.status = 409;
+        error.code = 'brief_source_in_use';
+        throw error;
+      }
+      await client.query(
+        'DELETE FROM story_articles WHERE story_id = $1 AND article_id = $2',
+        [storyId, articleId]
+      );
+      await client.query(`
+        UPDATE stories SET heat_score = (
+          SELECT COUNT(*) * 10 FROM story_articles WHERE story_id = $1
+        ) WHERE id = $1
+      `, [storyId]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async setStoryStatus(id, status) {
@@ -994,6 +1023,385 @@ class NewsDAO {
   async getSignalById(id) {
     const { rows } = await this.pool.query('SELECT * FROM signals WHERE id = $1', [id]);
     return rows[0] || null;
+  }
+
+  // ── Optional cited story briefs ────────────────────────────────────────
+
+  async getStoryBrief(storyId, { publishedOnly = false } = {}) {
+    const { rows: briefRows } = await this.pool.query(`
+      SELECT sb.*, u.username AS reviewed_by_username
+      FROM story_briefs sb
+      LEFT JOIN users u ON u.id = sb.reviewed_by
+      WHERE sb.story_id = $1
+        ${publishedOnly ? "AND sb.status = 'published'" : ''}
+    `, [storyId]);
+    const brief = briefRows[0];
+    if (!brief) return null;
+
+    const { rows: facts } = await this.pool.query(`
+      SELECT id, story_id, position, heading, text
+      FROM story_brief_facts
+      WHERE story_id = $1
+      ORDER BY position
+    `, [storyId]);
+
+    if (facts.length === 0) return { ...brief, facts: [] };
+
+    const factIds = facts.map(fact => fact.id);
+    const { rows: citations } = await this.pool.query(`
+      SELECT bfs.fact_id, a.id AS article_id, a.title, a.url,
+             src.name AS source_name, src.slug AS source_slug
+      FROM story_brief_fact_sources bfs
+      JOIN articles a ON a.id = bfs.article_id
+      JOIN sources src ON src.id = a.source_id
+      WHERE bfs.fact_id = ANY($1::int[])
+      ORDER BY bfs.fact_id, a.id
+    `, [factIds]);
+
+    const citationsByFact = new Map();
+    for (const citation of citations) {
+      const list = citationsByFact.get(citation.fact_id) || [];
+      list.push(citation);
+      citationsByFact.set(citation.fact_id, list);
+    }
+
+    return {
+      ...brief,
+      facts: facts.map(fact => ({
+        ...fact,
+        sources: citationsByFact.get(fact.id) || [],
+      })),
+    };
+  }
+
+  async replaceStoryBrief(storyId, {
+    introduction, facts, expectedRevision, proposedSummary = null, expectedSummary = null, editorNote = null,
+  }) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: storyRows } = await client.query(
+        'SELECT id, summary FROM stories WHERE id = $1 FOR UPDATE',
+        [storyId]
+      );
+      if (!storyRows[0]) {
+        const error = new Error('story not found');
+        error.status = 404;
+        throw error;
+      }
+
+      const { rows: currentRows } = await client.query(
+        'SELECT revision FROM story_briefs WHERE story_id = $1',
+        [storyId]
+      );
+      const currentRevision = currentRows[0]?.revision || 0;
+      if (currentRevision !== expectedRevision) {
+        const error = new Error(`brief revision changed (current revision: ${currentRevision})`);
+        error.status = 409;
+        error.code = 'stale_brief_revision';
+        error.currentRevision = currentRevision;
+        throw error;
+      }
+      if (proposedSummary && (storyRows[0].summary || null) !== expectedSummary) {
+        const error = new Error('Story summary changed. Reload the current summary and reconcile the proposal before saving.');
+        error.status = 409;
+        error.code = 'stale_story_summary';
+        throw error;
+      }
+
+      const articleIds = Array.from(new Set(facts.flatMap(fact => fact.articleIds)));
+      const { rows: attachedRows } = await client.query(
+        `SELECT article_id FROM story_articles
+         WHERE story_id = $1 AND article_id = ANY($2::int[])`,
+        [storyId, articleIds]
+      );
+      const attachedIds = new Set(attachedRows.map(row => row.article_id));
+      const missingIds = articleIds.filter(id => !attachedIds.has(id));
+      if (missingIds.length > 0) {
+        const error = new Error(`brief citations are not attached to this story: ${missingIds.join(', ')}`);
+        error.status = 400;
+        error.code = 'brief_citation_not_attached';
+        throw error;
+      }
+
+      if (currentRevision === 0) {
+        await client.query(`
+          INSERT INTO story_briefs
+            (story_id, introduction, status, revision, reviewed_by, reviewed_at,
+             proposed_summary, summary_base, editor_note, submitted_at)
+          VALUES ($1, $2, 'draft', 1, NULL, NULL, $3, $4, $5, NOW())
+        `, [storyId, introduction, proposedSummary, proposedSummary ? expectedSummary : null, editorNote]);
+      } else {
+        await client.query(`
+          UPDATE story_briefs
+          SET introduction = $2,
+              status = 'draft',
+              revision = revision + 1,
+              reviewed_by = NULL,
+              reviewed_at = NULL,
+              proposed_summary = $3,
+              summary_base = $4,
+              editor_note = $5,
+              submitted_at = NOW(),
+              updated_at = NOW()
+          WHERE story_id = $1
+        `, [storyId, introduction, proposedSummary, proposedSummary ? expectedSummary : null, editorNote]);
+      }
+
+      await client.query('DELETE FROM story_brief_facts WHERE story_id = $1', [storyId]);
+      for (let index = 0; index < facts.length; index += 1) {
+        const fact = facts[index];
+        const { rows: factRows } = await client.query(`
+          INSERT INTO story_brief_facts (story_id, position, heading, text)
+          VALUES ($1, $2, $3, $4)
+          RETURNING id
+        `, [storyId, index + 1, fact.heading, fact.text]);
+        const factId = factRows[0].id;
+        for (const articleId of fact.articleIds) {
+          await client.query(`
+            INSERT INTO story_brief_fact_sources (fact_id, article_id)
+            VALUES ($1, $2)
+          `, [factId, articleId]);
+        }
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    return this.getStoryBrief(storyId);
+  }
+
+  async hasResearchRequest(storyId, readerHash) {
+    const { rows } = await this.pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM story_research_requests WHERE story_id = $1 AND reader_hash = $2
+      ) AS requested
+    `, [storyId, readerHash]);
+    return rows[0].requested;
+  }
+
+  async requestStoryResearch(slug, readerHash) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(`
+        SELECT id, slug FROM stories
+        WHERE status = 'published' AND (
+          slug = $1 OR id = (SELECT story_id FROM story_slug_redirects WHERE old_slug = $1)
+        )
+        ORDER BY (slug = $1) DESC LIMIT 1 FOR UPDATE
+      `, [slug]);
+      const story = rows[0];
+      if (!story) {
+        const error = new Error('This story is no longer available.');
+        error.status = 404;
+        throw error;
+      }
+      const { rows: briefs } = await client.query(
+        "SELECT story_id FROM story_briefs WHERE story_id = $1 AND status = 'published'", [story.id]
+      );
+      const available = briefs.length > 0;
+      if (!available) {
+        await client.query(`
+          INSERT INTO story_research_requests (story_id, reader_hash)
+          VALUES ($1, $2) ON CONFLICT (story_id, reader_hash) DO NOTHING
+        `, [story.id, readerHash]);
+      }
+      await client.query('COMMIT');
+      return { story, available };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getResearchRequests({ limit, offset, status }) {
+    const { rows } = await this.pool.query(`
+      SELECT s.id AS story_id, s.slug, s.title, s.summary, s.category,
+             s.published_at, s.updated_at,
+             b.status AS brief_status, b.revision AS brief_revision,
+             b.submitted_at AS brief_submitted_at,
+             CASE WHEN b.submitted_at IS NOT NULL THEN 'awaiting_review' ELSE 'needs_research' END AS research_status,
+             COUNT(*)::int AS request_count,
+             COUNT(*) FILTER (WHERE r.requested_at >= NOW() - INTERVAL '7 days')::int AS recent_request_count,
+             MAX(r.requested_at) AS last_requested_at,
+             (SELECT COUNT(*)::int FROM story_articles sa WHERE sa.story_id = s.id) AS source_count
+      FROM story_research_requests r
+      JOIN stories s ON s.id = r.story_id
+      LEFT JOIN story_briefs b ON b.story_id = s.id
+      WHERE s.status = 'published' AND (b.status IS NULL OR b.status <> 'published')
+        AND ($3 = 'all' OR
+          CASE WHEN b.submitted_at IS NOT NULL THEN 'awaiting_review' ELSE 'needs_research' END = $3)
+      GROUP BY s.id, b.status, b.revision, b.submitted_at
+      ORDER BY recent_request_count DESC, last_requested_at DESC, request_count DESC, s.id DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset, status]);
+    return rows;
+  }
+
+  async publishStoryBrief(storyId, { expectedRevision, reviewedBy, summaryDecision }) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: stories } = await client.query('SELECT id, summary FROM stories WHERE id = $1 FOR UPDATE', [storyId]);
+      const { rows } = await client.query(
+        'SELECT revision, proposed_summary, summary_base FROM story_briefs WHERE story_id = $1',
+        [storyId]
+      );
+      if (!rows[0]) {
+        const error = new Error('brief not found');
+        error.status = 404;
+        throw error;
+      }
+      if (rows[0].revision !== expectedRevision) {
+        const error = new Error(`brief revision changed (current revision: ${rows[0].revision})`);
+        error.status = 409;
+        error.code = 'stale_brief_revision';
+        throw error;
+      }
+      if (rows[0].proposed_summary) {
+        if (!['apply', 'keep'].includes(summaryDecision)) {
+          const error = new Error('Choose whether to apply the proposed summary or keep the current summary before publishing.');
+          error.status = 400;
+          error.code = 'brief_summary_decision_required';
+          throw error;
+        }
+        if (summaryDecision === 'apply') {
+          if ((stories[0].summary || null) !== rows[0].summary_base) {
+            const error = new Error('Story summary changed since this proposal. Reload and reconcile it, or explicitly keep the current summary.');
+            error.status = 409;
+            error.code = 'stale_story_summary';
+            throw error;
+          }
+          await client.query(
+            'UPDATE stories SET summary = $2, updated_at = NOW() WHERE id = $1',
+            [storyId, rows[0].proposed_summary]
+          );
+        }
+      }
+      await client.query(`
+        UPDATE story_briefs
+        SET status = 'published', reviewed_by = $2, reviewed_at = NOW(), updated_at = NOW(),
+            proposed_summary = NULL, summary_base = NULL
+        WHERE story_id = $1
+      `, [storyId, reviewedBy]);
+      await client.query('DELETE FROM story_research_requests WHERE story_id = $1', [storyId]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    return this.getStoryBrief(storyId);
+  }
+
+  async withdrawStoryBrief(storyId) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT id FROM stories WHERE id = $1 FOR UPDATE', [storyId]);
+      const { rowCount } = await client.query(`
+        UPDATE story_briefs
+        SET status = 'draft', reviewed_by = NULL, reviewed_at = NULL, submitted_at = NULL, updated_at = NOW()
+        WHERE story_id = $1
+      `, [storyId]);
+      if (rowCount === 0) {
+        const error = new Error('brief not found');
+        error.status = 404;
+        throw error;
+      }
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    return this.getStoryBrief(storyId);
+  }
+
+  async registerResearchSource(storyId, {
+    sourceName,
+    sourceSlug,
+    sourceUrl,
+    externalId,
+    title,
+    url,
+    publishedAt,
+  }) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: storyRows } = await client.query(
+        'SELECT id FROM stories WHERE id = $1 FOR UPDATE',
+        [storyId]
+      );
+      if (!storyRows[0]) {
+        const error = new Error('story not found');
+        error.status = 404;
+        throw error;
+      }
+
+      const { rows: existingArticleRows } = await client.query(`
+        SELECT a.*, src.name AS source_name, src.slug AS source_slug, src.type AS source_type
+        FROM articles a
+        JOIN sources src ON src.id = a.source_id
+        WHERE a.url = $1
+        ORDER BY a.id
+        LIMIT 1
+      `, [url]);
+
+      let article = existingArticleRows[0] || null;
+      if (!article) {
+        const { rows: sourceRows } = await client.query(`
+          INSERT INTO sources (name, slug, url, feed_url, type, active)
+          VALUES ($1, $2, $3, NULL, 'research', FALSE)
+          ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+          RETURNING *
+        `, [sourceName, sourceSlug, sourceUrl]);
+        const source = sourceRows[0];
+        const { rows: articleRows } = await client.query(`
+          INSERT INTO articles (source_id, external_id, title, url, published_at)
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (source_id, external_id) DO UPDATE
+          SET title = EXCLUDED.title,
+              url = EXCLUDED.url,
+              published_at = COALESCE(EXCLUDED.published_at, articles.published_at)
+          RETURNING *
+        `, [source.id, externalId, title, url, publishedAt]);
+        article = {
+          ...articleRows[0],
+          source_name: source.name,
+          source_slug: source.slug,
+          source_type: source.type,
+        };
+      }
+
+      await client.query(`
+        INSERT INTO story_articles (story_id, article_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `, [storyId, article.id]);
+      await client.query(`
+        UPDATE stories SET heat_score = (
+          SELECT COUNT(*) * 10 FROM story_articles WHERE story_id = $1
+        ) WHERE id = $1
+      `, [storyId]);
+      await client.query('COMMIT');
+      return article;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 

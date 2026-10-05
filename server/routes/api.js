@@ -3,9 +3,11 @@
 const express = require('express');
 const router = express.Router();
 const apiTokenAuth = require('../middleware/apiTokenAuthMiddleware');
+const apiIdempotency = require('../middleware/apiIdempotencyMiddleware');
 const apiStoryController = require('../controllers/ApiStoryController');
 
 router.use(apiTokenAuth);
+router.use(apiIdempotency);
 
 router.get('/me', async (req, res) => {
   res.json({
@@ -17,6 +19,7 @@ router.get('/me', async (req, res) => {
 // ── Agent API MVP (paid structured feed) ───────────────────────────────────
 router.get('/signals', apiStoryController.listSignalFeed);
 router.get('/changes', apiStoryController.listChanges);
+router.get('/research-requests', apiStoryController.researchRequests);
 
 router.get('/stories', apiStoryController.list);
 router.post('/stories', apiStoryController.create);
@@ -24,6 +27,10 @@ router.post('/stories/bulk', apiStoryController.bulkAction);
 router.get('/stories/:id', apiStoryController.get);
 router.patch('/stories/:id', apiStoryController.patch);
 router.delete('/stories/:id', apiStoryController.delete);
+router.get('/stories/:storyRef/research-context', apiStoryController.researchContext);
+router.get('/stories/:id/brief', apiStoryController.getBrief);
+router.put('/stories/:id/brief', apiStoryController.putBrief);
+router.post('/stories/:id/research-sources', apiStoryController.registerResearchSource);
 router.post('/stories/:id/sources', apiStoryController.addSource);
 router.delete('/stories/:id/sources/:articleId', apiStoryController.removeSource);
 

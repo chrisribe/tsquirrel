@@ -349,6 +349,159 @@ const migrations = [
       console.log('Migration 20: api token plan/quota columns + usage ledger created');
     }
   },
+  {
+    version: 21,
+    description: 'Legacy R&D brief fields on stories',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_markdown TEXT`);
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_generated_at TIMESTAMP`);
+      await pool.query(`ALTER TABLE stories ADD COLUMN IF NOT EXISTS rd_brief_model VARCHAR(120)`);
+      console.log('Migration 21: legacy stories R&D brief fields added');
+    }
+  },
+  {
+    version: 22,
+    description: 'Rename old premium_* R&D columns to neutral rd_* names',
+    up: async (pool) => {
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'premium_rd_brief_markdown'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'rd_brief_markdown'
+          ) THEN
+            ALTER TABLE stories RENAME COLUMN premium_rd_brief_markdown TO rd_brief_markdown;
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'premium_rd_generated_at'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'rd_brief_generated_at'
+          ) THEN
+            ALTER TABLE stories RENAME COLUMN premium_rd_generated_at TO rd_brief_generated_at;
+          END IF;
+        END $$;
+      `);
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'premium_rd_model'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'stories' AND column_name = 'rd_brief_model'
+          ) THEN
+            ALTER TABLE stories RENAME COLUMN premium_rd_model TO rd_brief_model;
+          END IF;
+        END $$;
+      `);
+      console.log('Migration 22: ensured neutral rd_* story brief columns');
+    }
+  },
+  {
+    version: 23,
+    description: 'Reconcile Agent API quota schema after migration-number collision',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS plan VARCHAR(40) DEFAULT 'internal'`);
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS monthly_quota INTEGER`);
+      await pool.query(`ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS api_token_usage_daily (
+          token_id INTEGER NOT NULL REFERENCES api_tokens(id) ON DELETE CASCADE,
+          day DATE NOT NULL,
+          request_count INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (token_id, day)
+        )
+      `);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_api_token_usage_daily_day ON api_token_usage_daily(day DESC)`);
+      console.log('Migration 23: agent API quota schema reconciled');
+    }
+  },
+  {
+    version: 24,
+    description: 'Cited story briefs with explicit review lifecycle',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_briefs (
+          story_id INTEGER PRIMARY KEY REFERENCES stories(id) ON DELETE CASCADE,
+          introduction TEXT NOT NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'draft'
+            CHECK (status IN ('draft', 'published')),
+          revision INTEGER NOT NULL DEFAULT 1,
+          reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          reviewed_at TIMESTAMP,
+          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_brief_facts (
+          id SERIAL PRIMARY KEY,
+          story_id INTEGER NOT NULL REFERENCES story_briefs(story_id) ON DELETE CASCADE,
+          position INTEGER NOT NULL CHECK (position >= 1),
+          heading TEXT,
+          text TEXT NOT NULL,
+          UNIQUE (story_id, position)
+        )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_brief_fact_sources (
+          fact_id INTEGER NOT NULL REFERENCES story_brief_facts(id) ON DELETE CASCADE,
+          article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE RESTRICT,
+          PRIMARY KEY (fact_id, article_id)
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_story_brief_fact_sources_article
+        ON story_brief_fact_sources(article_id)
+      `);
+      await pool.query(`ALTER TABLE stories DROP COLUMN IF EXISTS rd_brief_markdown`);
+      await pool.query(`ALTER TABLE stories DROP COLUMN IF EXISTS rd_brief_generated_at`);
+      await pool.query(`ALTER TABLE stories DROP COLUMN IF EXISTS rd_brief_model`);
+      console.log('Migration 24: cited story briefs added; obsolete generated-brief columns removed');
+    }
+  },
+  {
+    version: 25,
+    description: 'Reader requests for deeper story research',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_research_requests (
+          story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+          reader_hash CHAR(64) NOT NULL,
+          requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (story_id, reader_hash)
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_story_research_requests_requested_at
+        ON story_research_requests(requested_at DESC)
+      `);
+    }
+  },
+  {
+    version: 26,
+    description: 'Brief review proposals and research submission state',
+    up: async (pool) => {
+      await pool.query(`
+        ALTER TABLE story_briefs
+          ADD COLUMN IF NOT EXISTS proposed_summary TEXT,
+          ADD COLUMN IF NOT EXISTS summary_base TEXT,
+          ADD COLUMN IF NOT EXISTS editor_note TEXT,
+          ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ
+      `);
+    }
+  },
   // Future migrations go here
 ];
 
