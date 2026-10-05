@@ -56,6 +56,35 @@ test('a contributor researches and submits a brief through the real API', {
     });
   }
 
+  const readerIp = `2001:db8:${randomUUID().slice(0, 4)}::1`;
+  async function newReader(publicUrl) {
+    const page = await fetch(publicUrl, { headers: { 'X-Forwarded-For': readerIp } });
+    assert.equal(page.status, 200);
+    assert.equal(page.headers.get('cache-control'), 'private, no-store');
+    const html = await page.text();
+    assert.ok(html.includes('Request a deeper look'));
+    const requestToken = html.match(/name="request_token" value="([a-f0-9]{64})"/)?.[1];
+    assert.ok(requestToken, 'An anonymous reader gets a session-bound form token');
+    return {
+      publicUrl: new URL(page.url),
+      cookie: page.headers.getSetCookie().map(value => value.split(';')[0]).join('; '),
+      requestToken,
+    };
+  }
+
+  function requestResearch(reader, { htmx = true, requestToken = reader.requestToken, path } = {}) {
+    return fetch(path || `${reader.publicUrl}/research-request`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: {
+        Cookie: reader.cookie,
+        'X-Forwarded-For': readerIp,
+        ...(htmx ? { 'HX-Request': 'true' } : {}),
+      },
+      body: new URLSearchParams({ request_token: requestToken }),
+    });
+  }
+
   let storyId;
   let tokenId;
   try {
@@ -90,6 +119,7 @@ test('a contributor researches and submits a brief through the real API', {
     await t.test('requires API auth and resolves both IDs and slugs', async () => {
       const anonymous = await fetch(new URL(`/api/v1/stories/${storyId}/research-context`, base));
       assert.equal(anonymous.status, 401);
+      assert.equal((await fetch(new URL('/api/v1/research-requests', base))).status, 401);
       const byId = await api(`/stories/${storyId}/research-context`);
       assert.equal(byId.body.story.slug, created.body.story.slug);
       assert.equal((await api('/stories/nonexistent-context-fixture/research-context')).status, 404);
@@ -162,12 +192,65 @@ test('a contributor researches and submits a brief through the real API', {
       assert.equal(refreshed.body.brief.facts[0].sources[0].article_id, articleId);
     });
 
-    await t.test('publishes only through admin review and hides later edits until reapproved', async () => {
+    let reader;
+    const publicUrl = new URL(context.body.links.story, base);
+    async function queuedStory() {
+      const queue = await api('/research-requests?limit=100');
+      assert.equal(queue.status, 200);
+      assert.equal(queue.headers.get('cache-control'), 'no-store');
+      return queue.body.requests.find(row => row.story_id === storyId);
+    }
+
+    await t.test('accepts deduplicated reader interest with CSRF and progressive enhancement', async () => {
       const preflight = await api(`/stories/${storyId}/publish-preflight`);
       assert.equal(preflight.body.can_publish, true, JSON.stringify(preflight.body.blockers));
       const storyPublish = await admin(`/admin/stories/${storyId}/publish`);
       assert.ok([302, 303].includes(storyPublish.status));
-      const publicUrl = new URL(context.body.links.story, base);
+      reader = await newReader(publicUrl);
+      assert.ok(reader.cookie, 'Anonymous reader state must survive reloads');
+      assert.equal((await requestResearch(reader, { requestToken: '' })).status, 403);
+      assert.equal(await queuedStory(), undefined);
+      const replies = await Promise.all([requestResearch(reader), requestResearch(reader)]);
+      for (const reply of replies) {
+        assert.equal(reply.status, 200);
+        const html = await reply.text();
+        assert.ok(html.includes('Requested &mdash; thanks'));
+        assert.ok(!html.includes('<!DOCTYPE html>'), 'HTMX receives only its feedback fragment');
+      }
+      let queued = await queuedStory();
+      assert.equal(queued.request_count, 1, 'Concurrent clicks count only once');
+      assert.equal(queued.recent_request_count, 1);
+      assert.equal(queued.brief_status, 'draft');
+      assert.equal(queued.brief_revision, 1);
+      assert.equal(queued.source_count, 1);
+      assert.equal(queued.links.research_context, `/api/v1/stories/${storyId}/research-context`);
+      assert.equal(queued.reader_hash, undefined);
+      const firstRequestedAt = queued.last_requested_at;
+      const normalPost = await requestResearch(reader, { htmx: false });
+      assert.equal(normalPost.status, 303);
+      assert.equal(normalPost.headers.get('location'), `${reader.publicUrl.pathname}#research-interest`);
+      const reloaded = await fetch(publicUrl, { headers: { Cookie: reader.cookie } });
+      assert.ok((await reloaded.text()).includes('Requested &mdash; thanks'));
+      assert.equal((await queuedStory()).last_requested_at, firstRequestedAt, 'Retries cannot refresh priority');
+
+      const secondReader = await newReader(publicUrl);
+      assert.equal((await requestResearch(secondReader, { requestToken: reader.requestToken })).status, 403);
+      assert.equal((await requestResearch(secondReader, { htmx: false })).status, 303);
+      queued = await queuedStory();
+      assert.equal(queued.request_count, 2);
+      assert.equal(queued.recent_request_count, 2);
+      const page = await api('/research-requests?limit=1');
+      assert.equal(page.body.limit, 1);
+      assert.equal(page.body.requests.length, 1);
+
+      assert.equal((await api(`/stories/${storyId}/unpublish`, 'POST')).status, 200);
+      assert.equal(await queuedStory(), undefined, 'Unpublished stories do not enter the public research queue');
+      assert.equal((await requestResearch(reader)).status, 404);
+      assert.equal((await admin(`/admin/stories/${storyId}/publish`)).status, 303);
+      assert.equal((await queuedStory()).request_count, 2);
+    });
+
+    await t.test('publishes only through admin review and hides later edits until reapproved', async () => {
       let publicPage = await fetch(publicUrl);
       assert.equal(publicPage.status, 200);
       assert.ok(!(await publicPage.text()).includes(briefInput.introduction));
@@ -182,6 +265,12 @@ test('a contributor researches and submits a brief through the real API', {
       assert.ok(publishedHtml.includes(`href="#source-${articleId}"`));
       assert.ok(publishedHtml.includes(`id="source-${articleId}"`));
       assert.ok(publishedHtml.includes('href="https://research-context.example.test/report"'));
+      assert.ok(!publishedHtml.includes('id="research-interest"'));
+      assert.equal(await queuedStory(), undefined, 'Publication clears pending demand');
+      const staleClick = await requestResearch(reader);
+      assert.equal(staleClick.status, 200);
+      assert.ok((await staleClick.text()).includes('Reload to read Dig deeper'));
+      assert.equal(await queuedStory(), undefined);
 
       const detached = await api(`/stories/${storyId}/sources/${articleId}`, 'DELETE');
       assert.equal(detached.status, 409, 'Cited sources must not be detached');
@@ -192,13 +281,34 @@ test('a contributor researches and submits a brief through the real API', {
       publicPage = await fetch(publicUrl);
       assert.equal(publicPage.status, 200, 'The story remains public while the brief is a draft');
       assert.ok(!(await publicPage.text()).includes(briefInput.introduction));
+      assert.equal(await queuedStory(), undefined, 'Old fulfilled requests must not return on edits');
+      assert.equal((await requestResearch(reader)).status, 200);
+      assert.equal((await queuedStory()).request_count, 1, 'The same reader may request a new research round');
       assert.equal((await admin(`/admin/stories/${storyId}/brief/publish`, { expected_revision: '1' })).status, 409);
+      assert.equal((await queuedStory()).request_count, 1, 'Failed approval does not clear demand');
       assert.equal((await admin(`/admin/stories/${storyId}/brief/publish`, { expected_revision: '2' })).status, 303);
+      assert.equal(await queuedStory(), undefined);
       assert.ok((await (await fetch(publicUrl)).text()).includes(briefInput.introduction));
       current = (await api(`/stories/${storyId}/research-context`)).body;
       assert.equal(current.brief.status, 'published');
       assert.equal(current.submission.expected_revision, 2);
       assert.ok((await api('/me')).body.token.monthly_used > me.body.token.monthly_used);
+    });
+
+    await t.test('rate limits requests with useful HTML feedback, not the login page', async () => {
+      let response;
+      for (let attempt = 0; attempt < 11; attempt += 1) {
+        response = await requestResearch(reader);
+        if (response.status === 429) break;
+        assert.equal(response.status, 200);
+      }
+      assert.equal(response.status, 429);
+      assert.ok(Number(response.headers.get('retry-after')) > 0);
+      assert.equal(response.headers.get('x-research-feedback'), 'true');
+      assert.ok((await response.text()).includes('Too many research requests'));
+      const normalPost = await requestResearch(reader, { htmx: false });
+      assert.equal(normalPost.status, 429);
+      assert.ok((await normalPost.text()).includes('<!DOCTYPE html>'));
     });
   } finally {
     try {

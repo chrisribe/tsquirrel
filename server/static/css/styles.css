@@ -1469,6 +1469,26 @@ a.signal-meta-chip:hover {
 .why-it-matters-label { font-size: .65rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: .25rem; }
 .why-it-matters-text { font-size: .88rem; color: var(--brand); line-height: 1.5; }
 
+.research-interest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+  padding: 1rem;
+  margin: 0 0 .75rem;
+  background: var(--brand-pale);
+  border: 1px solid var(--brand-light);
+  border-radius: 12px;
+  color: var(--brand);
+}
+.research-interest p { margin: .2rem 0 0; font-size: .8rem; }
+.research-interest form { margin: 0; }
+.research-interest button { width: auto; min-height: 44px; margin: 0; font-size: .8rem; }
+.research-interest button:focus-visible,
+.research-interest:focus-visible { outline: 2px solid var(--brand-mid); outline-offset: 3px; }
+.research-request-error:empty { display: none; }
+
 /* ── Dig deeper brief ── */
 .story-brief-card {
   position: relative;

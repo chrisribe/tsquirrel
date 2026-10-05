@@ -1,0 +1,33 @@
+<section id="research-interest" class="research-interest" aria-label="Request deeper research" tabindex="-1">
+  <% const { story, requested, available, error, requestToken } = pageData; %>
+  <% if (error) { %>
+    <div role="alert">
+      <p><%= error %></p>
+      <form method="get" action="/story/<%= encodeURIComponent(story.slug) %>#research-interest" hx-boost="false">
+        <button type="submit" class="outline">Reload the story</button>
+      </form>
+    </div>
+  <% } else if (available) { %>
+    <p role="status">A deeper look is ready.</p>
+    <form method="get" action="/story/<%= encodeURIComponent(story.slug) %>#dig-deeper" hx-boost="false">
+      <button type="submit" class="outline">Reload to read Dig deeper</button>
+    </form>
+  <% } else if (requested) { %>
+    <div role="status">
+      <strong>Requested &mdash; thanks</strong>
+      <p>Your interest helps us choose what to research next. Publication is not guaranteed.</p>
+    </div>
+  <% } else { %>
+    <div>
+      <strong>Want more context?</strong>
+      <p id="research-request-hint">Help us choose what to research next.</p>
+      <p class="research-request-error" role="alert" data-research-error></p>
+    </div>
+    <form method="post" action="/story/<%= encodeURIComponent(story.slug) %>/research-request"
+          hx-post="/story/<%= encodeURIComponent(story.slug) %>/research-request"
+          hx-target="#research-interest" hx-swap="outerHTML" hx-disabled-elt="find button">
+      <input type="hidden" name="request_token" value="<%= requestToken %>">
+      <button type="submit" class="outline" aria-describedby="research-request-hint">Request a deeper look</button>
+    </form>
+  <% } %>
+</section>

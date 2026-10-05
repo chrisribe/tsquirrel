@@ -3,6 +3,45 @@
 const express = require('express');
 const router = express.Router();
 const NewsDAO = require('../dao/NewsDAO');
+const crypto = require('node:crypto');
+const { rateLimit } = require('../middleware/rateLimiter');
+
+function researchReaderHash(req) {
+  return crypto.createHash('sha256').update(req.sessionID).digest('hex');
+}
+
+function researchFeedback(req, res, {
+  status = 200, error = null, available = false, story = { slug: req.params.slug },
+} = {}) {
+  res.set('Cache-Control', 'private, no-store');
+  res.set('X-Research-Feedback', 'true');
+  const pageData = {
+    story,
+    requested: !error && !available,
+    available,
+    error,
+    requestToken: req.session.researchRequestToken || '',
+  };
+  if (!error) {
+    return res.renderFragmentOrRedirect('partials/research-request', pageData,
+      `/story/${encodeURIComponent(story.slug)}#${available ? 'dig-deeper' : 'research-interest'}`);
+  }
+  return res.renderPage('partials/research-request', pageData, {
+    status,
+    pageTitle: 'Research request — TSquirrel',
+    noIndex: true,
+  });
+}
+
+const researchRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  keyGenerator: req => `research-request:${req.ip}`,
+  handler: (req, res, retryAfter) => researchFeedback(req, res, {
+    status: 429,
+    error: `Too many research requests. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`,
+  }),
+});
 
 const LEGACY_REDIRECTS = new Map([
   ['/external', '/archive'],
@@ -269,46 +308,84 @@ router.get('/archive', async (req, res) => {
 });
 
 // ── Story detail ───────────────────────────────────────────────────────
-router.get('/story/:slug', async (req, res) => {
-  const pool = req.app.get('pool');
-  const dao = new NewsDAO(pool);
-
-  const story = await dao.getPublishedStoryBySlug(req.params.slug);
-  if (!story) {
-    const { rows: redirectRows } = await pool.query(`
-      SELECT s.slug AS current_slug
-      FROM story_slug_redirects r
-      JOIN stories s ON s.id = r.story_id
-      WHERE r.old_slug = $1
-        AND s.status = 'published'
-        AND s.slug IS NOT NULL
-      LIMIT 1
-    `, [req.params.slug]);
-
-    const target = redirectRows[0]?.current_slug;
-    if (target) return res.redirect(301, `/story/${target}`);
-
-    return res.status(404).render('layout-main', {
-      template: 'errors/404',
-      pageTitle: 'Story Not Found — TSquirrel',
-      pageDescription: 'The story URL changed or no longer exists. Browse latest stories or archive.',
-      noIndex: true,
-      pageData: {},
+router.post('/story/:slug/research-request', (req, res, next) => {
+  const submitted = req.body.request_token;
+  const expected = req.session.researchRequestToken;
+  if (typeof submitted !== 'string' || !/^[a-f0-9]{64}$/.test(submitted) ||
+      !expected || !crypto.timingSafeEqual(Buffer.from(submitted), Buffer.from(expected))) {
+    return researchFeedback(req, res, {
+      status: 403, error: 'Your request could not be verified. Reload the story and try again.',
     });
   }
+  next();
+}, researchRequestLimiter, async (req, res) => {
+  try {
+    const dao = new NewsDAO(req.app.get('pool'));
+    const result = await dao.requestStoryResearch(req.params.slug, researchReaderHash(req));
+    return researchFeedback(req, res, result);
+  } catch (error) {
+    if (error.status !== 404) console.error('Research request failed:', error);
+    return researchFeedback(req, res, {
+      status: error.status === 404 ? 404 : 500,
+      error: error.status === 404 ? error.message : 'We could not save your request. Please try again later.',
+    });
+  }
+});
 
-  const [articles, related, brief] = await Promise.all([
-    dao.getStoryArticles(story.id),
-    dao.getRelatedStories(story.id, { category: story.category, tags: story.tags || [] }),
-    dao.getStoryBrief(story.id, { publishedOnly: true }),
-  ]);
-  res.render('layout-main', {
-    template: 'story-page',
-    pageTitle: `${story.title} | TSquirrel`,
-    pageDescription: story.summary || story.title,
-    pageUrl: `https://tsquirrel.com/story/${story.slug}`,
-    pageData: { story, articles, related, brief },
-  });
+router.get('/story/:slug', async (req, res, next) => {
+  try {
+    const pool = req.app.get('pool');
+    const dao = new NewsDAO(pool);
+
+    const story = await dao.getPublishedStoryBySlug(req.params.slug);
+    if (!story) {
+      const { rows: redirectRows } = await pool.query(`
+        SELECT s.slug AS current_slug
+        FROM story_slug_redirects r
+        JOIN stories s ON s.id = r.story_id
+        WHERE r.old_slug = $1
+          AND s.status = 'published'
+          AND s.slug IS NOT NULL
+        LIMIT 1
+      `, [req.params.slug]);
+
+      const target = redirectRows[0]?.current_slug;
+      if (target) return res.redirect(301, `/story/${target}`);
+
+      return res.status(404).render('layout-main', {
+        template: 'errors/404',
+        pageTitle: 'Story Not Found — TSquirrel',
+        pageDescription: 'The story URL changed or no longer exists. Browse latest stories or archive.',
+        noIndex: true,
+        pageData: {},
+      });
+    }
+
+    const [articles, related, brief] = await Promise.all([
+      dao.getStoryArticles(story.id),
+      dao.getRelatedStories(story.id, { category: story.category, tags: story.tags || [] }),
+      dao.getStoryBrief(story.id, { publishedOnly: true }),
+    ]);
+    let researchRequest = null;
+    if (!brief) {
+      req.session.researchRequestToken ||= crypto.randomBytes(32).toString('hex');
+      researchRequest = {
+        story,
+        requested: await dao.hasResearchRequest(story.id, researchReaderHash(req)),
+        requestToken: req.session.researchRequestToken,
+        available: false,
+        error: null,
+      };
+    }
+    res.set('Cache-Control', 'private, no-store');
+    res.render('layout-main', {
+      template: 'story-page',
+      pageTitle: `${story.title} | TSquirrel`,
+      pageDescription: story.summary || story.title,
+      pageUrl: `https://tsquirrel.com/story/${story.slug}`,
+      pageData: { story, articles, related, brief, researchRequest },
+    });
+  } catch (error) { next(error); }
 });
 
 // ── HTMX infinite scroll API ───────────────────────────────────────────

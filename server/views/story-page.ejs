@@ -1,5 +1,5 @@
 <%
-  const { story, articles, related, brief } = pageData;
+  const { story, articles, related, brief, researchRequest } = pageData;
   function timeAgo(date) {
     const now = new Date();
     const diff = Math.floor((now - new Date(date)) / 1000);
@@ -88,6 +88,11 @@
         <% }); %>
       </ol>
     </section>
+  <% } %>
+
+  <% if (!brief && researchRequest) { %>
+    <%- include('partials/research-request', { pageData: researchRequest }) %>
+    <script defer src="/static/js/research-request.js?v=<%= assetVersion %>"></script>
   <% } %>
 
   <!-- Sources -->

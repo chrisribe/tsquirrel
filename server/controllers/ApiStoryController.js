@@ -107,6 +107,16 @@ const ApiStoryController = {
     } catch (error) { return next(error); }
   },
 
+  async researchRequests(req, res, next) {
+    try {
+      const limit = parseBoundedInt(req.query.limit, 30, { min: 1, max: 100 });
+      const offset = parseBoundedInt(req.query.offset, 0, { min: 0, max: 1000000 });
+      const payload = await serviceFor(req).listResearchRequests({ limit, offset });
+      res.set('Cache-Control', 'no-store');
+      return res.json({ ok: true, ...payload });
+    } catch (error) { return next(error); }
+  },
+
   async researchContext(req, res, next) {
     try {
       const ref = req.params.storyRef;

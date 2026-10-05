@@ -471,6 +471,24 @@ const migrations = [
       console.log('Migration 24: cited story briefs added; obsolete generated-brief columns removed');
     }
   },
+  {
+    version: 25,
+    description: 'Reader requests for deeper story research',
+    up: async (pool) => {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS story_research_requests (
+          story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+          reader_hash CHAR(64) NOT NULL,
+          requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (story_id, reader_hash)
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_story_research_requests_requested_at
+        ON story_research_requests(requested_at DESC)
+      `);
+    }
+  },
   // Future migrations go here
 ];
 

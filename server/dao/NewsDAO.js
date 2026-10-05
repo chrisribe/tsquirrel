@@ -1162,6 +1162,72 @@ class NewsDAO {
     return this.getStoryBrief(storyId);
   }
 
+  async hasResearchRequest(storyId, readerHash) {
+    const { rows } = await this.pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM story_research_requests WHERE story_id = $1 AND reader_hash = $2
+      ) AS requested
+    `, [storyId, readerHash]);
+    return rows[0].requested;
+  }
+
+  async requestStoryResearch(slug, readerHash) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(`
+        SELECT id, slug FROM stories
+        WHERE status = 'published' AND (
+          slug = $1 OR id = (SELECT story_id FROM story_slug_redirects WHERE old_slug = $1)
+        )
+        ORDER BY (slug = $1) DESC LIMIT 1 FOR UPDATE
+      `, [slug]);
+      const story = rows[0];
+      if (!story) {
+        const error = new Error('This story is no longer available.');
+        error.status = 404;
+        throw error;
+      }
+      const { rows: briefs } = await client.query(
+        "SELECT story_id FROM story_briefs WHERE story_id = $1 AND status = 'published'", [story.id]
+      );
+      const available = briefs.length > 0;
+      if (!available) {
+        await client.query(`
+          INSERT INTO story_research_requests (story_id, reader_hash)
+          VALUES ($1, $2) ON CONFLICT (story_id, reader_hash) DO NOTHING
+        `, [story.id, readerHash]);
+      }
+      await client.query('COMMIT');
+      return { story, available };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getResearchRequests({ limit, offset }) {
+    const { rows } = await this.pool.query(`
+      SELECT s.id AS story_id, s.slug, s.title, s.summary, s.category,
+             s.published_at, s.updated_at,
+             b.status AS brief_status, b.revision AS brief_revision,
+             COUNT(*)::int AS request_count,
+             COUNT(*) FILTER (WHERE r.requested_at >= NOW() - INTERVAL '7 days')::int AS recent_request_count,
+             MAX(r.requested_at) AS last_requested_at,
+             (SELECT COUNT(*)::int FROM story_articles sa WHERE sa.story_id = s.id) AS source_count
+      FROM story_research_requests r
+      JOIN stories s ON s.id = r.story_id
+      LEFT JOIN story_briefs b ON b.story_id = s.id
+      WHERE s.status = 'published' AND (b.status IS NULL OR b.status <> 'published')
+      GROUP BY s.id, b.status, b.revision
+      ORDER BY recent_request_count DESC, last_requested_at DESC, request_count DESC, s.id DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+    return rows;
+  }
+
   async publishStoryBrief(storyId, { expectedRevision, reviewedBy }) {
     const client = await this.pool.connect();
     try {
@@ -1187,6 +1253,7 @@ class NewsDAO {
         SET status = 'published', reviewed_by = $2, reviewed_at = NOW(), updated_at = NOW()
         WHERE story_id = $1
       `, [storyId, reviewedBy]);
+      await client.query('DELETE FROM story_research_requests WHERE story_id = $1', [storyId]);
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');

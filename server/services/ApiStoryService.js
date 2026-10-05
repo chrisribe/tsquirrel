@@ -122,6 +122,23 @@ class ApiStoryService {
     };
   }
 
+  async listResearchRequests({ limit, offset }) {
+    const rows = await this.dao.getResearchRequests({ limit: limit + 1, offset });
+    return {
+      requests: rows.slice(0, limit).map(row => ({
+        ...row,
+        links: {
+          story: `/story/${row.slug}`,
+          research_context: `/api/v1/stories/${row.story_id}/research-context`,
+          editor: `/admin/stories/${row.story_id}/edit#story-brief-panel`,
+        },
+      })),
+      limit,
+      offset,
+      has_more: rows.length > limit,
+    };
+  }
+
   async getBrief(storyId) {
     const story = await this.stories.getById(storyId);
     if (!story) return undefined;

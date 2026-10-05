@@ -40,6 +40,14 @@ An authenticated contributor can attach additional research and submit a cited
 brief for editorial review. The contributor may be a person, script, or agent.
 These endpoints never publish the brief:
 
+- `GET /api/v1/research-requests?limit=30&offset=0` lists published stories with
+  outstanding reader requests and no published brief. Returns `requests[]`,
+  `limit`, `offset`, and `has_more`. Items include story metadata, `request_count`,
+  `recent_request_count` (last seven days), `last_requested_at`, `source_count`,
+  `brief_status`, `brief_revision`, and links to research context and the editor.
+  Recent interest ranks first; repeat clicks do not raise counts or priority.
+  These are browser-session signals, not verified unique readers. Use evidence
+  quality and existing draft status when selecting work; nothing is auto-assigned.
 - `GET /api/v1/stories/:idOrSlug/research-context` bundles the current story and
   brief, attached source links, pending suggestions, a research checklist, a
   revision-aware submission example, and relative next-step links. Start here
@@ -54,6 +62,8 @@ These endpoints never publish the brief:
   HTTP `409`.
 
 Only the session-authenticated admin workflow can publish or withdraw a brief.
+Approving a brief clears its outstanding reader requests. Editing or withdrawing
+it permits new requests without restoring the old counts.
 See `FREE-STORY-BRIEF.md` for the request shape and review lifecycle.
 That document also describes the opt-in local HTTP workflow test, which creates
 its token and content via the running app rather than inserting fixtures with SQL.
