@@ -7,7 +7,7 @@ class NewsDAO {
 
   // ── Stories ──────────────────────────────────────────────────
 
-  async getTopStories({ limit = 20, offset = 0, category = null, tag = null, q = null } = {}) {
+  async getTopStories({ limit = 20, offset = 0, category = null, tag = null, q = null, brief = false } = {}) {
     const params = [limit, offset];
     let categoryClause = '';
     if (category) {
@@ -66,13 +66,24 @@ class NewsDAO {
         )
       `;
     }
+    const briefClause = brief
+      ? `AND EXISTS (
+           SELECT 1 FROM story_briefs sb
+           WHERE sb.story_id = s.id AND sb.status = 'published'
+         )`
+      : '';
+
     const { rows } = await this.pool.query(`
       SELECT s.*,
              COUNT(sa.article_id) AS source_count,
              COALESCE(
                array_agg(DISTINCT NULLIF(a.image_url, '')) FILTER (WHERE NULLIF(a.image_url, '') IS NOT NULL),
                '{}'::text[]
-             ) AS source_images
+             ) AS source_images,
+             EXISTS (
+               SELECT 1 FROM story_briefs sb
+               WHERE sb.story_id = s.id AND sb.status = 'published'
+             ) AS has_published_brief
       FROM stories s
       LEFT JOIN story_articles sa ON sa.story_id = s.id
       LEFT JOIN articles a ON a.id = sa.article_id
@@ -80,6 +91,7 @@ class NewsDAO {
       ${categoryClause}
       ${tagClause}
       ${searchClause}
+      ${briefClause}
       GROUP BY s.id
       ORDER BY s.is_featured DESC, s.published_at DESC NULLS LAST, s.heat_score DESC
       LIMIT $1 OFFSET $2

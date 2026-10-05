@@ -269,12 +269,13 @@ router.get('/', async (req, res) => {
   const category = rawCategory === 'blowing_up' ? 'hot' : rawCategory;
   const tag = req.query.tag || null;
   const q = String(req.query.q || '').trim() || null;
+  const brief = ['1', 'true', 'yes', 'on'].includes(String(req.query.brief || '').toLowerCase());
   const [stories, categories] = await Promise.all([
-    dao.getTopStories({ limit: 30, category, tag, q }),
+    dao.getTopStories({ limit: 30, category, tag, q, brief }),
     dao.getCategories(),
   ]);
 
-  const isFilteredFeed = Boolean(category || tag || q);
+  const isFilteredFeed = Boolean(category || tag || q || brief);
   const featured = (!isFilteredFeed && stories.length) ? stories[0] : null;
   const heroImageUrl = featured?.image_url
     ? String(featured.image_url).replace(/^http:\/\//i, 'https://')
@@ -288,7 +289,7 @@ router.get('/', async (req, res) => {
     heroImageUrl,
     noIndex: isFilteredFeed,
     noFollow: false,
-    pageData: { stories, categories, activeCategory: category, activeTag: tag, activeQuery: q },
+    pageData: { stories, categories, activeCategory: category, activeTag: tag, activeQuery: q, activeBrief: brief },
   });
 });
 
@@ -399,7 +400,8 @@ router.get('/api/stories', async (req, res) => {
   const q = String(req.query.q || '').trim() || null;
 
   const pageSize = 10;
-  const rows = await dao.getTopStories({ limit: pageSize + 1, offset, category, tag, q });
+  const brief = ['1', 'true', 'yes', 'on'].includes(String(req.query.brief || '').toLowerCase());
+  const rows = await dao.getTopStories({ limit: pageSize + 1, offset, category, tag, q, brief });
   const hasMore = rows.length > pageSize;
   const stories = hasMore ? rows.slice(0, pageSize) : rows;
   const nextOffset = offset + stories.length;
@@ -411,6 +413,7 @@ router.get('/api/stories', async (req, res) => {
     activeCategory: category,
     activeTag: tag,
     activeQuery: q,
+    activeBrief: brief,
   });
 });
 

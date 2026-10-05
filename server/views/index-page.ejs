@@ -1,6 +1,6 @@
 <%
-  const { stories, categories, activeCategory, activeTag, activeQuery } = pageData;
-  const featured = !activeCategory && !activeTag && !activeQuery && stories.length ? stories[0] : null;
+  const { stories, categories, activeCategory, activeTag, activeQuery, activeBrief } = pageData;
+  const featured = !activeCategory && !activeTag && !activeQuery && !activeBrief && stories.length ? stories[0] : null;
   const feedStories = featured ? stories.slice(1) : stories;
 %>
 
@@ -11,6 +11,7 @@
   <input type="search" name="q" value="<%= activeQuery || '' %>" placeholder="Search stories (title, summary, tags)" aria-label="Search stories">
   <% if (activeCategory) { %><input type="hidden" name="category" value="<%= activeCategory %>"><% } %>
   <% if (activeTag) { %><input type="hidden" name="tag" value="<%= activeTag %>"><% } %>
+  <% if (activeBrief) { %><input type="hidden" name="brief" value="1"><% } %>
   <button type="submit" class="secondary">Search</button>
   <% if (activeQuery) { %>
     <a href="/" class="search-clear" data-ga-event="search_clear" data-ga-location="top_bar">Clear</a>
@@ -25,11 +26,16 @@
   <p class="chatter">Showing stories tagged <strong>#<%= activeTag %></strong> — <a href="/" data-ga-event="tag_clear" data-ga-tag="<%= activeTag %>">clear filter</a></p>
 <% } %>
 
+<% if (activeBrief) { %>
+  <p class="chatter">Showing stories with <strong>Evidence Briefs</strong>.</p>
+<% } %>
+
 <!-- Category filter bar -->
 <section class="category-bar">
   <div class="category-scroll">
-    <a href="/" class="category-pill <%= !activeCategory ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="all" data-ga-location="top_bar">🥜 All</a>
-    <a href="/?category=hot" class="category-pill <%= activeCategory === 'hot' ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="hot" data-ga-location="top_bar">🔥 Hot</a>
+    <a href="/" class="category-pill <%= !activeCategory && !activeBrief ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="all" data-ga-location="top_bar">🥜 All</a>
+    <a href="/?category=hot<%= activeBrief ? '&brief=1' : '' %>" class="category-pill <%= activeCategory === 'hot' ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="hot" data-ga-location="top_bar">🔥 Hot</a>
+    <a href="/?brief=1" class="category-pill <%= activeBrief ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="evidence_brief" data-ga-location="top_bar">🔎 Evidence Briefs</a>
     <% categories.forEach(c => { %>
       <a href="/?category=<%= encodeURIComponent(c.category) %>"
          class="category-pill <%= activeCategory === c.category ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="<%= c.category %>" data-ga-location="top_bar">
@@ -71,7 +77,7 @@
   <% if (stories.length === 30) { %>
   <div id="load-more"
        class="load-more-wrap"
-       hx-get="/api/stories?offset=30<%= activeCategory ? '&category=' + encodeURIComponent(activeCategory) : '' %><%= activeTag ? '&tag=' + encodeURIComponent(activeTag) : '' %><%= activeQuery ? '&q=' + encodeURIComponent(activeQuery) : '' %>"
+       hx-get="/api/stories?offset=30<%= activeCategory ? '&category=' + encodeURIComponent(activeCategory) : '' %><%= activeTag ? '&tag=' + encodeURIComponent(activeTag) : '' %><%= activeQuery ? '&q=' + encodeURIComponent(activeQuery) : '' %><%= activeBrief ? '&brief=1' : '' %>"
        hx-trigger="click"
        hx-swap="outerHTML"
        hx-target="#load-more">
