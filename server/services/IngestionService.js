@@ -9,6 +9,15 @@ const { URL } = require('url');
 const crypto = require('crypto');
 const { decodeHtmlEntities, plainText } = require('../lib/display');
 
+const intEnv = (name, fallback) => {
+  const raw = process.env[name];
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+
+const TRENDS_MAX_ITEMS_PER_RUN = intEnv('TSQ_TRENDS_MAX_ITEMS_PER_RUN', 300);
+
 function fetchUrl(rawUrl, { timeoutMs } = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(rawUrl);
@@ -234,8 +243,9 @@ function parseGoogleTrends(xml) {
 }
 
 // Fetch Google Trends trending now
-async function fetchGoogleTrends(geo = 'CA') {
-  const url = `https://trends.google.com/trending/rss?geo=${encodeURIComponent(geo)}`;
+async function fetchGoogleTrends(geo = '') {
+  const suffix = geo ? `?geo=${encodeURIComponent(geo)}` : '';
+  const url = `https://trends.google.com/trending/rss${suffix}`;
   const xml = await fetchUrl(url);
   return parseGoogleTrends(xml);
 }
@@ -259,9 +269,16 @@ async function ingestAll(pool) {
       if (source.type === 'hn') {
         items = await fetchHN(30);
       } else if (source.type === 'trends') {
-        // Google Trends — geo extracted from slug suffix (e.g. google-trends-ca → CA)
-        const geo = (source.slug.split('-').pop() || 'CA').toUpperCase();
+        // Google Trends — geo extracted from slug suffix:
+        // - google-trends-ca -> CA
+        // - google-trends-us -> US
+        // - google-trends-global -> '' (global feed)
+        const geoRaw = (source.slug.split('-').pop() || 'global').toUpperCase();
+        const geo = (geoRaw === 'GLOBAL' || geoRaw === 'WW') ? '' : geoRaw;
         items = await fetchGoogleTrends(geo);
+        if (items.length > TRENDS_MAX_ITEMS_PER_RUN) {
+          items = items.slice(0, TRENDS_MAX_ITEMS_PER_RUN);
+        }
       } else if (source.feed_url) {
         items = await fetchRss(source.feed_url);
       }

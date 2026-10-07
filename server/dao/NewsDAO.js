@@ -1,5 +1,14 @@
 'use strict';
 
+const intEnv = (name, fallback) => {
+  const raw = process.env[name];
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+
+const RADAR_MAX_ARTICLES_PER_SOURCE = intEnv('TSQ_RADAR_MAX_ARTICLES_PER_SOURCE', 180);
+
 class NewsDAO {
   constructor(pool) {
     this.pool = pool;
@@ -816,10 +825,14 @@ class NewsDAO {
   async detectConvergence({ windowHours = 48, minSources = 2, limit = 30 } = {}) {
     const { rows } = await this.pool.query(`
       WITH recent AS (
-        SELECT a.id, a.source_id, lower(a.title) AS title, a.fetched_at, s.name AS source_name
+        SELECT a.id, a.source_id, lower(a.title) AS title, a.fetched_at, s.name AS source_name,
+               ROW_NUMBER() OVER (PARTITION BY a.source_id ORDER BY a.fetched_at DESC, a.id DESC) AS src_rank
         FROM articles a
         JOIN sources s ON s.id = a.source_id
         WHERE a.fetched_at > NOW() - ($3 || ' hours')::interval
+      ),
+      recent_limited AS (
+        SELECT * FROM recent WHERE src_rank <= $4
       ),
       words AS (
         SELECT id, source_id, source_name,
@@ -831,7 +844,7 @@ class NewsDAO {
                  regexp_replace(lower(title), '[^a-z0-9 ]', ' ', 'g'),
                  ' '
                ), 1) AS pos
-        FROM recent
+        FROM recent_limited
       ),
       clean AS (
         SELECT * FROM words
@@ -864,7 +877,7 @@ class NewsDAO {
       HAVING COUNT(DISTINCT source_id) >= $1
       ORDER BY COUNT(DISTINCT source_id) DESC, COUNT(DISTINCT id) DESC
       LIMIT $2
-    `, [minSources, limit, String(windowHours)]);
+    `, [minSources, limit, String(windowHours), RADAR_MAX_ARTICLES_PER_SOURCE]);
     return rows;
   }
 
