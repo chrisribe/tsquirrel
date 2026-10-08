@@ -1738,3 +1738,25 @@ a.signal-meta-chip:hover {
 .footer-tagline strong { color: var(--brand); }
 .footer-sub { display: block; font-size: .65rem; color: var(--muted); margin-top: .2rem; }
 footer.container { text-align: center; padding-top: 1.5rem; padding-bottom: 1.5rem; }
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: .35rem .7rem;
+  margin-top: .45rem;
+  font-size: .72rem;
+}
+.footer-links a {
+  white-space: nowrap;
+}
+.footer-links-label {
+  color: var(--muted);
+  margin-right: .1rem;
+}
+@media (max-width: 640px) {
+  .footer-links {
+    gap: .25rem .55rem;
+    font-size: .69rem;
+  }
+}
