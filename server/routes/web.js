@@ -6,6 +6,33 @@ const NewsDAO = require('../dao/NewsDAO');
 const crypto = require('node:crypto');
 const { rateLimit } = require('../middleware/rateLimiter');
 
+const INDEXABLE_CATEGORIES = new Set([
+  'Politics',
+  'World',
+  'Business',
+  'Technology',
+  'AI',
+  'Health',
+  'Science',
+  'Sports',
+  'Entertainment',
+]);
+
+function categoryToSlug(category = '') {
+  return String(category)
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function findCategoryBySlug(categories = [], slug = '') {
+  const target = String(slug || '').trim().toLowerCase();
+  if (!target) return null;
+  return categories.find(c => categoryToSlug(c.category) === target) || null;
+}
+
 function researchReaderHash(req) {
   return crypto.createHash('sha256').update(req.sessionID).digest('hex');
 }
@@ -167,6 +194,8 @@ router.get('/sitemap.xml', async (req, res) => {
   const baseUrl = String(requestBase || configuredBase || 'https://tsquirrel.com').replace(/\/$/, '');
 
   const staticPaths = ['/', '/archive', '/about', '/privacy-policy', '/terms-of-service', '/contact'];
+  const categoryPaths = Array.from(INDEXABLE_CATEGORIES)
+    .map((category) => `/category/${categoryToSlug(category)}`);
   const { rows } = await pool.query(`
     SELECT slug, COALESCE(updated_at, published_at, created_at) AS lastmod
     FROM stories
@@ -180,6 +209,12 @@ router.get('/sitemap.xml', async (req, res) => {
       lastmod: null,
       changefreq: path === '/' ? 'hourly' : 'daily',
       priority: path === '/' ? '1.0' : '0.7',
+    })),
+    ...categoryPaths.map(path => ({
+      loc: `${baseUrl}${path}`,
+      lastmod: null,
+      changefreq: 'daily',
+      priority: '0.7',
     })),
     ...rows.map(r => ({
       loc: `${baseUrl}/story/${encodeURIComponent(r.slug)}`,
@@ -290,6 +325,47 @@ router.get('/', async (req, res) => {
     noIndex: isFilteredFeed,
     noFollow: false,
     pageData: { stories, categories, activeCategory: category, activeTag: tag, activeQuery: q, activeBrief: brief },
+  });
+});
+
+// ── Category landing pages (indexable for selected categories) ──────────
+router.get('/category/:slug', async (req, res) => {
+  const pool = req.app.get('pool');
+  const dao = new NewsDAO(pool);
+  const categories = await dao.getCategories();
+  const match = findCategoryBySlug(categories, req.params.slug);
+
+  if (!match) {
+    return res.status(404).render('layout-main', {
+      template: 'errors/404',
+      pageTitle: 'Category Not Found — TSquirrel',
+      pageDescription: 'This category does not exist.',
+      noIndex: true,
+      pageData: {},
+    });
+  }
+
+  const category = match.category;
+  const stories = await dao.getTopStories({ limit: 30, category });
+  const indexable = INDEXABLE_CATEGORIES.has(category);
+  const categorySlug = categoryToSlug(category);
+
+  res.render('layout-main', {
+    template: 'index-page',
+    pageTitle: `${category} News — TSquirrel`,
+    pageDescription: `Latest ${category} stories curated by TSquirrel.`,
+    pageUrl: `https://tsquirrel.com/category/${categorySlug}`,
+    noIndex: !indexable,
+    noFollow: false,
+    pageData: {
+      stories,
+      categories,
+      activeCategory: category,
+      activeCategoryPath: `/category/${categorySlug}`,
+      activeTag: null,
+      activeQuery: null,
+      activeBrief: false,
+    },
   });
 });
 
