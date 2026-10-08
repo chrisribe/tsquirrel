@@ -37,8 +37,15 @@
     <a href="/?category=hot<%= activeBrief ? '&brief=1' : '' %>" class="category-pill <%= activeCategory === 'hot' ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="hot" data-ga-location="top_bar">🔥 Hot</a>
     <a href="/?brief=1" class="category-pill <%= activeBrief ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="evidence_brief" data-ga-location="top_bar">🔎 Deep Dive</a>
     <% categories.forEach(c => { %>
-      <% const categoryHref = (typeof activeCategoryPath !== 'undefined' && activeCategoryPath && activeCategory === c.category)
-           ? activeCategoryPath
+      <% const categorySlug = String(c.category || '')
+           .trim()
+           .toLowerCase()
+           .replace(/&/g, ' and ')
+           .replace(/[^a-z0-9]+/g, '-')
+           .replace(/^-+|-+$/g, ''); %>
+      <% const indexableCategories = new Set(['Politics','World','Business','Technology','AI','Health','Science','Sports','Entertainment']); %>
+      <% const categoryHref = indexableCategories.has(c.category)
+           ? '/category/' + categorySlug
            : '/?category=' + encodeURIComponent(c.category); %>
       <a href="<%= categoryHref %>"
          class="category-pill <%= activeCategory === c.category ? 'active' : '' %>" data-ga-event="category_select" data-ga-category="<%= c.category %>" data-ga-location="top_bar">
