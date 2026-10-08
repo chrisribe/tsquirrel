@@ -30,6 +30,14 @@ function categoryToSlug(category = '') {
 function findCategoryBySlug(categories = [], slug = '') {
   const target = String(slug || '').trim().toLowerCase();
   if (!target) return null;
+
+  // First, resolve against our indexable canonical set (stable even if a category
+  // is quiet in the last 48h and absent from getCategories()).
+  for (const category of INDEXABLE_CATEGORIES) {
+    if (categoryToSlug(category) === target) return { category };
+  }
+
+  // Then fall back to currently active categories from DB.
   return categories.find(c => categoryToSlug(c.category) === target) || null;
 }
 
