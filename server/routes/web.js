@@ -244,7 +244,7 @@ router.get('/sitemap.xml', async (req, res) => {
   const configuredBase = String(process.env.PUBLIC_URL || '').trim();
   const baseUrl = String(requestBase || configuredBase || 'https://tsquirrel.com').replace(/\/$/, '');
 
-  const staticPaths = ['/', '/archive', '/about', '/privacy-policy', '/terms-of-service', '/contact'];
+  const staticPaths = ['/', '/deep-dive', '/archive', '/about', '/privacy-policy', '/terms-of-service', '/contact'];
   const indexableCategories = await getSeoIndexableCategories(pool);
   const categoryPaths = indexableCategories.map((row) => `/category/${categoryToSlug(row.category)}`);
   const { rows } = await pool.query(`
@@ -376,6 +376,34 @@ router.get('/', async (req, res) => {
     noIndex: isFilteredFeed,
     noFollow: false,
     pageData: { stories, categories, activeCategory: category, activeTag: tag, activeQuery: q, activeBrief: brief },
+  });
+});
+
+// ── Deep Dive landing page (indexable canonical route) ──────────────────
+router.get('/deep-dive', async (req, res) => {
+  const pool = req.app.get('pool');
+  const dao = new NewsDAO(pool);
+  const [stories, categories] = await Promise.all([
+    dao.getTopStories({ limit: 30, brief: true }),
+    dao.getCategories(),
+  ]);
+
+  res.render('layout-main', {
+    template: 'index-page',
+    pageTitle: 'Deep Dive News — TSquirrel',
+    pageDescription: 'Stories with Deep Dive analysis and cited source context.',
+    pageUrl: 'https://tsquirrel.com/deep-dive',
+    noIndex: false,
+    noFollow: false,
+    pageData: {
+      stories,
+      categories,
+      activeCategory: null,
+      activeTag: null,
+      activeQuery: null,
+      activeBrief: true,
+      activeBriefPath: '/deep-dive',
+    },
   });
 });
 
