@@ -8,11 +8,19 @@
     <a href="/contact">Contact</a>
   </nav>
   <nav class="footer-links footer-links-cats" aria-label="Browse categories">
-    <span class="footer-links-label">Browse:</span>
-    <a href="/category/politics">Politics</a>
-    <a href="/category/world">World</a>
-    <a href="/category/business">Business</a>
-    <a href="/category/technology">Technology</a>
-    <a href="/category/ai">AI</a>
+    <% const footerCategories = Array.isArray(locals.footerCategories) ? locals.footerCategories : []; %>
+    <% if (footerCategories.length) { %>
+      <span class="footer-links-label">Browse:</span>
+      <% footerCategories.forEach((cat) => { %>
+        <a href="/category/<%= cat.slug %>"><%= cat.category %></a>
+      <% }); %>
+    <% } else { %>
+      <span class="footer-links-label">Browse:</span>
+      <a href="/category/politics">Politics</a>
+      <a href="/category/world">World</a>
+      <a href="/category/business">Business</a>
+      <a href="/category/technology">Technology</a>
+      <a href="/category/ai">AI</a>
+    <% } %>
   </nav>
 </footer>

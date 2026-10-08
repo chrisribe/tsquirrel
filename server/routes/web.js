@@ -6,17 +6,21 @@ const NewsDAO = require('../dao/NewsDAO');
 const crypto = require('node:crypto');
 const { rateLimit } = require('../middleware/rateLimiter');
 
-const INDEXABLE_CATEGORIES = new Set([
-  'Politics',
-  'World',
-  'Business',
-  'Technology',
-  'AI',
-  'Health',
-  'Science',
-  'Sports',
-  'Entertainment',
-]);
+function intEnv(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === null || String(raw).trim() === '') return fallback;
+  const n = Number.parseInt(String(raw).trim(), 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+const SEO_CATEGORY_MIN_COUNT = intEnv('TSQ_SEO_CATEGORY_MIN_COUNT', 25);
+const SEO_CATEGORY_WINDOW_DAYS = intEnv('TSQ_SEO_CATEGORY_WINDOW_DAYS', 180);
+const SEO_CATEGORY_MIN_RECENT = intEnv('TSQ_SEO_CATEGORY_MIN_RECENT', 1);
+const SEO_CATEGORY_RECENT_DAYS = intEnv('TSQ_SEO_CATEGORY_RECENT_DAYS', 30);
+const SEO_CATEGORY_LIMIT = intEnv('TSQ_SEO_CATEGORY_LIMIT', 12);
+const SEO_CATEGORY_CACHE_MS = intEnv('TSQ_SEO_CATEGORY_CACHE_MS', 10 * 60 * 1000);
+
+let seoCategoryCache = { expiresAt: 0, rows: [] };
 
 function categoryToSlug(category = '') {
   return String(category)
@@ -27,18 +31,39 @@ function categoryToSlug(category = '') {
     .replace(/^-+|-+$/g, '');
 }
 
-function findCategoryBySlug(categories = [], slug = '') {
+function findCategoryBySlug(categories = [], slug = '', indexableCategories = []) {
   const target = String(slug || '').trim().toLowerCase();
   if (!target) return null;
 
-  // First, resolve against our indexable canonical set (stable even if a category
-  // is quiet in the last 48h and absent from getCategories()).
-  for (const category of INDEXABLE_CATEGORIES) {
-    if (categoryToSlug(category) === target) return { category };
+  // First, resolve against our SEO/indexable list (stable even if a category is
+  // quiet in the last 48h and absent from getCategories()).
+  for (const row of indexableCategories) {
+    if (categoryToSlug(row.category) === target) return { category: row.category };
   }
 
   // Then fall back to currently active categories from DB.
   return categories.find(c => categoryToSlug(c.category) === target) || null;
+}
+
+async function getSeoIndexableCategories(pool) {
+  const now = Date.now();
+  if (seoCategoryCache.expiresAt > now && Array.isArray(seoCategoryCache.rows)) {
+    return seoCategoryCache.rows;
+  }
+
+  const dao = new NewsDAO(pool);
+  const rows = await dao.getIndexableCategories({
+    minCount: SEO_CATEGORY_MIN_COUNT,
+    windowDays: SEO_CATEGORY_WINDOW_DAYS,
+    minRecent: SEO_CATEGORY_MIN_RECENT,
+    recentDays: SEO_CATEGORY_RECENT_DAYS,
+    limit: SEO_CATEGORY_LIMIT,
+  });
+  seoCategoryCache = {
+    expiresAt: now + SEO_CATEGORY_CACHE_MS,
+    rows: Array.isArray(rows) ? rows : [],
+  };
+  return seoCategoryCache.rows;
 }
 
 function researchReaderHash(req) {
@@ -76,6 +101,24 @@ const researchRequestLimiter = rateLimit({
     status: 429,
     error: `Too many research requests. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`,
   }),
+});
+
+// Shared footer/category discovery links for all rendered pages in this router.
+router.use(async (req, res, next) => {
+  try {
+    const pool = req.app.get('pool');
+    const rows = await getSeoIndexableCategories(pool);
+    res.locals.footerCategories = rows.map((r) => ({
+      category: r.category,
+      slug: categoryToSlug(r.category),
+      count: Number(r.count || 0),
+      recent_count: Number(r.recent_count || 0),
+    }));
+  } catch (error) {
+    console.error('Failed to load SEO indexable categories:', error.message);
+    res.locals.footerCategories = [];
+  }
+  next();
 });
 
 const LEGACY_REDIRECTS = new Map([
@@ -202,8 +245,8 @@ router.get('/sitemap.xml', async (req, res) => {
   const baseUrl = String(requestBase || configuredBase || 'https://tsquirrel.com').replace(/\/$/, '');
 
   const staticPaths = ['/', '/archive', '/about', '/privacy-policy', '/terms-of-service', '/contact'];
-  const categoryPaths = Array.from(INDEXABLE_CATEGORIES)
-    .map((category) => `/category/${categoryToSlug(category)}`);
+  const indexableCategories = await getSeoIndexableCategories(pool);
+  const categoryPaths = indexableCategories.map((row) => `/category/${categoryToSlug(row.category)}`);
   const { rows } = await pool.query(`
     SELECT slug, COALESCE(updated_at, published_at, created_at) AS lastmod
     FROM stories
@@ -341,7 +384,8 @@ router.get('/category/:slug', async (req, res) => {
   const pool = req.app.get('pool');
   const dao = new NewsDAO(pool);
   const categories = await dao.getCategories();
-  const match = findCategoryBySlug(categories, req.params.slug);
+  const indexableCategories = await getSeoIndexableCategories(pool);
+  const match = findCategoryBySlug(categories, req.params.slug, indexableCategories);
 
   if (!match) {
     return res.status(404).render('layout-main', {
@@ -355,7 +399,7 @@ router.get('/category/:slug', async (req, res) => {
 
   const category = match.category;
   const stories = await dao.getTopStories({ limit: 30, category });
-  const indexable = INDEXABLE_CATEGORIES.has(category);
+  const indexable = indexableCategories.some((c) => c.category === category);
   const categorySlug = categoryToSlug(category);
 
   res.render('layout-main', {

@@ -43,8 +43,9 @@
            .replace(/&/g, ' and ')
            .replace(/[^a-z0-9]+/g, '-')
            .replace(/^-+|-+$/g, ''); %>
-      <% const indexableCategories = new Set(['Politics','World','Business','Technology','AI','Health','Science','Sports','Entertainment']); %>
-      <% const categoryHref = indexableCategories.has(c.category)
+      <% const footerCategories = Array.isArray(locals.footerCategories) ? locals.footerCategories : []; %>
+      <% const indexableSlugs = new Set(footerCategories.map((cat) => cat.slug)); %>
+      <% const categoryHref = indexableSlugs.has(categorySlug)
            ? '/category/' + categorySlug
            : '/?category=' + encodeURIComponent(c.category); %>
       <a href="<%= categoryHref %>"

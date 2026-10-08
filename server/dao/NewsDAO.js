@@ -193,6 +193,34 @@ class NewsDAO {
     return rows;
   }
 
+  async getIndexableCategories({
+    minCount = 25,
+    windowDays = 180,
+    minRecent = 1,
+    recentDays = 30,
+    limit = 12,
+  } = {}) {
+    const { rows } = await this.pool.query(`
+      SELECT
+        category,
+        COUNT(*)::int AS count,
+        COUNT(*) FILTER (WHERE published_at >= NOW() - ($3::int * INTERVAL '1 day'))::int AS recent_count,
+        MAX(published_at) AS last_published_at
+      FROM stories
+      WHERE status = 'published'
+        AND category IS NOT NULL
+        AND BTRIM(category) <> ''
+        AND category NOT IN ('News', 'Other')
+        AND published_at >= NOW() - ($2::int * INTERVAL '1 day')
+      GROUP BY category
+      HAVING COUNT(*) >= $1
+         AND COUNT(*) FILTER (WHERE published_at >= NOW() - ($3::int * INTERVAL '1 day')) >= $4
+      ORDER BY count DESC, recent_count DESC, category ASC
+      LIMIT $5
+    `, [minCount, windowDays, recentDays, minRecent, limit]);
+    return rows;
+  }
+
   // "Keep digging" — related stories surfaced at the end of a story read.
   // Same category or shared tag first (same beat), topped up with the
   // highest-convergence recent story overall ("also chattering right now").
