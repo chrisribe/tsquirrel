@@ -562,7 +562,9 @@ class NewsDAO {
   }
 
   async setStoryStatus(id, status) {
-    const publishedClause = status === 'published' ? ', published_at = COALESCE(published_at, NOW())' : '';
+    const publishedClause = status === 'published'
+      ? ', published_at = COALESCE(published_at, created_at, NOW())'
+      : '';
     const { rows } = await this.pool.query(`
       UPDATE stories SET status = $2, updated_at = NOW() ${publishedClause}
       WHERE id = $1
