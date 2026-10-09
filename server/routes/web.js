@@ -42,7 +42,10 @@ function findCategoryBySlug(categories = [], slug = '', indexableCategories = []
   }
 
   // Then fall back to currently active categories from DB.
-  return categories.find(c => categoryToSlug(c.category) === target) || null;
+  const activeMatch = categories.find(c => categoryToSlug(c.category) === target);
+  if (activeMatch) return { category: activeMatch.category };
+
+  return null;
 }
 
 async function getSeoIndexableCategories(pool) {
@@ -412,6 +415,7 @@ router.get('/category/:slug', async (req, res) => {
   const pool = req.app.get('pool');
   const dao = new NewsDAO(pool);
   const categories = await dao.getCategories();
+  const allPublishedCategories = await dao.getAllPublishedCategories();
   const indexableCategories = await getSeoIndexableCategories(pool);
   const match = findCategoryBySlug(categories, req.params.slug, indexableCategories);
 
@@ -427,8 +431,9 @@ router.get('/category/:slug', async (req, res) => {
 
   const category = match.category;
   const stories = await dao.getTopStories({ limit: 30, category });
-  const indexable = indexableCategories.some((c) => c.category === category);
   const categorySlug = categoryToSlug(category);
+  const hasAnyPublished = allPublishedCategories.some((c) => c.category === category);
+  const indexable = hasAnyPublished && indexableCategories.some((c) => c.category === category);
 
   res.render('layout-main', {
     template: 'index-page',

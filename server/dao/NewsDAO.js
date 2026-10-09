@@ -193,6 +193,20 @@ class NewsDAO {
     return rows;
   }
 
+  async getAllPublishedCategories() {
+    const { rows } = await this.pool.query(`
+      SELECT category, COUNT(*)::int AS count
+      FROM stories
+      WHERE status = 'published'
+        AND category IS NOT NULL
+        AND BTRIM(category) <> ''
+        AND category <> 'News'
+      GROUP BY category
+      ORDER BY count DESC, category ASC
+    `);
+    return rows;
+  }
+
   async getIndexableCategories({
     minCount = 25,
     windowDays = 180,
