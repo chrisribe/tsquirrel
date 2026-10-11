@@ -28,7 +28,11 @@ def run(limit=50, dry_run=False):
     tsq, _ = get_tokens()
     state = load_state()
     auto_from_signals = _env_bool("TSQ_QG_AUTO_DRAFT_FROM_SIGNALS", True)
-    per_run_signal_cap = max(0, int(os.environ.get("TSQ_QG_SIGNAL_CREATE_LIMIT", "15") or "15"))
+    per_run_signal_cap = max(0, int(os.environ.get("TSQ_QG_SIGNAL_CREATE_LIMIT", "3") or "3"))
+    allowed_detectors_raw = os.environ.get("TSQ_QG_ALLOWED_SIGNAL_DETECTORS", "convergence")
+    allowed_detectors = {
+        x.strip().lower() for x in str(allowed_detectors_raw).split(",") if x.strip()
+    }
 
     status, payload = api_req("GET", f"{BASE}/api/v1/stories?status=draft&limit={int(limit)}", token=tsq)
     stories = payload.get("stories", []) if isinstance(payload, dict) else []
@@ -36,13 +40,23 @@ def run(limit=50, dry_run=False):
     created_from_signals = []
     signal_scan_status = None
     active_signals_seen = 0
+    eligible_signals = []
     if auto_from_signals and len(stories) < int(limit):
         signal_scan_status, signals = _list_signals(tsq, max(int(limit), per_run_signal_cap))
         active_signals_seen = len(signals)
+
+        for sig in signals:
+            if not isinstance(sig, dict):
+                continue
+            detector = str(sig.get("detector") or "").strip().lower()
+            if allowed_detectors and detector not in allowed_detectors:
+                continue
+            eligible_signals.append(sig)
+
         room = max(0, int(limit) - len(stories))
         budget = min(room, per_run_signal_cap)
 
-        for sig in signals[:budget]:
+        for sig in eligible_signals[:budget]:
             if not isinstance(sig, dict):
                 continue
             sid = sig.get("id")
@@ -84,7 +98,10 @@ def run(limit=50, dry_run=False):
         "status": status,
         "auto_from_signals": auto_from_signals,
         "signal_scan_status": signal_scan_status,
+        "allowed_signal_detectors": sorted(list(allowed_detectors)),
+        "signal_create_limit": per_run_signal_cap,
         "active_signals_seen": active_signals_seen,
+        "eligible_signals_seen": len(eligible_signals),
         "created_from_signals": created_from_signals,
         "created_from_signals_count": sum(1 for x in created_from_signals if x.get("story_id")),
         "dry_run": bool(dry_run),
@@ -97,6 +114,9 @@ def run(limit=50, dry_run=False):
         f" | http={status}"
         f" draft_candidates={len(candidates)}"
         f" active_signals={active_signals_seen}"
+        f" eligible_signals={len(eligible_signals)}"
+        f" allowed_detectors={','.join(sorted(allowed_detectors)) or 'none'}"
+        f" signal_limit={per_run_signal_cap}"
         f" signal_created={sum(1 for x in created_from_signals if x.get('story_id'))}"
         f" dry_run={str(bool(dry_run)).lower()}"
     )
