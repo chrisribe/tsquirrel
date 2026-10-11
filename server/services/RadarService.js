@@ -7,16 +7,18 @@
 
 const NewsDAO = require('../dao/NewsDAO');
 
-const FRESH_TRUSTED_SOURCE_SLUGS = (process.env.TSQ_RADAR_FRESH_TRUSTED_SOURCES || 'reuters,bbc,ap,associated-press,guardian,nytimes,washingtonpost')
+const FRESH_TRUSTED_SOURCE_SLUGS = (process.env.TSQ_RADAR_FRESH_TRUSTED_SOURCES || 'reuters,bbc,ap,associated-press')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
 
-const FRESH_WINDOW_HOURS = Number.parseInt(process.env.TSQ_RADAR_FRESH_WINDOW_HOURS || '4', 10) || 4;
-const FRESH_LIMIT = Number.parseInt(process.env.TSQ_RADAR_FRESH_LIMIT || '20', 10) || 20;
-const FRESH_MIN_WORDS = Number.parseInt(process.env.TSQ_RADAR_FRESH_MIN_WORDS || '6', 10) || 6;
-const FRESH_MIN_DESC_CHARS = Number.parseInt(process.env.TSQ_RADAR_FRESH_MIN_DESC_CHARS || '40', 10) || 40;
+const FRESH_WINDOW_HOURS = Number.parseInt(process.env.TSQ_RADAR_FRESH_WINDOW_HOURS || '12', 10) || 12;
+const FRESH_LIMIT = Number.parseInt(process.env.TSQ_RADAR_FRESH_LIMIT || '12', 10) || 12;
+const FRESH_MIN_WORDS = Number.parseInt(process.env.TSQ_RADAR_FRESH_MIN_WORDS || '8', 10) || 8;
+const FRESH_MIN_DESC_CHARS = Number.parseInt(process.env.TSQ_RADAR_FRESH_MIN_DESC_CHARS || '80', 10) || 80;
 const FRESH_EXPIRES_HOURS = Number.parseInt(process.env.TSQ_RADAR_FRESH_EXPIRES_HOURS || '24', 10) || 24;
+const FRESH_MAX_CREATED_PER_SCAN = Number.parseInt(process.env.TSQ_RADAR_FRESH_MAX_CREATED_PER_SCAN || '4', 10) || 4;
+const FRESH_MAX_PER_SOURCE_PER_SCAN = Number.parseInt(process.env.TSQ_RADAR_FRESH_MAX_PER_SOURCE_PER_SCAN || '1', 10) || 1;
 
 function hasSufficientText(article) {
   const title = String(article?.title || '').trim();
@@ -106,8 +108,15 @@ async function radarScan(pool) {
     trustedSourceSlugs: FRESH_TRUSTED_SOURCE_SLUGS,
   });
 
+  const freshCreatedBySource = new Map();
+  let freshCreated = 0;
   for (const article of freshCandidates) {
+    if (freshCreated >= FRESH_MAX_CREATED_PER_SCAN) break;
     if (!hasSufficientText(article)) continue;
+
+    const sourceSlug = String(article.source_slug || '').trim();
+    const srcCount = freshCreatedBySource.get(sourceSlug) || 0;
+    if (srcCount >= FRESH_MAX_PER_SOURCE_PER_SCAN) continue;
 
     const topic = normalizeFreshTopic(article);
     const alreadyFired = await dao.hasRecentSignal(topic, { windowHours: FRESH_EXPIRES_HOURS });
@@ -133,6 +142,8 @@ async function radarScan(pool) {
       },
       expiresInHours: FRESH_EXPIRES_HOURS,
     });
+    freshCreated += 1;
+    freshCreatedBySource.set(sourceSlug, srcCount + 1);
     created++;
   }
 
