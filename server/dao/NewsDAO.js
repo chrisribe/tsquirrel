@@ -925,6 +925,37 @@ class NewsDAO {
     return rows;
   }
 
+  async getFreshRadarCandidates({ windowHours = 4, limit = 30, trustedSourceSlugs = [] } = {}) {
+    const slugs = Array.isArray(trustedSourceSlugs)
+      ? trustedSourceSlugs.map((s) => String(s || '').trim()).filter(Boolean)
+      : [];
+    if (slugs.length === 0) return [];
+
+    const { rows } = await this.pool.query(`
+      SELECT
+        a.id,
+        a.title,
+        a.url,
+        a.description,
+        a.published_at,
+        a.fetched_at,
+        src.id AS source_id,
+        src.name AS source_name,
+        src.slug AS source_slug,
+        src.type AS source_type
+      FROM articles a
+      JOIN sources src ON src.id = a.source_id
+      LEFT JOIN story_articles sa ON sa.article_id = a.id
+      WHERE src.slug = ANY($1::text[])
+        AND COALESCE(a.published_at, a.fetched_at) > NOW() - ($2 || ' hours')::interval
+        AND sa.story_id IS NULL
+      ORDER BY COALESCE(a.published_at, a.fetched_at) DESC
+      LIMIT $3
+    `, [slugs, String(windowHours), limit]);
+
+    return rows;
+  }
+
   // True if a non-dismissed signal for this topic already fired within the dedup window.
   async hasRecentSignal(topic, { windowHours = 48 } = {}) {
     const { rows } = await this.pool.query(`

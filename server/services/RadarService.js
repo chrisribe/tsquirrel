@@ -7,6 +7,39 @@
 
 const NewsDAO = require('../dao/NewsDAO');
 
+const FRESH_TRUSTED_SOURCE_SLUGS = (process.env.TSQ_RADAR_FRESH_TRUSTED_SOURCES || 'reuters,bbc,ap,associated-press,guardian,nytimes,washingtonpost')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const FRESH_WINDOW_HOURS = Number.parseInt(process.env.TSQ_RADAR_FRESH_WINDOW_HOURS || '4', 10) || 4;
+const FRESH_LIMIT = Number.parseInt(process.env.TSQ_RADAR_FRESH_LIMIT || '20', 10) || 20;
+const FRESH_MIN_WORDS = Number.parseInt(process.env.TSQ_RADAR_FRESH_MIN_WORDS || '6', 10) || 6;
+const FRESH_MIN_DESC_CHARS = Number.parseInt(process.env.TSQ_RADAR_FRESH_MIN_DESC_CHARS || '40', 10) || 40;
+const FRESH_EXPIRES_HOURS = Number.parseInt(process.env.TSQ_RADAR_FRESH_EXPIRES_HOURS || '24', 10) || 24;
+
+function hasSufficientText(article) {
+  const title = String(article?.title || '').trim();
+  const desc = String(article?.description || '').trim();
+  const wordCount = title.split(/\s+/).filter(Boolean).length;
+  return wordCount >= FRESH_MIN_WORDS || desc.length >= FRESH_MIN_DESC_CHARS;
+}
+
+function normalizeFreshTopic(article) {
+  const raw = String(article?.title || '').toLowerCase();
+  const cleaned = raw
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const terms = cleaned
+    .split(' ')
+    .filter((w) => w.length >= 4)
+    .slice(0, 8);
+  if (terms.length === 0) return 'fresh update';
+  return terms.join(' ');
+}
+
 /**
  * Main radar scan — run after each ingest.
  * Detects convergence signals and persists new ones via the DAO.
@@ -61,6 +94,44 @@ async function radarScan(pool) {
         source_count: hit.source_count,
         article_count: hit.article_count,
       },
+    });
+    created++;
+  }
+
+  // Generic freshness detector: promote brand-new trusted-source items that are
+  // not yet attached to any story and have enough textual signal.
+  const freshCandidates = await dao.getFreshRadarCandidates({
+    windowHours: FRESH_WINDOW_HOURS,
+    limit: FRESH_LIMIT,
+    trustedSourceSlugs: FRESH_TRUSTED_SOURCE_SLUGS,
+  });
+
+  for (const article of freshCandidates) {
+    if (!hasSufficientText(article)) continue;
+
+    const topic = normalizeFreshTopic(article);
+    const alreadyFired = await dao.hasRecentSignal(topic, { windowHours: FRESH_EXPIRES_HOURS });
+    if (alreadyFired) continue;
+
+    const evidenceCovered = await dao.hasRecentSignalForArticles([article.id], {
+      windowHours: FRESH_EXPIRES_HOURS,
+      minShared: 1,
+    });
+    if (evidenceCovered) continue;
+
+    await dao.createSignal({
+      detector: 'fresh_major_update',
+      topic,
+      strength: 100,
+      evidence: {
+        article_ids: [article.id],
+        sources: [article.source_name],
+        source_count: 1,
+        article_count: 1,
+        source_slug: article.source_slug,
+        title: article.title,
+      },
+      expiresInHours: FRESH_EXPIRES_HOURS,
     });
     created++;
   }
