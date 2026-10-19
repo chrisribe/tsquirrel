@@ -27,11 +27,7 @@
       <a href="/" class="mobile-link <%= currentPath === '/' && !currentCategory ? 'active' : '' %>">🔥 Trending</a>
       <a href="/?category=AI" class="mobile-link <%= currentPath === '/' && currentCategory === 'AI' ? 'active' : '' %>">🤖 AI</a>
       <a href="/?category=Technology" class="mobile-link <%= currentPath === '/' && currentCategory === 'Technology' ? 'active' : '' %>">💻 Tech</a>
-      <a href="/archive" class="mobile-link <%= currentPath === '/archive' ? 'active' : '' %>">📰 Archive</a>
       <a href="/about" class="mobile-link <%= currentPath === '/about' ? 'active' : '' %>">ℹ️ About</a>
-      <a href="/privacy-policy" class="mobile-link <%= currentPath === '/privacy-policy' ? 'active' : '' %>">Privacy</a>
-      <a href="/terms-of-service" class="mobile-link <%= currentPath === '/terms-of-service' ? 'active' : '' %>">Terms</a>
-      <a href="/contact" class="mobile-link <%= currentPath === '/contact' ? 'active' : '' %>">Contact</a>
       <% if (user && user.role === 'admin') { %>
         <a href="/admin" class="mobile-link <%= currentPath === '/admin' ? 'active' : '' %>">Admin</a>
       <% } %>

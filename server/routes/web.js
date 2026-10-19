@@ -248,6 +248,15 @@ router.get('/sitemap.xml', async (req, res) => {
   const baseUrl = String(requestBase || configuredBase || 'https://tsquirrel.com').replace(/\/$/, '');
 
   const staticPaths = ['/', '/deep-dive', '/archive', '/about', '/privacy-policy', '/terms-of-service', '/contact'];
+  const staticMeta = {
+    '/': { changefreq: 'hourly', priority: '1.0' },
+    '/deep-dive': { changefreq: 'daily', priority: '0.8' },
+    '/archive': { changefreq: 'weekly', priority: '0.4' },
+    '/about': { changefreq: 'monthly', priority: '0.2' },
+    '/privacy-policy': { changefreq: 'monthly', priority: '0.1' },
+    '/terms-of-service': { changefreq: 'monthly', priority: '0.1' },
+    '/contact': { changefreq: 'monthly', priority: '0.1' },
+  };
   const indexableCategories = await getSeoIndexableCategories(pool);
   const categoryPaths = indexableCategories.map((row) => `/category/${categoryToSlug(row.category)}`);
   const { rows } = await pool.query(`
@@ -261,8 +270,8 @@ router.get('/sitemap.xml', async (req, res) => {
     ...staticPaths.map(path => ({
       loc: `${baseUrl}${path}`,
       lastmod: null,
-      changefreq: path === '/' ? 'hourly' : 'daily',
-      priority: path === '/' ? '1.0' : '0.7',
+      changefreq: (staticMeta[path] && staticMeta[path].changefreq) || 'weekly',
+      priority: (staticMeta[path] && staticMeta[path].priority) || '0.5',
     })),
     ...categoryPaths.map(path => ({
       loc: `${baseUrl}${path}`,
