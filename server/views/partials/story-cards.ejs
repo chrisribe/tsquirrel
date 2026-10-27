@@ -1,6 +1,7 @@
 <%
   const { stories } = pageData;
   const adEnabled = Boolean(showHomeAdCard && googleAdsenseClient && googleAdsenseHomeFeedSlot);
+  const adInsertIndexes = [8, 20]; // KISS: two in-feed ad cards max
 
   function timeAgo(date) {
     const now = new Date();
@@ -34,7 +35,7 @@
   const seenImageKeys = new Set();
 %>
 <% stories.forEach((story, idx) => { %>
-<% if (adEnabled && idx === 8) { %>
+<% if (adEnabled && adInsertIndexes.includes(idx)) { %>
 <article class="story-card ad-card" aria-label="Sponsored content">
   <div class="card-inner">
     <div class="card-body ad-card-body">
