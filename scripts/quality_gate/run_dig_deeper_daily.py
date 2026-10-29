@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import sys
 import urllib.request
+import urllib.parse
 import html
 import re
 import subprocess
@@ -192,6 +194,80 @@ def fetch_fulltext(url: str, max_chars: int = 6000) -> str:
     return "\n".join(paras)[:max_chars]
 
 
+WIKI_UA = {"User-Agent": "TSquirrelBot/1.0 (https://tsquirrel.com; research briefs)"}
+
+
+def _get_json(url: str, timeout: int = 15) -> Any:
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=WIKI_UA), timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8", "ignore"))
+    except Exception:
+        return None
+
+
+def call_or_json(ork: str, system: str, user: Any, max_tokens: int = 3000) -> Tuple[Dict[str, Any], float]:
+    status, out = api_req(
+        "POST", f"{OR_BASE}/chat/completions", token=ork, timeout=60,
+        data={"model": QG_MODEL, "temperature": 0.1, "max_tokens": max_tokens,
+              "response_format": {"type": "json_object"},
+              "messages": [{"role": "system", "content": system},
+                           {"role": "user", "content": json.dumps(user, ensure_ascii=False)}]},
+        headers={"HTTP-Referer": OR_HTTP_REFERER, "X-Title": OR_CLIENT_TITLE},
+    )
+    if status != 200:
+        return {}, 0.0
+    msg = ((out.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+    try:
+        return parse_json_from_model(msg), float((out.get("usage") or {}).get("cost") or 0.0)
+    except Exception:
+        return {}, 0.0
+
+
+WB_INDICATORS = {"NY.GDP.MKTP.CD": "GDP (current US$)", "NY.GDP.MKTP.KD.ZG": "GDP growth (annual %)",
+                 "FP.CPI.TOTL.ZG": "Inflation, consumer prices (annual %)", "SP.POP.TOTL": "Population"}
+
+
+def fetch_background(ork: str, story: Dict[str, Any], source_notes: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], float]:
+    """Entity background from Wikipedia (+ World Bank for economy/country stories).
+    Only for people/orgs/places involved, never the event itself."""
+    sys_p = ("Return STRICT JSON {entities:[{name, wikipedia_title, why_relevant}], country_iso3: string|null, economic: bool}. "
+             "Pick 2-4 central people/organizations/places a reader may not know (not the news event itself). "
+             "wikipedia_title = exact English Wikipedia article title. country_iso3 only if a country's economy is central.")
+    user = {"title": story.get("title"), "summary": story.get("summary"),
+            "excerpt": " ".join((n.get("fulltext") or n.get("description") or "")[:800] for n in source_notes[:3])}
+    plan, cost = call_or_json(ork, sys_p, user)
+    out: List[Dict[str, Any]] = []
+    for e in (plan.get("entities") or [])[:4]:
+        t = str((e or {}).get("wikipedia_title") or "").strip()
+        if not t:
+            continue
+        j = _get_json("https://en.wikipedia.org/api/rest_v1/page/summary/" + urllib.parse.quote(t.replace(" ", "_")))
+        if not j or j.get("type") != "standard" or not j.get("extract"):
+            continue  # missing or disambiguation -> drop
+        # entity sanity: name token must appear in story text
+        name_tok = str(e.get("name") or t).split()[-1].lower()
+        story_txt = (str(story.get("title")) + " " + str(story.get("summary")) + " " + user["excerpt"]).lower()
+        if name_tok not in story_txt:
+            continue
+        out.append({"kind": "wikipedia", "title": j.get("title"), "url": (j.get("content_urls") or {}).get("desktop", {}).get("page"),
+                    "text": j.get("extract")[:1200]})
+    iso = plan.get("country_iso3")
+    if plan.get("economic") and isinstance(iso, str) and len(iso) == 3:
+        lines = []
+        for code, label in WB_INDICATORS.items():
+            j = _get_json(f"https://api.worldbank.org/v2/country/{iso}/indicator/{code}?format=json&mrnev=1")
+            try:
+                row = j[1][0]
+                if row.get("value") is not None:
+                    lines.append(f"{label}: {row['value']:,.2f} ({row['date']})")
+            except Exception:
+                pass
+        if lines:
+            out.append({"kind": "worldbank", "title": f"World Bank indicators — {iso.upper()}",
+                        "url": f"https://data.worldbank.org/country/{iso.lower()}", "text": "; ".join(lines)})
+    return out, cost
+
+
 def call_openrouter(ork: str, ctx: Dict[str, Any], mode: str) -> Tuple[Dict[str, Any], float]:
     story = ctx["story"]
     sources = ctx.get("sources") or []
@@ -209,6 +285,7 @@ def call_openrouter(ork: str, ctx: Dict[str, Any], mode: str) -> Tuple[Dict[str,
             }
         )
     fulltext_chars = sum(len(n["fulltext"]) for n in source_notes)
+    background, bg_cost = fetch_background(ork, story, source_notes) if os.environ.get("TSQ_DD_BACKGROUND", "0") == "1" else ([], 0.0)
 
     system = (
         "You write TSquirrel Deep Dive briefs. Return STRICT JSON only with keys: "
@@ -220,7 +297,11 @@ def call_openrouter(ork: str, ctx: Dict[str, Any], mode: str) -> Tuple[Dict[str,
         "Rules: factual and neutral tone (no opinion, no mockery, especially for crime/court/death stories), "
         "no speculation, no invented claims, every claim grounded in the cited source text. "
         "Never write a fact whose point is that something is unknown or not yet reported. "
-        "Each fact must cite 1-3 article_ids from the provided source list."
+        "Each fact must cite 1-3 article_ids from the provided source list. "
+        "OPTIONAL: if the background list is non-empty and genuinely helps a reader understand who/what is involved, "
+        "add ONE extra fact with heading starting 'Background:' that uses ONLY background entries; for it set "
+        "article_ids to [] and background_refs to the indexes of background entries used. Never use background for the news event itself; "
+        "always state dates for figures (e.g. 'GDP was $X in 2024'). Skip it if background is generic or irrelevant."
     )
 
     user = {
@@ -234,8 +315,9 @@ def call_openrouter(ork: str, ctx: Dict[str, Any], mode: str) -> Tuple[Dict[str,
         },
         "objective": "Explain why now and what changed, with specifics from full article text that the summary lacks.",
         "sources": source_notes,
+        "background": [{"i": i, **b} for i, b in enumerate(background)],
         "constraints": {
-            "facts_count": "3-5",
+            "facts_count": "3-5 news facts (+ optional 1 Background fact)",
             "text_length": "3-5 sentences per fact, specific (names, numbers, dates)",
             "introduction": "2-3 sentences: what happened + why it matters now",
             "forbidden": [
@@ -252,7 +334,7 @@ def call_openrouter(ork: str, ctx: Dict[str, Any], mode: str) -> Tuple[Dict[str,
         "model": QG_MODEL,
         "temperature": 0.15,
         "top_p": 0.95,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system},
@@ -291,8 +373,11 @@ def call_openrouter(ork: str, ctx: Dict[str, Any], mode: str) -> Tuple[Dict[str,
 
     parsed = parse_json_from_model(content)
     usage = out.get("usage") or {}
-    cost = float(usage.get("cost") or 0.0)
-    parsed["_meta"] = {"fulltext_chars": fulltext_chars, "prompt_tokens": usage.get("prompt_tokens"),
+    cost = float(usage.get("cost") or 0.0) + bg_cost
+    parsed["_background"] = background
+    parsed["_source_text"] = {int(n["article_id"]): ((n.get("fulltext") or "") + " " + (n.get("description") or "") + " " + (n.get("title") or ""))
+                              for n in source_notes if n.get("article_id") is not None}
+    parsed["_meta"] = {"background_sources": len(background),"fulltext_chars": fulltext_chars, "prompt_tokens": usage.get("prompt_tokens"),
                        "completion_tokens": usage.get("completion_tokens")}
     return parsed, cost
 
@@ -305,7 +390,19 @@ def normalize_brief(model_out: Dict[str, Any], valid_ids: List[int]) -> Dict[str
     used_ids = set()
     valid_id_set = set(valid_ids)
 
+    background_fact = None
+    bg = model_out.get("_background") or []
     for f in facts_in:
+        h = str((f or {}).get("heading") or "")
+        if h.lower().startswith("background") and bg:
+            refs = [int(x) for x in ((f or {}).get("background_refs") or []) if str(x).isdigit() and int(x) < len(bg)]
+            if refs and background_fact is None:
+                background_fact = {"heading": h[:160], "text": str(f.get("text") or "").strip()[:4000],
+                                   "refs": [{"title": bg[i]["title"], "url": bg[i]["url"]} for i in refs]}
+            continue
+    for f in facts_in:
+        if str((f or {}).get("heading") or "").lower().startswith("background"):
+            continue
         if len(facts) >= 5:
             break
         heading = str((f or {}).get("heading") or "").strip()
@@ -322,6 +419,12 @@ def normalize_brief(model_out: Dict[str, Any], valid_ids: List[int]) -> Dict[str
                 ids.append(i)
 
         if not heading or not text or not ids:
+            continue
+        # numeric grounding: every number in a news fact must appear in its cited sources' text
+        src_txt = " ".join((model_out.get("_source_text") or {}).get(i, "") for i in ids).replace(",", "")
+        nums = [n.replace(",", "") for n in re.findall(r"\d[\d,]*(?:\.\d+)?", text)]
+        if src_txt.strip() and any(n not in src_txt for n in nums if len(n) >= 2):
+            print(f"drop fact (ungrounded number): {heading}", file=sys.stderr)
             continue
         low = (heading + " " + text).lower()
         if any(k in low for k in ("placeholder", "pending", "not yet reported", "unanswered question", "remains unclear", "have not been disclosed")):
@@ -346,7 +449,10 @@ def normalize_brief(model_out: Dict[str, Any], valid_ids: List[int]) -> Dict[str
     if len(intro) < 120:
         raise RuntimeError("brief introduction too short")
 
-    return {"introduction": intro[:2000], "facts": facts}
+    out = {"introduction": intro[:2000], "facts": facts}
+    if background_fact:
+        out["background"] = background_fact
+    return out
 
 
 def submit_brief(tsq_token: str, story_id: int, payload: Dict[str, Any], expected_revision: int) -> Dict[str, Any]:
