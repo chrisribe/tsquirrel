@@ -36,6 +36,7 @@ test('normalizes a cited brief before replacing it', async () => {
     proposedSummary: null,
     expectedSummary: null,
     editorNote: null,
+    background: null,
     facts: [{
       heading: 'What changed',
       text: 'The pilot remains limited.',

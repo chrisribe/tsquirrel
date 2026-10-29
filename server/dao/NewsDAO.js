@@ -1204,6 +1204,7 @@ class NewsDAO {
 
   async replaceStoryBrief(storyId, {
     introduction, facts, expectedRevision, proposedSummary = null, expectedSummary = null, editorNote = null,
+    background = null,
   }) {
     const client = await this.pool.connect();
     try {
@@ -1256,9 +1257,10 @@ class NewsDAO {
         await client.query(`
           INSERT INTO story_briefs
             (story_id, introduction, status, revision, reviewed_by, reviewed_at,
-             proposed_summary, summary_base, editor_note, submitted_at)
-          VALUES ($1, $2, 'draft', 1, NULL, NULL, $3, $4, $5, NOW())
-        `, [storyId, introduction, proposedSummary, proposedSummary ? expectedSummary : null, editorNote]);
+             proposed_summary, summary_base, editor_note, submitted_at, background)
+          VALUES ($1, $2, 'draft', 1, NULL, NULL, $3, $4, $5, NOW(), $6)
+        `, [storyId, introduction, proposedSummary, proposedSummary ? expectedSummary : null, editorNote,
+            background ? JSON.stringify(background) : null]);
       } else {
         await client.query(`
           UPDATE story_briefs
@@ -1270,10 +1272,12 @@ class NewsDAO {
               proposed_summary = $3,
               summary_base = $4,
               editor_note = $5,
+              background = $6,
               submitted_at = NOW(),
               updated_at = NOW()
           WHERE story_id = $1
-        `, [storyId, introduction, proposedSummary, proposedSummary ? expectedSummary : null, editorNote]);
+        `, [storyId, introduction, proposedSummary, proposedSummary ? expectedSummary : null, editorNote,
+            background ? JSON.stringify(background) : null]);
       }
 
       await client.query('DELETE FROM story_brief_facts WHERE story_id = $1', [storyId]);
