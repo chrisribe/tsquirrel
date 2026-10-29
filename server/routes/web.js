@@ -260,7 +260,9 @@ router.get('/sitemap.xml', async (req, res) => {
   const indexableCategories = await getSeoIndexableCategories(pool);
   const categoryPaths = indexableCategories.map((row) => `/category/${categoryToSlug(row.category)}`);
   const { rows } = await pool.query(`
-    SELECT slug, COALESCE(updated_at, published_at, created_at) AS lastmod
+    -- lastmod = publish date: updated_at gets bumped by bulk tag/image/featured
+    -- backfills, which produced fake mass-lastmod churn that Google ignores.
+    SELECT slug, COALESCE(published_at, created_at) AS lastmod
     FROM stories
     WHERE status = 'published' AND slug IS NOT NULL
     ORDER BY published_at DESC NULLS LAST, updated_at DESC
@@ -282,7 +284,7 @@ router.get('/sitemap.xml', async (req, res) => {
     ...rows.map(r => ({
       loc: `${baseUrl}/story/${encodeURIComponent(r.slug)}`,
       lastmod: r.lastmod ? new Date(r.lastmod).toISOString() : null,
-      changefreq: 'daily',
+      changefreq: 'monthly',
       priority: '0.8',
     })),
   ];
