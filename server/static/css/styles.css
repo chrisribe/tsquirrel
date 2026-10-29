@@ -1760,3 +1760,9 @@ footer.container { text-align: center; padding-top: 1.5rem; padding-bottom: 1.5r
     font-size: .69rem;
   }
 }
+
+/* Deep Dive background (external reference context) */
+.story-brief-background { margin-top: 1rem; padding: .75rem 1rem; border-left: 3px solid var(--border, #ccc); background: rgba(127,127,127,.06); border-radius: 6px; }
+.story-brief-background h2 { font-size: 1rem; margin: 0 0 .35rem; }
+.story-brief-background p { margin: 0 0 .35rem; }
+.story-brief-background-refs { font-size: .85rem; opacity: .8; overflow-wrap: anywhere; }

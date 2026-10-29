@@ -194,6 +194,7 @@ def fetch_fulltext(url: str, max_chars: int = 6000) -> str:
     return "\n".join(paras)[:max_chars]
 
 
+BACKGROUND_CATEGORIES = {"Politics", "World", "Business"}
 WIKI_UA = {"User-Agent": "TSquirrelBot/1.0 (https://tsquirrel.com; research briefs)"}
 
 
@@ -285,7 +286,8 @@ def call_openrouter(ork: str, ctx: Dict[str, Any], mode: str) -> Tuple[Dict[str,
             }
         )
     fulltext_chars = sum(len(n["fulltext"]) for n in source_notes)
-    background, bg_cost = fetch_background(ork, story, source_notes) if os.environ.get("TSQ_DD_BACKGROUND", "0") == "1" else ([], 0.0)
+    bg_on = os.environ.get("TSQ_DD_BACKGROUND", "0") == "1" and str(story.get("category") or "") in BACKGROUND_CATEGORIES
+    background, bg_cost = fetch_background(ork, story, source_notes) if bg_on else ([], 0.0)
 
     system = (
         "You write TSquirrel Deep Dive briefs. Return STRICT JSON only with keys: "
@@ -461,6 +463,8 @@ def submit_brief(tsq_token: str, story_id: int, payload: Dict[str, Any], expecte
         "introduction": payload["introduction"],
         "facts": payload["facts"],
     }
+    if payload.get("background"):
+        body["background"] = payload["background"]
     status, out = api_req(
         "PUT",
         f"{BASE}/api/v1/stories/{story_id}/brief",
