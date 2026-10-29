@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const NewsDAO = require('../dao/NewsDAO');
+const { isStoryIndexable } = require('../services/SeoIndexPolicy');
 const crypto = require('node:crypto');
 const { rateLimit } = require('../middleware/rateLimiter');
 
@@ -262,11 +263,13 @@ router.get('/sitemap.xml', async (req, res) => {
   const { rows } = await pool.query(`
     -- lastmod = publish date: updated_at gets bumped by bulk tag/image/featured
     -- backfills, which produced fake mass-lastmod churn that Google ignores.
-    SELECT slug, COALESCE(published_at, created_at) AS lastmod
+    SELECT slug, published_at, created_at, COALESCE(published_at, created_at) AS lastmod,
+           EXISTS (SELECT 1 FROM story_briefs sb WHERE sb.story_id = stories.id AND sb.status = 'published') AS has_brief
     FROM stories
     WHERE status = 'published' AND slug IS NOT NULL
     ORDER BY published_at DESC NULLS LAST, updated_at DESC
   `);
+  const indexableRows = rows.filter((r) => isStoryIndexable(r, { hasPublishedBrief: r.has_brief }));
 
   const urls = [
     ...staticPaths.map(path => ({
@@ -281,7 +284,7 @@ router.get('/sitemap.xml', async (req, res) => {
       changefreq: 'daily',
       priority: '0.7',
     })),
-    ...rows.map(r => ({
+    ...indexableRows.map(r => ({
       loc: `${baseUrl}/story/${encodeURIComponent(r.slug)}`,
       lastmod: r.lastmod ? new Date(r.lastmod).toISOString() : null,
       changefreq: 'monthly',
@@ -556,6 +559,8 @@ router.get('/story/:slug', async (req, res, next) => {
       pageTitle: `${story.title} | TSquirrel`,
       pageDescription: story.summary || story.title,
       pageUrl: `https://tsquirrel.com/story/${story.slug}`,
+      noIndex: !isStoryIndexable(story, { hasPublishedBrief: Boolean(brief) }),
+      noFollow: false,
       pageData: { story, articles, related, brief, researchRequest },
     });
   } catch (error) { next(error); }
