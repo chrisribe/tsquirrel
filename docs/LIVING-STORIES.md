@@ -215,6 +215,38 @@ Structured data:
 - **Old stories with no follow-ups.** The timeline is still useful (Why now plus history). No update box is shown.
 - **Cost creep.** Hard caps per run; costs reported in step5.
 
+## References: how this compares to established news formats
+
+Not researched in depth. Based on general knowledge of each product, as of 2026-10.
+
+| Format | Strength | Weakness | Living Stories difference |
+|---|---|---|---|
+| Live blogs (BBC, Guardian, NYT) | Minute-by-minute speed | Newest-first noise; abandoned after 1–2 days | Oldest-first, only key steps, alive for weeks |
+| Explainers (Vox, Semafor) | Expert writing, analysis | Hand-made, few topics, rarely updated | Generated for every story, updated on news, ~$0.0005/story |
+| Wikipedia current events | Deep timelines + context | Slow on fresh news, contested edits, no "what's next" | Faster, includes Ahead entries, but less human oversight |
+| Ground News | Coverage/bias comparison across outlets | Not about what happened over time | Timeline angle; outlet comparison was rejected in POC v1 |
+| Google News "Full coverage" | Huge source breadth | Timeline of headlines, not events | Plain-sentence events, why now, what's next |
+
+**Our edge**
+- One URL per story that keeps updating.
+- Ahead entries that resolve into past events.
+- A calm page with no ads inside the content.
+- Near-zero cost, so every story can get one.
+
+**Our weaknesses**
+- No original reporting. Paywalled sources give us only their blurbs.
+- Trust depends on no editor: matching follow-up articles correctly and getting dates right.
+- Updates arrive at cron speed.
+- Unknown brand.
+- Easy for Google, Perplexity or Apple News to copy, so our edge has to be consistency and calm design.
+
+Prototypes (local, not committed):
+- POC v1: outlet comparison, rejected.
+- POC v2: timeline + numbers, numbers rejected.
+- POC v3: timeline layout.
+- Update mock: Flávio Bolsonaro.
+- Alternate views A, B and C.
+
 ## Open questions for DaCRibe
 
 1. Should a timeline **replace** the Deep Dive for new stories, or sit above it? The plan assumes it sits above, and the Deep Dive stays.
