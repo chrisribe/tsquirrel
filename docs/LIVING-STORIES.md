@@ -62,6 +62,7 @@ CREATE TABLE story_timeline_entries (
   occurred_label TEXT NOT NULL,          -- display: "Oct 27", "Early 2027"
   time_label    TEXT,                    -- "11:00", "morning"
   kind          VARCHAR(10) NOT NULL CHECK (kind IN ('past','ahead')),
+  importance    VARCHAR(5) NOT NULL DEFAULT 'key' CHECK (importance IN ('key','minor')),
   text          TEXT NOT NULL CHECK (length(text) <= 400),
   article_ids   INTEGER[] NOT NULL DEFAULT '{}',   -- grounding
   added_in_revision INTEGER NOT NULL DEFAULT 1,    -- drives "New" tag
@@ -158,6 +159,15 @@ Cron:
 ---
 
 ## Story page (`server/views/story-page.ejs`)
+
+**Chosen direction (DaCRibe, 2026-10-30):** v3 timeline layout plus the depth trim from alt C. Alternates A and B were not chosen.
+- A 3-step control, **10 sec / 1 min / Full**, defaults to **1 min**.
+  - 10 sec: update box + lede.
+  - 1 min: key timeline entries only.
+  - Full: every entry, Why now, and the change log.
+- Entries get `importance` (`key`|`minor`). The generator sets it; `minor` entries are hidden at 1 min.
+- Without JavaScript the page renders Full, and the trim is a CSS class toggle. All content stays in the HTML, so it's SEO-safe.
+
 
 Render order when a timeline exists:
 
