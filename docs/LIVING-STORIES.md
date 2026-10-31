@@ -160,13 +160,11 @@ Cron:
 
 ## Story page (`server/views/story-page.ejs`)
 
-**Chosen direction (DaCRibe, 2026-10-30):** v3 timeline layout plus the depth trim from alt C. Alternates A and B were not chosen.
-- A 3-step control, **10 sec / 1 min / Full**, defaults to **1 min**.
-  - 10 sec: update box + lede.
-  - 1 min: key timeline entries only.
-  - Full: every entry, Why now, and the change log.
-- Entries get `importance` (`key`|`minor`). The generator sets it; `minor` entries are hidden at 1 min.
-- Without JavaScript the page renders Full, and the trim is a CSS class toggle. All content stays in the HTML, so it's SEO-safe.
+**Chosen direction (DaCRibe, 2026-10-30): v5.** The v3 timeline layout with an inline trim. The top depth dial (v4) was rejected because readers won't scroll back up to change it.
+- The full page is always rendered, and **Why now is always visible**.
+- Runs of consecutive `minor` entries collapse into one in-timeline row: `+ N smaller steps (Oct 27)`. Tapping it expands in place.
+- The change log is a `<details>` element, collapsed by default.
+- Without JavaScript, all entries stay visible and the expander is hidden (trim CSS is gated on an `html.js` class). All content stays in the HTML, so it's SEO-safe.
 
 
 Render order when a timeline exists:
