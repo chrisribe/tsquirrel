@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import argparse
+import os
 from common import get_tokens, get_or_usage, load_state, save_state, utc_now
 import step1_ingest
 import step2_candidates
+import step2_2_extraction
 import step2_5_editorial
 import step3_quality_gate
 import step3_5_unblock
@@ -19,6 +21,12 @@ def run_all(dry_run=False, limit=50):
 
     step1_ingest.run()
     step2_candidates.run(limit=limit, dry_run=dry_run)
+    extraction_shadow = str(os.environ.get("TSQ_QG_EXTRACTION_SHADOW", "0")).strip().lower() in ("1", "true", "yes", "on")
+    if extraction_shadow:
+        try:
+            step2_2_extraction.run(limit=limit, dry_run=dry_run)
+        except Exception as e:
+            print(f"[run_all] extraction shadow failed (continuing): {e}")
     step2_5_editorial.run(limit=limit, dry_run=dry_run)
     step3_quality_gate.run()
     step3_5_unblock.run(dry_run=dry_run)
