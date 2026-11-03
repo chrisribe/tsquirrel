@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Living Stories — v5 mock (sample data)</title>
+<script>document.documentElement.classList.add('js')</script>
+<style>
+/* Mock of the chosen v5 design. Uses site tokens from server/static/css/styles.css.
+   Sample story is fictional placeholder content. */
+:root{
+  --brand:#2c5f2e;--brand-mid:#3d7a40;--brand-light:#52a653;--brand-pale:#e8f5e9;
+  --accent:#e07b39;--accent-pale:#fff3eb;--card-bg:#fff;--page-bg:#f5f3ef;
+  --muted:#6b625a;--border:#e2ddd6;--tag-bg:#efece7;--text:#1f1c19;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--page-bg)}
+body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  color:var(--text);line-height:1.55;font-size:17px}
+.mock-bar{background:#1f451f;color:#fff;font-size:13px;padding:6px 16px}
+main{max-width:720px;margin:0 auto;padding:20px 16px 64px}
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:20px}
+h1{font-size:1.6rem;line-height:1.25;margin:.2em 0 .4em}
+.meta{color:var(--muted);font-size:.85rem}
+.meta a{color:var(--brand)}
+.update{margin:16px 0;background:var(--accent-pale);border-left:4px solid var(--accent);padding:10px 14px;border-radius:6px;font-size:.95rem}
+.update strong{color:#8a4210}
+.lede{font-size:1.08rem;margin:16px 0}
+h2{font-size:1.05rem;margin:28px 0 8px;color:var(--brand)}
+.whynow{background:var(--brand-pale);border-radius:8px;padding:12px 14px}
+
+/* Timeline */
+.story-timeline{list-style:none;margin:0;padding:0;position:relative}
+.story-timeline::before{content:"";position:absolute;left:69px;top:6px;bottom:6px;width:2px;background:var(--border)}
+.st-entry{display:grid;grid-template-columns:62px 1fr;gap:0 16px;padding:8px 0;position:relative}
+.st-date{font-size:.8rem;color:var(--muted);text-align:right;padding-top:2px;font-variant-numeric:tabular-nums}
+.st-body{padding-left:14px;position:relative}
+.st-body::before{content:"";position:absolute;left:-7px;top:7px;width:10px;height:10px;border-radius:50%;background:var(--brand-mid);border:2px solid var(--card-bg)}
+.st-entry.minor .st-body::before{width:8px;height:8px;left:-6px;top:8px;background:var(--muted)}
+.st-entry.minor .st-body{font-size:.92rem;color:#3d3833}
+.st-entry.new{background:var(--accent-pale);border-radius:6px}
+.tag{display:inline-block;font-size:.7rem;font-weight:600;padding:1px 6px;border-radius:4px;margin-right:6px;vertical-align:1px}
+.tag.new{background:var(--accent);color:#fff}
+.tag.latest{background:var(--brand);color:#fff}
+.st-src{font-size:.78rem;color:var(--muted)}
+.st-src a{color:var(--muted)}
+.st-entry.ahead .st-body{border:1.5px dashed var(--border);border-radius:6px;padding:6px 10px;margin-left:8px}
+.st-entry.ahead .st-body::before{background:var(--card-bg);border:2px dashed var(--brand-mid);left:-15px}
+.st-ahead-label{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 2px 78px}
+
+/* v5 inline trim: only when JS is on */
+.story-timeline.ahead-list::before{background:none;border-left:2px dashed var(--border);width:0}
+.st-entry.new{z-index:0}
+.st-fold{display:none}
+html.js .st-fold{display:grid}
+html.js .st-entry.minor.folded{display:none}
+.st-fold button{all:unset;cursor:pointer;color:var(--brand);font-size:.9rem;padding-left:14px;text-decoration:underline;text-underline-offset:3px}
+.st-fold button:focus-visible{outline:2px solid var(--brand-light);outline-offset:2px;border-radius:3px}
+
+.deepdive{margin-top:28px;border-top:1px solid var(--border);padding-top:8px;color:#3d3833}
+details{margin-top:24px;border-top:1px solid var(--border);padding-top:10px}
+summary{cursor:pointer;color:var(--brand);font-weight:600;font-size:.95rem}
+details ul{font-size:.9rem;color:#3d3833}
+.sources{margin-top:24px;font-size:.82rem;color:var(--muted)}
+@media (min-width:600px){
+  main{padding-top:32px}
+  .card{padding:28px 32px}
+  h1{font-size:2rem}
+  .st-entry{grid-template-columns:84px 1fr}
+  .story-timeline::before{left:91px}
+  .st-ahead-label{margin-left:100px}
+}
+</style>
+</head>
+<body>
+<div class="mock-bar">Mock: Living Stories v5 · sample data, fictional story</div>
+<main><article class="card">
+  <div class="meta">Local · Compiled from 6 outlets · First published Oct 14 · Updated Nov 2</div>
+  <h1>Riverton council moves to replace transit fares with a flat monthly pass</h1>
+
+  <div class="update"><strong>Update · Nov 2:</strong> The council's finance committee approved the pass budget 7–2. A final council vote is set for Nov 18.</div>
+
+  <p class="lede">Riverton is weighing a switch from per-ride fares to a single $40 monthly pass for its bus and light-rail network. Supporters say it would simplify travel and raise ridership. Critics question how the city would cover the revenue gap.</p>
+
+  <h2>Why now</h2>
+  <div class="whynow">The current fare contract ends in March. If the council doesn't decide by year-end, the city has to renew the old system for another three years.</div>
+
+  <h2>How we got here</h2>
+  <ol class="story-timeline" id="tl">
+    <li class="st-entry"><div class="st-date">Oct 14</div><div class="st-body">Mayor's office publishes a proposal for a flat $40 monthly pass.<div class="st-src">Riverton Ledger, Metro Daily</div></div></li>
+    <li class="st-entry minor"><div class="st-date">Oct 16</div><div class="st-body">Transit union says it wants a staffing review first.</div></li>
+    <li class="st-entry minor"><div class="st-date">Oct 17</div><div class="st-body">Two councillors ask for a ridership forecast.</div></li>
+    <li class="st-entry minor"><div class="st-date">Oct 20</div><div class="st-body">City posts an online survey on the change.</div></li>
+    <li class="st-entry"><div class="st-date">Oct 23</div><div class="st-body">Independent forecast projects a 12% ridership rise and an $8M first-year revenue gap.<div class="st-src">Metro Daily, Civic Watch</div></div></li>
+    <li class="st-entry minor"><div class="st-date">Oct 27</div><div class="st-body">Survey closes with about 9,000 responses.</div></li>
+    <li class="st-entry minor"><div class="st-date">Oct 28</div><div class="st-body">Neighbouring towns ask whether passes would work across the border.</div></li>
+    <li class="st-entry new"><div class="st-date">Nov 2</div><div class="st-body"><span class="tag new">New · Nov 2</span><span class="tag latest">Latest</span>Finance committee approves the pass budget 7–2.<div class="st-src">Riverton Ledger, Channel 4</div></div></li>
+  </ol>
+  <div class="st-ahead-label">Ahead</div>
+  <ol class="story-timeline ahead-list">
+    <li class="st-entry ahead"><div class="st-date">Nov 18</div><div class="st-body">Full council vote on the pass.</div></li>
+    <li class="st-entry ahead"><div class="st-date">Mar 1</div><div class="st-body">Current fare contract ends.</div></li>
+  </ol>
+
+  <section class="deepdive">
+    <h2>Deep Dive</h2>
+    <p>(Existing Deep Dive section stays here, unchanged.)</p>
+  </section>
+
+  <details>
+    <summary>What changed in this story (3)</summary>
+    <ul>
+      <li>Nov 2 — Added finance committee vote; update note set.</li>
+      <li>Oct 28 — Added two minor steps.</li>
+      <li>Oct 23 — Added independent forecast.</li>
+    </ul>
+  </details>
+
+  <div class="sources">Sources: Riverton Ledger · Metro Daily · Civic Watch · Channel 4 · Valley Post · Transit Today</div>
+</article></main>
+<script>
+// v5 trim: collapse runs of 2+ consecutive minor entries into "+ N smaller steps (date)"
+document.querySelectorAll('.story-timeline').forEach(ol=>{
+  const items=[...ol.children]; let run=[];
+  const flush=()=>{
+    if(run.length>=2){
+      const fold=document.createElement('li'); fold.className='st-entry st-fold';
+      const last=run[run.length-1].querySelector('.st-date').textContent;
+      fold.innerHTML='<div class="st-date"></div><div class="st-body"><button aria-expanded="false">+ '+run.length+' smaller steps ('+last+')</button></div>';
+      const group=run; group.forEach(li=>li.classList.add('folded'));
+      fold.querySelector('button').onclick=()=>{group.forEach(li=>li.classList.remove('folded'));fold.remove();};
+      group[0].before(fold);
+    }
+    run=[];
+  };
+  items.forEach(li=>{li.classList.contains('minor')?run.push(li):flush()}); flush();
+});
+</script>
+</body>
+</html>
