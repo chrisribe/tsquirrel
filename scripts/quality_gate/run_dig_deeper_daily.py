@@ -208,7 +208,7 @@ def _get_json(url: str, timeout: int = 15) -> Any:
 def call_or_json(ork: str, system: str, user: Any, max_tokens: int = 3000) -> Tuple[Dict[str, Any], float]:
     status, out = api_req(
         "POST", f"{OR_BASE}/chat/completions", token=ork, timeout=60,
-        data={"model": QG_MODEL, "temperature": 0.1, "max_tokens": max_tokens,
+        data={"model": QG_MODEL, "temperature": 0.1, "max_tokens": max_tokens, "reasoning": {"enabled": False},
               "response_format": {"type": "json_object"},
               "messages": [{"role": "system", "content": system},
                            {"role": "user", "content": json.dumps(user, ensure_ascii=False)}]},
@@ -335,6 +335,7 @@ def call_openrouter(ork: str, ctx: Dict[str, Any], mode: str) -> Tuple[Dict[str,
         "temperature": 0.15,
         "top_p": 0.95,
         "max_tokens": 8192,
+        "reasoning": {"enabled": False},
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system},
