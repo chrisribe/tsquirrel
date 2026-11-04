@@ -87,6 +87,15 @@
           </li>
         <% }); %>
       </ol>
+      <% if (brief.background && brief.background.text) { %>
+        <div class="story-brief-background">
+          <h2><%= brief.background.heading %></h2>
+          <p><%= brief.background.text %></p>
+          <p class="story-brief-background-refs">Reference:
+            <% (brief.background.refs || []).forEach((ref, i) => { %><%= i ? ' · ' : '' %><a href="<%= ref.url %>" target="_blank" rel="noopener nofollow"><%= ref.title %></a><% }); %>
+          </p>
+        </div>
+      <% } %>
     </section>
   <% } %>
 

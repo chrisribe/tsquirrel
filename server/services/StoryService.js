@@ -5,6 +5,8 @@ const NewsDAO = require('../dao/NewsDAO');
 const { slugify } = require('../lib/slug');
 const { isLowQualityImage, fetchOgImage } = require('./IngestionService');
 
+const ALLOWED_BACKGROUND_HOSTS = ['wikipedia.org', 'worldbank.org'];
+
 const TITLE_STOPWORDS = new Set([
   'a','an','and','are','as','at','be','by','for','from','has','have','in','into','is','it','its','of','on','or','that','the','their','to','was','were','with',
   'year','years','old','new','latest','today','after','before','over','under','amid','about','says','say','found'
@@ -178,6 +180,32 @@ class StoryService {
     return this.dao.updateDraft(storyId, values);
   }
 
+  _normalizeBriefBackground(raw) {
+    if (raw == null) return null;
+    if (typeof raw !== 'object' || Array.isArray(raw)) {
+      throw this._briefError('background must be an object or null', 'brief_background_invalid');
+    }
+    const heading = String(raw.heading || '').trim();
+    const text = String(raw.text || '').trim();
+    const refs = Array.isArray(raw.refs) ? raw.refs : [];
+    if (!heading || heading.length > 160 || !text || text.length > 2000) {
+      throw this._briefError('background needs heading (<=160) and text (<=2000)', 'brief_background_invalid');
+    }
+    if (refs.length < 1 || refs.length > 4) {
+      throw this._briefError('background must cite 1-4 reference sources', 'brief_background_uncited');
+    }
+    const cleanRefs = refs.map((ref) => {
+      const title = String(ref?.title || '').trim().slice(0, 200);
+      let url;
+      try { url = new URL(String(ref?.url || '')); } catch { url = null; }
+      if (!title || !url || url.protocol !== 'https:' || !ALLOWED_BACKGROUND_HOSTS.some(h => url.hostname === h || url.hostname.endsWith(`.${h}`))) {
+        throw this._briefError('background refs must be https links to an allowed reference site', 'brief_background_ref_invalid');
+      }
+      return { title, url: url.toString() };
+    });
+    return { heading, text, refs: cleanRefs };
+  }
+
   async replaceBrief(storyId, input = {}) {
     const introduction = String(input.introduction || '').trim();
     const expectedRevision = Number(input.expectedRevision ?? input.expected_revision);
@@ -236,8 +264,10 @@ class StoryService {
       return { heading, text, articleIds };
     });
 
+    const background = this._normalizeBriefBackground(input.background);
+
     return this.dao.replaceStoryBrief(storyId, {
-      introduction, facts, expectedRevision, proposedSummary, expectedSummary, editorNote,
+      introduction, facts, expectedRevision, proposedSummary, expectedSummary, editorNote, background,
     });
   }
 

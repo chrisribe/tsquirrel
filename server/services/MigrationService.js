@@ -502,6 +502,13 @@ const migrations = [
       `);
     }
   },
+  {
+    version: 27,
+    description: 'Deep Dive background section (external reference sources)',
+    up: async (pool) => {
+      await pool.query(`ALTER TABLE story_briefs ADD COLUMN IF NOT EXISTS background JSONB`);
+    }
+  },
   // Future migrations go here
 ];
 
