@@ -10,7 +10,24 @@ Usage:
 """
 import argparse
 import json
+import os
 import sys
+import time
+
+LOG_PATH = os.environ.get("TSQ_CATEGORY_LOG", "/tmp/tsquirrel_category_check.log")
+
+# Lateral swaps the eval showed are judgement calls, not fixes: skip to avoid churn.
+SKIP_SWAPS = {("AI", "Technology"), ("Politics", "World"), ("World", "Politics")}
+
+
+def log(msg):
+    line = f"{time.strftime('%Y-%m-%d %H:%M:%S')} {msg}"
+    print(line, file=sys.stderr, flush=True)
+    try:
+        with open(LOG_PATH, "a") as fh:
+            fh.write(line + "\n")
+    except OSError:
+        pass
 
 from common import BASE, OR_BASE, OR_CLIENT_TITLE, OR_HTTP_REFERER, QG_MODEL, api_req, get_tokens
 
@@ -22,6 +39,8 @@ CATEGORIES = [
 PROMPT = (
     "Classify each news story into exactly one category from: {cats}. "
     "Pick the PRIMARY subject. Use 'Other' only if nothing fits. "
+    "AI = stories primarily about artificial intelligence (models, AI companies, AI policy). "
+    "Politics = government, elections, courts and policy in any country. "
     "Sports includes athletes and sports business. Entertainment includes celebrities. "
     "World = international affairs/disasters/wars outside a more specific category. "
     "Return a JSON object mapping story id to category, e.g. {{\"123\": \"Politics\"}}.\n\n{items}"
@@ -84,7 +103,11 @@ def apply_categories(tsq, stories, predicted, apply):
     changes = []
     for s in stories:
         new = predicted.get(int(s["id"]))
-        if not new or new == s.get("category"):
+        old = s.get("category")
+        if not new or new == old:
+            continue
+        # Never demote a real category to Other; skip known judgement-call swaps.
+        if new == "Other" or (old, new) in SKIP_SWAPS:
             continue
         row = {"story_id": s["id"], "from": s.get("category"), "to": new, "title": s.get("title")}
         if apply:
@@ -95,13 +118,24 @@ def apply_categories(tsq, stories, predicted, apply):
 
 
 def check_and_fix(tsq, or_key, story_ids, apply=True, batch=25):
-    stories = [s for s in (get_story(tsq, sid) for sid in story_ids) if s]
+    log(f"start: {len(story_ids)} ids apply={apply}")
+    stories = []
+    for n, sid in enumerate(story_ids, 1):
+        s = get_story(tsq, sid)
+        if s:
+            stories.append(s)
+        if n % 100 == 0:
+            log(f"fetched {n}/{len(story_ids)}")
     changes, cost = [], 0.0
-    for i in range(0, len(stories), batch):
+    total_batches = (len(stories) + batch - 1) // batch
+    for b, i in enumerate(range(0, len(stories), batch), 1):
         chunk = stories[i:i + batch]
         pred, c = classify(or_key, chunk)
         cost += c
-        changes += apply_categories(tsq, chunk, pred, apply)
+        got = apply_categories(tsq, chunk, pred, apply)
+        changes += got
+        log(f"batch {b}/{total_batches}: predicted={len(pred)}/{len(chunk)} changed={len(got)} total_changed={len(changes)} cost=${cost:.5f}")
+    log(f"done: checked={len(stories)} changed={len(changes)} cost=${cost:.5f}")
     return changes, cost, len(stories)
 
 
