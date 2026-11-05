@@ -166,6 +166,7 @@ def _llm_category(or_key, story, sources):
         "model": QG_MODEL,
         "temperature": 0.0,
         "response_format": {"type": "json_object"},
+        "reasoning": {"enabled": False},
         "messages": [
             {
                 "role": "system",
@@ -242,6 +243,7 @@ def _llm_editor(or_key, story, sources):
         "model": QG_MODEL,
         "temperature": 0.15,
         "response_format": {"type": "json_object"},
+        "reasoning": {"enabled": False},
         "messages": [
             {
                 "role": "system",
@@ -318,6 +320,7 @@ def _llm_review_tags(or_key, story, sources, tags):
         "model": QG_MODEL,
         "temperature": 0.0,
         "response_format": {"type": "json_object"},
+        "reasoning": {"enabled": False},
         "messages": [
             {
                 "role": "system",
