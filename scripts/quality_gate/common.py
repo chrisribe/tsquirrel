@@ -57,16 +57,16 @@ def get_tokens():
 
 
 def _is_retryable_network_error(err):
-    if isinstance(err, TimeoutError):
+    if isinstance(err, (TimeoutError, ConnectionResetError, ConnectionAbortedError)):
         return True
     if isinstance(err, urllib.error.URLError):
         reason = getattr(err, "reason", None)
         if isinstance(reason, TimeoutError):
             return True
-        if isinstance(reason, OSError) and getattr(reason, "errno", None) in (101, 110, 111, 113):
+        if isinstance(reason, OSError) and getattr(reason, "errno", None) in (101, 104, 110, 111, 113):
             return True
         msg = str(reason or err).lower()
-        if "timed out" in msg or "network is unreachable" in msg or "temporary failure" in msg:
+        if "connection reset" in msg or "timed out" in msg or "network is unreachable" in msg or "temporary failure" in msg:
             return True
     return False
 
