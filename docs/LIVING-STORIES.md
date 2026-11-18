@@ -6,6 +6,22 @@ Mockups: POC v3 (timeline layout) and the "update" mock (Flávio Bolsonaro), des
 
 ---
 
+## The bet (agreed 2026-11-18, DaCRibe chose "Option 3")
+
+TSquirrel gets **one last bounded bet**: Living Stories v1 plus light distribution.
+
+**Kill rule.** On **2027-01-15**, if TSquirrel is not at **≥50 real readers/day** (GA4 7-day average, bots excluded) **or ≥100 Google clicks/month** (GSC, last 28 days), we shut it down. No extension.
+
+**v1 scope (cut to ship fast):**
+- Build steps 1–5 and 7 below: timelines are created for Deep Dive stories and stories with GSC impressions.
+- **Deferred:** continuation detection and update mode (step 6). We add them only if timeline pages get indexed and draw impressions.
+
+**Distribution (about 10 min/week, DaCRibe):** each week, post the 1–2 best Living Story pages to Reddit, Hacker News or Bluesky, and request indexing in Search Console.
+
+**Scoreboard.** A weekly cron posts real readers/day, GSC clicks/impressions, and the count of indexed timeline pages against the kill thresholds.
+
+---
+
 ## Goal
 
 Make every story a page that keeps growing, with this layout:
