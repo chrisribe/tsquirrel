@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Living Stories — review</title><style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:Inter,system-ui,sans-serif;background:#f5f3ef}
+body{display:flex;flex-direction:column}
+.bar{background:#1f451f;color:#fff;padding:8px 10px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0}
+.row{display:flex;align-items:center;gap:8px}
+.t{flex:1;font-weight:600;font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.c{margin-left:auto}.c{font-size:12px;opacity:.8;white-space:nowrap}
+.n{font-size:12px;line-height:1.35;opacity:.92}
+button{all:unset;cursor:pointer;background:#3d7a40;color:#fff;border-radius:8px;padding:8px 14px;font-weight:600;font-size:14px;min-width:44px;text-align:center}
+button:disabled{opacity:.35;cursor:default}button:focus-visible{outline:2px solid #fff}
+.vote{display:flex;gap:6px}.vote button{background:transparent;border:1px solid rgba(255,255,255,.4);padding:6px 10px;font-size:13px}
+.vote button.on{background:#e07b39;border-color:#e07b39}
+iframe{flex:1;width:100%;border:0;background:#f5f3ef}
+.sum{font-size:12px;opacity:.85}
+</style></head><body>
+<div class="bar">
+ <div class="row"><button id="prev" aria-label="Previous">‹</button><div class="t" id="t"></div><button id="next" aria-label="Next">›</button></div>
+ <div class="n" id="n"></div>
+ <div class="row"><div class="vote" id="vote"><button data-v="keep">👍 Keep</button><button data-v="maybe">🤔 Maybe</button><button data-v="drop">👎 Drop</button></div><span class="c" id="c"></span><span class="sum" id="sum"></span></div>
+</div>
+<iframe id="f" title="mock"></iframe>
+<script>
+const P=[{"f": "v5.html", "t": "v5 baseline", "n": "The chosen design, for reference.", "s": null}, {"f": "m01-deepdive-first.html", "t": "Deep Dive above timeline", "n": "Deep Dive moves above \"How we got here\"", "s": ".deepdive"}, {"f": "m02-no-banner.html", "t": "Update shown only in timeline", "n": "Update banner removed; \"Updated Nov 2\" in meta links to the New entry", "s": ".meta"}, {"f": "m03-since-last-visit.html", "t": "Since your last visit", "n": "entries newer than your last visit get a marker + top summary (localStorage; demo pretends last visit = Oct 25)", "s": "#slv"}, {"f": "m04-ahead-strip.html", "t": "Ahead as a date strip", "n": "\"Ahead\" list becomes a horizontal strip of date chips right under Why now", "s": ".strip"}, {"f": "m05-still-quiet.html", "t": "\"Still quiet, we checked\"", "n": "status line after timeline: when we last checked + how many outlets, even with no news", "s": ".quiet"}, {"f": "m06-key-toggle.html", "t": "Key steps / All steps toggle", "n": "inline \"+N smaller steps\" rows replaced by one toggle above the timeline", "s": ".tl-head"}, {"f": "m07-whynow-in-lede.html", "t": "Why now merged into lede", "n": "\"Why now\" box removed; one bold sentence opens the lede instead", "s": ".lede"}, {"f": "m08-sources-bottom.html", "t": "Footnote sources", "n": "per-entry outlet names become [1,2] refs to a numbered list at the bottom", "s": ".sources"}, {"f": "m09-inline-dates.html", "t": "Single rail, inline dates", "n": "date column removed; dates sit above each entry, rail on the far left (more text width on phones)", "s": "#tl"}, {"f": "m10-changelog-top.html", "t": "Revision link at top", "n": "collapsed change log at bottom replaced by \"Revised 3\u00d7 \u00b7 what changed\" next to the date, opening a small panel", "s": ".meta"}];const K='ls-review-votes';const votes=JSON.parse(localStorage.getItem(K)||'{}');
+let i=Math.max(0,P.findIndex(p=>'#'+p.f===location.hash));if(i<0)i=0;
+const $=id=>document.getElementById(id);
+function show(){const p=P[i];$('f').src=p.f;$('t').textContent=(i? 'm'+String(i).padStart(2,'0')+' · ':'')+p.t;$('n').textContent=p.n;
+ $('c').textContent=(i+1)+'/'+P.length;$('prev').disabled=i===0;$('next').disabled=i===P.length-1;history.replaceState(null,'','#'+p.f);
+ document.querySelectorAll('#vote button').forEach(b=>b.classList.toggle('on',votes[p.f]===b.dataset.v));
+ const k=Object.entries(votes).filter(([f,v])=>v==='keep').map(([f])=>f.slice(0,3));$('sum').textContent=k.length?'Keep: '+k.join(', '):'';}
+$('prev').onclick=()=>{if(i>0){i--;show()}};$('next').onclick=()=>{if(i<P.length-1){i++;show()}};
+document.querySelectorAll('#vote button').forEach(b=>b.onclick=()=>{const f=P[i].f;votes[f]=votes[f]===b.dataset.v?undefined:b.dataset.v;localStorage.setItem(K,JSON.stringify(votes));show()});
+addEventListener('keydown',e=>{if(e.key==='ArrowRight')$('next').click();if(e.key==='ArrowLeft')$('prev').click()});
+$('f').addEventListener('load',()=>{try{const d=$('f').contentDocument;const mb=d.querySelector('.mock-bar');if(mb)mb.style.display='none';const s=P[i].s&&d.querySelector(P[i].s);if(s){s.style.outline='3px solid #e07b39';s.style.outlineOffset='4px';s.style.borderRadius='6px';s.scrollIntoView({block:'center'})}
+ let x0=null;d.addEventListener('touchstart',e=>x0=e.touches[0].clientX,{passive:true});
+ d.addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>80){dx<0?$('next').click():$('prev').click()}x0=null});}catch(e){}});
+show();
+</script></body></html>
