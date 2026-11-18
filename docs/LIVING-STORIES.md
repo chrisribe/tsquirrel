@@ -26,7 +26,7 @@ TSquirrel gets **one last bounded bet**: Living Stories v1 plus light distributi
 
 Make every story a page that keeps growing, with this layout:
 
-**headline → lede → Why now → How we got here (dated timeline) → Ahead entries → change log**
+**headline → lede → Why now → How we got here (dated timeline) → Scheduled entries (only when announced) → change log**
 
 When news breaks on an existing story, add **new timeline entries to the same URL**. Do not create a new thin story.
 
@@ -115,7 +115,15 @@ Why separate tables instead of JSONB:
 
 Validation (in `StoryTimelineService`, mirroring `_normalizeBriefBackground`):
 - 3–10 past entries on create, 1–4 entries per update.
-- Each **past** entry must cite ≥1 `article_id` that is attached to the story. **Ahead** entries may cite 0.
+- Each **past** entry must cite ≥1 `article_id` that is attached to the story. **Ahead** entries must also cite ≥1 attached `article_id`.
+
+### Scheduled entries rule (DaCRibe, 2026-11)
+We report announced dates; we don't predict. `kind='ahead'` entries are shown to readers as **Scheduled**.
+- Allowed only if a cited source article names the event **and** gives a specific date (day, or at least month + year). No date → no entry.
+- No forecasts or inferred dates; no "expected to", "likely", "could". The model extracts, never infers.
+- Validation drops any ahead entry with 0 citations, no parseable date, a date in the past at creation time, or hedging words.
+- If a story has zero valid scheduled entries, the section is **not rendered** at all (no empty heading). Expected for most stories.
+- Each rendered entry shows its source: `Nov 18 · Council vote · per Riverton Ledger`.
 - `text` ≤400 chars, `why_now` ≤800, `update_note` ≤240.
 - On a stale `expected_revision`, return 409 `stale_timeline_revision`, the same pattern as briefs.
 - An update bumps `stories.updated_at` **and** a new `stories.content_updated_at` column. The sitemap lastmod uses `GREATEST(published_at, content_updated_at)`. This preserves the fix from 3e3116c: bulk backfills must not touch lastmod.
@@ -189,7 +197,7 @@ Render order when a timeline exists:
 2. Update box, only if `update_note` is set **and** the last update was < 7 days ago.
 3. Lede (`timeline.lede || story.summary`).
 4. **Why now**.
-5. **How we got here**: a timeline `<ol>` with a date column, past entries, then `ahead` entries dashed.
+5. **How we got here**: a timeline `<ol>` with a date column, past entries, then a **Scheduled** list (`ahead` entries, dashed, each with "per <outlet>") — omitted entirely when there are none.
    - Entries with `added_in_revision == revision` and revision > 1 get the "New · date" tag and a tint.
    - The last past entry gets "Latest".
    - Resolved `ahead` entries are hidden; the past entry replaces them.
@@ -234,7 +242,7 @@ Structured data:
 ## Risks
 
 - **Wrong continuation match.** This would attach unrelated news to a story. Mitigations: the LLM verdict plus same-category and entity-overlap requirements; every update logged in the change log; a revert endpoint that drops the last revision (a nice-to-have; v1 can do it manually through the API).
-- **Hallucinated dates.** Dates must come from the source text or the source's `published_at`. Entries with an unparseable or future date are dropped, unless `kind=ahead` with a stated source.
+- **Hallucinated dates.** Dates must come from the source text or the source's `published_at`. Entries with an unparseable or future date are dropped, unless `kind=ahead` with ≥1 cited article that states the date (see Scheduled entries rule).
 - **Paywalled sources.** Fall back to descriptions. Skip creating a timeline if total full text is under 1,500 characters.
 - **Old stories with no follow-ups.** The timeline is still useful (Why now plus history). No update box is shown.
 - **Cost creep.** Hard caps per run; costs reported in step5.
@@ -247,13 +255,13 @@ Not researched in depth. Based on general knowledge of each product, as of 2026-
 |---|---|---|---|
 | Live blogs (BBC, Guardian, NYT) | Minute-by-minute speed | Newest-first noise; abandoned after 1–2 days | Oldest-first, only key steps, alive for weeks |
 | Explainers (Vox, Semafor) | Expert writing, analysis | Hand-made, few topics, rarely updated | Generated for every story, updated on news, ~$0.0005/story |
-| Wikipedia current events | Deep timelines + context | Slow on fresh news, contested edits, no "what's next" | Faster, includes Ahead entries, but less human oversight |
+| Wikipedia current events | Deep timelines + context | Slow on fresh news, contested edits, no "what's next" | Faster, lists announced dates (Scheduled), but less human oversight |
 | Ground News | Coverage/bias comparison across outlets | Not about what happened over time | Timeline angle; outlet comparison was rejected in POC v1 |
 | Google News "Full coverage" | Huge source breadth | Timeline of headlines, not events | Plain-sentence events, why now, what's next |
 
 **Our edge**
 - One URL per story that keeps updating.
-- Ahead entries that resolve into past events.
+- Scheduled (announced, cited) dates that resolve into past events.
 - A calm page with no ads inside the content.
 - Near-zero cost, so every story can get one.
 
